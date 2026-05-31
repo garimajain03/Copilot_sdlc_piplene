@@ -1,0 +1,293 @@
+# Getting Started — SDLC Pipeline Bundle
+
+## Overview
+
+The **SDLC Pipeline Bundle** (`github-copilot-sdlc-template`) is a standalone repository that enables any project to adopt a structured, multi-agent software development lifecycle powered by GitHub Copilot.
+
+The pipeline has two phases:
+1. **Preflight** — Validates onboarding, scans your codebase, generates setup artifacts
+2. **Pipeline Generation** — Creates customer-specific agents, skills, hooks from reusable contracts
+
+---
+
+## Prerequisites
+
+- [VS Code](https://code.visualstudio.com/) with [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) extension installed **OR** [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli)
+- Python 3.9+ (for automation scripts)
+- Git (for repository cloning)
+- A completed `customer_onboarding_answers.md` (generated from `client-onboarding-wizard.html`)
+
+---
+
+## Quick Start
+
+### 1. Fill the Onboarding Wizard
+
+Open `client-onboarding-wizard.html` in a browser and fill in your organization details, tech stack, tools, and preferences. Save the output as `customer_onboarding_answers.md` in the repo root.
+
+### 2. Run Preflight
+
+**VS Code Copilot Chat:**
+```
+/preflight customer_onboarding_answers.md
+```
+
+**GitHub Copilot CLI:**
+```bash
+gh copilot chat "Run the SDLC Preflight Agent on customer_onboarding_answers.md"
+```
+
+### 3. Run Pipeline Generator
+
+**VS Code Copilot Chat:**
+```
+/generate-pipeline
+```
+
+**GitHub Copilot CLI:**
+```bash
+gh copilot chat "Run the SDLC Pipeline Generator"
+```
+
+### 4. Run Your Pipeline
+
+Once generated, your SDLC pipeline agents are in `.github/agents/` ready to use.
+
+---
+
+## Available Prompt Commands
+
+These slash commands are available in VS Code Copilot Chat:
+
+| Command | Purpose |
+|---------|---------|
+| `/preflight` | Run the Preflight Agent (Step 1) |
+| `/generate-pipeline` | Run the Pipeline Generator (Step 2) |
+| `/resume-pipeline` | Resume a paused Preflight or Generator run |
+| `/pipeline-status` | Check current pipeline progress |
+| `/rerun-phase` | Re-run a specific phase with feedback |
+
+---
+
+## Pause, Resume & Re-run
+
+Both agents support pausing after any phase, resuming later, and re-running phases with feedback.
+
+### Pause
+
+During any phase, the agent will ask:
+```
+"Phase 3 complete. Shall I continue to Phase 4 or would you like to pause and review?"
+Options: [Continue] [Pause] [Re-run Phase 3 with feedback]
+```
+
+Choose **Pause** to save state and stop.
+
+### Resume
+
+```
+/resume-pipeline
+```
+
+The agent resumes from the last completed phase. All prior work is preserved.
+
+### Re-run with Feedback
+
+```
+/rerun-phase Phase 4 Code Scan — scan repo-X with deeper analysis for testing patterns
+```
+
+The agent resets that phase, applies your feedback, and re-executes.
+
+### Check Status
+
+```
+/pipeline-status
+```
+
+Shows completed phases, current phase, pending feedback, and any errors.
+
+---
+
+## Preflight Agent — Detailed Workflow
+
+### What It Does
+
+The Preflight Agent validates your onboarding answers, clones your repositories, scans them for structure and conventions, and generates all setup artifacts.
+
+### Phases
+
+| Phase | Name | What Happens | Scripts Used |
+|-------|------|-------------|--------------|
+| 1 | Validate Onboarding | Reads `customer_onboarding_answers.md`, validates against `schemas/onboarding_answers_schema.md`, asks clarifying questions for missing fields | — |
+| 2 | Collect Repos | Asks for repository list, validates names, confirms with user | — |
+| 3 | Clone Repos | Clones repos using SCM connector, handles failures per-repo | `scripts/scm-bootstrap.py` |
+| 4 | Smart Code Scan | Scans each repo for structure, dependencies, patterns, conventions. Parallel scanning for 3+ repos via sub-agents | `scripts/repo-scanner.py` |
+| 5 | Generate Instructions | Creates `.github/instructions/<repo>.instructions.md` for each scanned repo | `scripts/instructions-generator.py` |
+| 6 | Setup & Connectors | Generates `setup.sh`, connector SKILL.md files, observability setup | `scripts/install-observability.sh` |
+| 7 | Generate hooks.json | Registers all hooks (guard, secrets, lint, observability, telemetry, learnings) | — |
+| 8 | Outcome Inspection | Self-validates all outputs for completeness, quality, security, consistency | `scripts/outcome-inspector.py` |
+
+### Outputs
+
+| File | Location |
+|------|----------|
+| `setup.sh` | `setup.sh` |
+| `hooks.json` | `.github/hooks/hooks.json` |
+| Connector skills | `.github/skills/<connector>/SKILL.md` |
+| Hook scripts | `.github/hooks/<hook_name>.py` |
+| Instruction files | `.github/instructions/<repo>.instructions.md` |
+| Codebase scan results | `.github/sdlc-pipeline/codebase_scan_results.md` |
+| Preflight report | `.github/sdlc-pipeline/preflight_report.md` |
+| Checkpoint state | `.github/sdlc-pipeline/checkpoint_state.json` |
+
+---
+
+## Pipeline Generator — Detailed Workflow
+
+### What It Does
+
+The Pipeline Generator reads your contracts and onboarding context, then generates a complete set of customer-specific agents, skills, hooks, and orchestrator.
+
+### Prerequisites
+
+The Preflight Agent must have completed successfully. Required outputs:
+- `.github/sdlc-pipeline/preflight_report.md`
+- `.github/sdlc-pipeline/codebase_scan_results.md`
+- `.github/instructions/*.instructions.md`
+
+### Phases
+
+| Phase | Name | What Happens | Scripts Used |
+|-------|------|-------------|--------------|
+| 1 | Load Context | Reads all contracts, customer onboarding answers, preflight outputs, instruction files | — |
+| 2 | Clarify | Asks clarification questions about tools, ways of working, standards, security, testing | — |
+| 3 | Model Mapping | Maps contract model tiers (reasoning/coding/fast) to customer's approved LLM models | — |
+| 4 | Generate Agents | Creates agent definitions from contracts. Parallel generation in 3 groups + sequential orchestrator | — |
+| 5 | Generate Skills | Creates skill SKILL.md files from skill contracts (ticket, SCM, design, testing) | — |
+| 6 | Generate Hooks | Creates hook scripts from hook contracts (guard, secrets, lint, observability, telemetry, learnings) | — |
+| 7 | Custom Context Templates | Creates `<agent>_custom_client_context.md` template for each agent | — |
+| 8 | Support Files | Generates workflow README and repository index | — |
+| 9 | Outcome Inspection | Validates all generated agents against their contracts | `scripts/outcome-inspector.py` |
+
+### Outputs
+
+| Category | Location |
+|----------|----------|
+| Agent definitions | `.github/agents/agent<N>_<name>.md` |
+| Orchestrator | `.github/agents/orchestrator.md` |
+| Skills | `.github/skills/<skill_name>/SKILL.md` |
+| Hooks | `.github/hooks/<hook_name>.py` |
+| Hook config | `.github/hooks/hooks.json` |
+| Custom context templates | `.github/sdlc-pipeline/client-context/<agent>_custom_client_context.md` |
+| Workflow docs | `.github/agents/agents-workflow/readme.md` |
+| Repository index | `index.md` |
+| Generation report | `.github/sdlc-pipeline/generation_report.md` |
+
+---
+
+## Scripts Reference
+
+| Script | Purpose | Used By |
+|--------|---------|---------|
+| `scripts/repo-scanner.py` | Scans a repository for structure, dependencies, patterns, conventions. Smart filtering ignores `node_modules`, `dist`, binary files, etc. Tags files as `source`, `test`, `config`, `docs`, `ci_cd`, etc. | Preflight Phase 4 |
+| `scripts/scm-bootstrap.py` | Clones customer repositories via GitHub/GitLab/Bitbucket/Azure DevOps. Shallow clone, retry logic, branch targeting. | Preflight Phase 3 |
+| `scripts/instructions-generator.py` | Generates `.github/instructions/<repo>.instructions.md` files from scan JSON. Includes YAML frontmatter, structure, deps, tools, patterns. | Preflight Phase 5 |
+| `scripts/checkpoint-manager.py` | Manages pipeline state — save, load, reset, feedback, error tracking. Enables pause/resume/re-run workflows. | All phases |
+| `scripts/outcome-inspector.py` | Self-validates agent outputs for structural completeness, content quality, consistency, security, and functionality. | Preflight Phase 8, Generator Phase 9 |
+| `scripts/install-observability.sh` | Downloads OTel Collector + Prometheus binaries. No sudo/Docker required. Supports `--check` and `--json` modes. | Preflight Phase 6 |
+
+---
+
+## Contracts Reference
+
+The pipeline generates agents from **reusable contracts** — tools-agnostic specifications that define each agent's behavior.
+
+| Contract | ID | Purpose |
+|----------|----|---------|
+| Ticket Analyzer | AC-000 | Fetch ticket context, classify complexity & type |
+| Problem Decomposer | AC-001 | Transform requirements into structured problem spec |
+| Design Architect | AC-002 | Produce technical design from problem spec |
+| Design Critic | AC-002A | Review design for flaws before implementation |
+| Scaffolder | AC-003A | Plan file structure blueprint |
+| Builder | AC-003B | Implement code from scaffold + design |
+| Fixer | AC-003C | Apply targeted fixes from verification |
+| Verifier | AC-004 | Validate implementation against requirements |
+| Critic | AC-005 | Adversarial risk analysis |
+| Tester | AC-006 | Write and execute tests |
+| Orchestrator | AC-ORCH | Coordinate pipeline, delegate to agents |
+
+### Hook Contracts
+
+| Contract | ID | Purpose |
+|----------|----|---------|
+| Guard Destructive | HC-GUARD-CMD | Block irreversible terminal commands |
+| Guard Secrets | HC-GUARD-SEC | Prevent secret/credential exposure |
+| Lint on Save | HC-LINT | Auto-fix code style on file writes |
+| Observability Lifecycle | HC-OBSERVABILITY | Manage OTel Collector + Prometheus processes |
+| OTel Telemetry | HC-OTEL-TELEMETRY | Per-agent metrics, token tracking, cost estimation |
+| Session Learnings | HC-LEARN | Extract and store session learnings |
+
+### Skill Contracts
+
+| Contract | ID | Purpose |
+|----------|----|---------|
+| Ticket Connector | SC-TICKET | PM system integration (Jira, Linear, etc.) |
+| SCM Connector | SC-SCM | Source control operations (GitHub, GitLab, etc.) |
+| Design Connector | SC-DESIGN | Design tool integration (Figma, etc.) |
+| Testing Skill | SC-TEST | Test framework conventions & execution |
+
+---
+
+## Directory Structure
+
+```
+github-copilot-sdlc-template/
+├── .github/
+│   ├── agents/
+│   │   ├── sdlc-preflight.agent.md          ← Preflight Agent
+│   │   └── sdlc-pipeline-generator.agent.md ← Pipeline Generator
+│   ├── prompts/
+│   │   ├── preflight.prompt.md              ← /preflight command
+│   │   ├── generate-pipeline.prompt.md      ← /generate-pipeline command
+│   │   ├── resume-pipeline.prompt.md        ← /resume-pipeline command
+│   │   ├── pipeline-status.prompt.md        ← /pipeline-status command
+│   │   └── rerun-phase.prompt.md            ← /rerun-phase command
+│   └── copilot-instructions.md              ← Repo-level Copilot context
+├── contracts/                               ← Reusable Agent Contracts
+│   ├── CONTRACT_INDEX.md
+│   ├── agent0–agent6 + orchestrator contracts
+│   ├── hooks/                               ← Hook contracts
+│   └── skills/                              ← Skill contracts
+├── templates/                               ← Generation templates (Handlebars)
+├── schemas/                                 ← Validation schemas
+├── scripts/                                 ← Automation scripts (Python/Bash)
+├── observability/                           ← OTel + Prometheus configs
+├── docs/                                    ← Documentation
+│   ├── getting-started.md                   ← This file
+│   └── workflow.html                        ← Interactive workflow visualization
+├── client-onboarding-wizard.html            ← Onboarding wizard
+├── customer_onboarding_answers.md           ← Customer config (generated)
+└── README.md
+```
+
+---
+
+## Troubleshooting
+
+### "No checkpoint found"
+No previous run exists. Start fresh with `/preflight`.
+
+### Preflight fails to clone a repo
+- Check your SCM authentication (GitHub token, GitLab PAT, etc.)
+- Verify the repository name and organization are correct
+- The agent will offer to retry, skip, or provide an alternative URL
+
+### Generator says preflight outputs are missing
+Run `/preflight` first and ensure it completes successfully.
+
+### A specific phase keeps failing
+Use `/rerun-phase` with feedback describing what went wrong. The agent will adapt.
+
+### Need to start completely fresh
+Delete `.github/sdlc-pipeline/checkpoint_state.json` and run `/preflight` again.

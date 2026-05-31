@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDLC Pipeline Bundle — Workflow Visualization</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface-hover: #1c2128;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent-blue: #58a6ff;
+      --accent-green: #3fb950;
+      --accent-purple: #bc8cff;
+      --accent-orange: #d29922;
+      --accent-red: #f85149;
+      --accent-cyan: #39d2c0;
+      --accent-pink: #f778ba;
+      --radius: 8px;
+      --shadow: 0 2px 8px rgba(0,0,0,.3);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 0;
+    }
+
+    /* ─── Header ──────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 24px 32px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: .875rem;
+      margin-top: 4px;
+    }
+
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      margin-top: 16px;
+    }
+
+    .tab {
+      padding: 8px 20px;
+      border-radius: var(--radius) var(--radius) 0 0;
+      border: 1px solid transparent;
+      background: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: .875rem;
+      font-family: inherit;
+      transition: all .15s;
+    }
+
+    .tab:hover {
+      color: var(--text);
+      background: var(--surface-hover);
+    }
+
+    .tab.active {
+      background: var(--bg);
+      color: var(--text);
+      border-color: var(--border);
+      border-bottom-color: var(--bg);
+    }
+
+    /* ─── Main Content ────────────────────────── */
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px;
+    }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ─── Pipeline View ───────────────────────── */
+    .pipeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: relative;
+    }
+
+    .pipeline-section {
+      margin-bottom: 32px;
+    }
+
+    .section-label {
+      font-size: .75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      padding-left: 4px;
+    }
+
+    .pipeline-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .connector {
+      display: flex;
+      justify-content: center;
+      padding: 4px 0;
+    }
+
+    .connector svg {
+      display: block;
+    }
+
+    /* ─── Agent Cards ─────────────────────────── */
+    .agent-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      min-width: 200px;
+      max-width: 280px;
+      cursor: pointer;
+      transition: all .2s;
+      position: relative;
+    }
+
+    .agent-card:hover {
+      border-color: var(--accent-blue);
+      box-shadow: var(--shadow), 0 0 0 1px var(--accent-blue);
+      transform: translateY(-1px);
+    }
+
+    .agent-card.expanded {
+      max-width: 100%;
+      flex: 1 1 100%;
+    }
+
+    .agent-badge {
+      display: inline-block;
+      font-size: .65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+    }
+
+    .badge-agent { background: rgba(88,166,255,.15); color: var(--accent-blue); }
+    .badge-skill { background: rgba(188,140,255,.15); color: var(--accent-purple); }
+    .badge-hook { background: rgba(210,153,34,.15); color: var(--accent-orange); }
+    .badge-script { background: rgba(63,185,80,.15); color: var(--accent-green); }
+    .badge-preflight { background: rgba(57,210,192,.15); color: var(--accent-cyan); }
+    .badge-generator { background: rgba(247,120,186,.15); color: var(--accent-pink); }
+
+    .agent-card h3 {
+      font-size: .95rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .agent-card p {
+      font-size: .8rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .agent-card .detail-panel {
+      display: none;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .agent-card.expanded .detail-panel {
+      display: block;
+    }
+
+    .detail-panel h4 {
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--accent-blue);
+      margin: 8px 0 4px;
+    }
+
+    .detail-panel h4:first-child {
+      margin-top: 0;
+    }
+
+    .detail-panel ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .detail-panel li {
+      font-size: .8rem;
+      color: var(--text-muted);
+      padding: 2px 0;
+      padding-left: 16px;
+      position: relative;
+    }
+
+    .detail-panel li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--accent-green);
+    }
+
+    .detail-panel code {
+      font-size: .75rem;
+      background: rgba(110,118,129,.15);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    .detail-panel .artifact {
+      display: inline-block;
+      font-size: .7rem;
+      background: rgba(63,185,80,.1);
+      color: var(--accent-green);
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin: 2px 4px 2px 0;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    /* ─── Flow Arrows ─────────────────────────── */
+    .flow-arrow {
+      display: flex;
+      align-items: center;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      padding: 0 4px;
+      flex-shrink: 0;
+    }
+
+    .flow-arrow-down {
+      display: flex;
+      justify-content: center;
+      padding: 8px 0;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+    }
+
+    /* ─── Decision Diamond ────────────────────── */
+    .decision {
+      background: var(--surface);
+      border: 2px solid var(--accent-orange);
+      border-radius: var(--radius);
+      padding: 12px 20px;
+      text-align: center;
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--accent-orange);
+      min-width: 140px;
+    }
+
+    /* ─── Loop Indicator ──────────────────────── */
+    .loop-badge {
+      font-size: .65rem;
+      color: var(--accent-orange);
+      border: 1px solid var(--accent-orange);
+      border-radius: 10px;
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+
+    /* ─── Scripts View ────────────────────────── */
+    .scripts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 16px;
+    }
+
+    .script-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .script-card h3 {
+      font-size: .95rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .script-card .usage {
+      font-size: .8rem;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      background: rgba(110,118,129,.1);
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin-top: 8px;
+      color: var(--accent-green);
+      overflow-x: auto;
+    }
+
+    .script-card p {
+      font-size: .8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .script-card .used-by {
+      margin-top: 8px;
+      font-size: .75rem;
+      color: var(--text-muted);
+    }
+
+    .script-card .used-by span {
+      display: inline-block;
+      background: rgba(88,166,255,.1);
+      color: var(--accent-blue);
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin: 2px 4px 2px 0;
+      font-size: .7rem;
+    }
+
+    /* ─── Prompts View ────────────────────────── */
+    .prompts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .prompt-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .prompt-card .cmd {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--accent-cyan);
+    }
+
+    .prompt-card .cmd-file {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: .7rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .prompt-card .desc {
+      font-size: .85rem;
+      color: var(--text-muted);
+    }
+
+    .prompt-card .examples {
+      margin-top: 8px;
+    }
+
+    .prompt-card .example {
+      font-size: .8rem;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      background: rgba(110,118,129,.1);
+      padding: 6px 12px;
+      border-radius: 4px;
+      margin-top: 6px;
+      color: var(--accent-green);
+    }
+
+    .prompt-card .cli-alt {
+      font-size: .75rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    .prompt-card .cli-alt code {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      color: var(--accent-purple);
+      font-size: .75rem;
+    }
+
+    /* ─── Responsive ──────────────────────────── */
+    @media (max-width: 768px) {
+      main { padding: 16px; }
+      .pipeline-row { flex-direction: column; align-items: stretch; }
+      .agent-card { max-width: 100%; }
+      .flow-arrow { transform: rotate(90deg); justify-content: center; }
+      .prompt-card { grid-template-columns: 1fr; }
+      .scripts-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>SDLC Pipeline Bundle — Workflow</h1>
+  <p>Interactive visualization of agents, scripts, hooks, and prompt commands</p>
+  <div class="tab-bar">
+    <button class="tab active" data-view="pipeline">Pipeline Flow</button>
+    <button class="tab" data-view="preflight">Preflight Agent</button>
+    <button class="tab" data-view="generator">Pipeline Generator</button>
+    <button class="tab" data-view="scripts">Scripts</button>
+    <button class="tab" data-view="prompts">Prompt Commands</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ═══════════════ PIPELINE FLOW VIEW ═══════════════ -->
+  <div id="pipeline" class="view active">
+
+    <div class="pipeline">
+
+      <!-- Setup Phase -->
+      <div class="pipeline-section">
+        <div class="section-label">Setup Phase — One-time onboarding</div>
+        <div class="pipeline-row">
+
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-preflight">Preflight</span>
+            <h3>SDLC Preflight Agent</h3>
+            <p>Validates onboarding, clones & scans repos, generates setup artifacts</p>
+            <div class="detail-panel">
+              <h4>Phases</h4>
+              <ul>
+                <li>Validate onboarding answers</li>
+                <li>Collect repository list</li>
+                <li>Clone repos via <code>scm-bootstrap.py</code></li>
+                <li>Smart scan via <code>repo-scanner.py</code></li>
+                <li>Generate instructions via <code>instructions-generator.py</code></li>
+                <li>Generate setup.sh & connectors</li>
+                <li>Generate hooks.json</li>
+                <li>Self-validate via <code>outcome-inspector.py</code></li>
+              </ul>
+              <h4>Outputs</h4>
+              <div>
+                <span class="artifact">preflight_report.md</span>
+                <span class="artifact">codebase_scan_results.md</span>
+                <span class="artifact">setup.sh</span>
+                <span class="artifact">hooks.json</span>
+                <span class="artifact">.instructions.md</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flow-arrow">→</div>
+
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-generator">Generator</span>
+            <h3>SDLC Pipeline Generator</h3>
+            <p>Creates customer-specific agents, skills, hooks from contracts</p>
+            <div class="detail-panel">
+              <h4>Phases</h4>
+              <ul>
+                <li>Load contracts & customer context</li>
+                <li>Ask clarification questions</li>
+                <li>Resolve model mapping (reasoning/coding/fast)</li>
+                <li>Generate agent definitions (parallel)</li>
+                <li>Generate skills (parallel)</li>
+                <li>Generate hooks (parallel)</li>
+                <li>Create custom context templates</li>
+                <li>Generate support files</li>
+                <li>Validate via <code>outcome-inspector.py</code></li>
+              </ul>
+              <h4>Outputs</h4>
+              <div>
+                <span class="artifact">agent0–agent6.md</span>
+                <span class="artifact">orchestrator.md</span>
+                <span class="artifact">SKILL.md</span>
+                <span class="artifact">hooks/*.py</span>
+                <span class="artifact">generation_report.md</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="flow-arrow-down">▼ Generated pipeline runs below ▼</div>
+
+      <!-- Generated Pipeline -->
+      <div class="pipeline-section">
+        <div class="section-label">Generated Pipeline — Feature Development</div>
+
+        <!-- Row 1: Ticket → Problem -->
+        <div class="pipeline-row">
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-agent">Agent 0</span>
+            <h3>Ticket Analyzer</h3>
+            <p>Fetch ticket context, classify complexity & implementation type</p>
+            <div class="detail-panel">
+              <h4>Contract</h4>
+              <ul><li><code>AC-000</code> — agent0_ticket_analyzer.contract.md</li></ul>
+              <h4>Uses Skill</h4>
+              <ul><li>Ticket Connector (<code>SC-TICKET</code>)</li></ul>
+              <h4>Outputs</h4>
+              <div><span class="artifact">ticket_analysis.md</span></div>
+            </div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-agent">Agent 1</span>
+            <h3>Problem Decomposer</h3>
+            <p>Transform requirements into structured problem spec</p>
+            <div class="detail-panel">
+              <h4>Contract</h4>
+              <ul><li><code>AC-001</code> — agent1_problem_decomposer.contract.md</li></ul>
+              <h4>Features</h4>
+              <ul><li>Human-in-the-loop clarification loop</li><li>Up to 10 clarifying questions</li></ul>
+              <h4>Outputs</h4>
+              <div><span class="artifact">problem_spec.md</span><span class="artifact">clarification_questions.md</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flow-arrow-down">▼</div>
+
+        <!-- Row 2: Design + Critic -->
+        <div class="pipeline-row">
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-agent">Agent 2</span>
+            <h3>Design Architect</h3>
+            <p>Produce technical design: components, data models, APIs, ADRs</p>
+            <div class="detail-panel">
+              <h4>Contract</h4>
+              <ul><li><code>AC-002</code> — agent2_design_architect.contract.md</li></ul>
+              <h4>Outputs</h4>
+              <div><span class="artifact">design_spec.md</span></div>
+            </div>
+          </div>
+          <div class="flow-arrow">⇄</div>
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-agent">Agent 2a</span>
+            <h3>Design Critic</h3>
+            <p>Review design for architectural flaws before implementation</p>
+            <div class="detail-panel">
+              <h4>Contract</h4>
+              <ul><li><code>AC-002A</code> — agent2a_design_critic.contract.md</li></ul>
+              <h4>Features</h4>
+              <ul><li>Refinement loop — sends back to Design Architect if issues found</li></ul>
+              <h4>Outputs</h4>
+              <div><span class="artifact">design_review.md</span></div>
+            </div>
+          </div>
+          <span class="loop-badge">Refinement Loop</span>
+        </div>
+
+        <div class="flow-arrow-down">▼</div>
+
+        <!-- Row 3: Scaffolder -->
+        <div class="pipeline-row">
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-agent">Agent 3a</span>
+            <h3>Scaffolder</h3>
+            <p>Plan file and directory structure for the implementation</p>
+            <div class="detail-panel">
+              <h4>Contract</h4>
+              <ul><li><code>AC-003A</code> — agent3a_scaffolder.contract.md</li></ul>
+              <h4>Outputs</h4>
+              <div><span class="artifact">scaffold_manifest.md</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flow-arrow-down">▼</div>
+
+        <!-- Row 4: Builder + Tester -->
+        <div class="pipeline-row">
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-agent">Agent 3b</span>
+            <h3>Builder</h3>
+            <p>Implement business logic, JSX, state management from scaffold + design</p>
+            <div class="detail-panel">
+              <h4>Contract</h4>
+              <ul><li><code>AC-003B</code> — agent3b_builder.contract.md</li></ul>
+              <h4>Outputs</h4>
+              <div><span class="artifact">implementation_manifest.md</span></div>
+            </div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-agent">Agent 6</span>
+            <h3>Tester</h3>
+            <p>Write and execute unit tests aligned to problem/design specs</p>
+            <div class="detail-panel">
+              <h4>Contract</h4>
+              <ul><li><code>AC-006</code> — agent6_tester.contract.md</li></ul>
+              <h4>Uses Skill</h4>
+              <ul><li>Testing Skill (<code>SC-TEST</code>)</li></ul>
+              <h4>Outputs</h4>
+              <div><span class="artifact">test_report.md</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flow-arrow-down">▼</div>
+
+        <!-- Row 5: Verifier -->
+        <div class="pipeline-row">
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-agent">Agent 4</span>
+            <h3>Verifier</h3>
+            <p>Validate implementation against requirements — syntax, logic, coverage</p>
+            <div class="detail-panel">
+              <h4>Contract</h4>
+              <ul><li><code>AC-004</code> — agent4_verifier.contract.md</li></ul>
+              <h4>Outputs</h4>
+              <div><span class="artifact">verification_report.md</span><span class="artifact">fix_request.md</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flow-arrow-down">▼</div>
+
+        <!-- Row 6: Decision -->
+        <div class="pipeline-row">
+          <div class="decision">Issues found?</div>
+        </div>
+
+        <div class="flow-arrow-down">▼</div>
+
+        <!-- Row 7: Fixer or Critic -->
+        <div class="pipeline-row">
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-agent">Agent 3c</span>
+            <h3>Fixer</h3>
+            <p>Apply targeted fixes from verification report</p>
+            <div class="detail-panel">
+              <h4>Contract</h4>
+              <ul><li><code>AC-003C</code> — agent3c_fixer.contract.md</li></ul>
+              <h4>Features</h4>
+              <ul><li>Max 3 fix-verify cycles</li><li>Re-runs Verifier after each fix</li></ul>
+              <h4>Outputs</h4>
+              <div><span class="artifact">fix_manifest.md</span></div>
+            </div>
+          </div>
+          <span class="loop-badge">Yes → max 3×</span>
+          <div style="flex-grow:1"></div>
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-agent">Agent 5</span>
+            <h3>Critic</h3>
+            <p>Adversarial risk analysis — failure modes, edge cases, ship decision</p>
+            <div class="detail-panel">
+              <h4>Contract</h4>
+              <ul><li><code>AC-005</code> — agent5_critic.contract.md</li></ul>
+              <h4>Outputs</h4>
+              <div><span class="artifact">risk_assessment.md</span></div>
+            </div>
+          </div>
+          <span class="loop-badge">No → Ship?</span>
+        </div>
+
+      </div>
+
+      <!-- Hooks Layer -->
+      <div class="pipeline-section">
+        <div class="section-label">Cross-cutting — Hooks (active during all agents)</div>
+        <div class="pipeline-row">
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-hook">Hook</span>
+            <h3>Guard Destructive</h3>
+            <p>Blocks irreversible terminal commands</p>
+            <div class="detail-panel">
+              <h4>Contract</h4><ul><li><code>HC-GUARD-CMD</code></li></ul>
+              <h4>Triggers</h4><ul><li>PreToolUse on terminal commands</li></ul>
+            </div>
+          </div>
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-hook">Hook</span>
+            <h3>Guard Secrets</h3>
+            <p>Prevents secret/credential exposure in files</p>
+            <div class="detail-panel">
+              <h4>Contract</h4><ul><li><code>HC-GUARD-SEC</code></li></ul>
+              <h4>Triggers</h4><ul><li>PreToolUse on file writes</li></ul>
+            </div>
+          </div>
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-hook">Hook</span>
+            <h3>Lint on Save</h3>
+            <p>Auto-fixes code style on file writes</p>
+            <div class="detail-panel">
+              <h4>Contract</h4><ul><li><code>HC-LINT</code></li></ul>
+              <h4>Triggers</h4><ul><li>PostToolUse on file writes</li></ul>
+            </div>
+          </div>
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-hook">Hook</span>
+            <h3>Observability</h3>
+            <p>Manages OTel Collector + Prometheus lifecycle</p>
+            <div class="detail-panel">
+              <h4>Contract</h4><ul><li><code>HC-OBSERVABILITY</code></li></ul>
+              <h4>Triggers</h4><ul><li>SessionStart / Stop</li></ul>
+              <h4>Script</h4><ul><li><code>scripts/install-observability.sh</code></li></ul>
+            </div>
+          </div>
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-hook">Hook</span>
+            <h3>OTel Telemetry</h3>
+            <p>Per-agent metrics, token tracking, cost estimation</p>
+            <div class="detail-panel">
+              <h4>Contract</h4><ul><li><code>HC-OTEL-TELEMETRY</code></li></ul>
+              <h4>Triggers</h4><ul><li>PreToolUse/PostToolUse on runSubagent</li></ul>
+            </div>
+          </div>
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-hook">Hook</span>
+            <h3>Session Learnings</h3>
+            <p>Extracts and stores session learnings</p>
+            <div class="detail-panel">
+              <h4>Contract</h4><ul><li><code>HC-LEARN</code></li></ul>
+              <h4>Triggers</h4><ul><li>Stop</li></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Skills Layer -->
+      <div class="pipeline-section">
+        <div class="section-label">Cross-cutting — Skills (available to agents)</div>
+        <div class="pipeline-row">
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-skill">Skill</span>
+            <h3>Ticket Connector</h3>
+            <p>PM system integration — Jira, Linear, Azure DevOps, GitHub Issues</p>
+            <div class="detail-panel">
+              <h4>Contract</h4><ul><li><code>SC-TICKET</code></li></ul>
+              <h4>Used by</h4><ul><li>Agent 0 (Ticket Analyzer)</li></ul>
+            </div>
+          </div>
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-skill">Skill</span>
+            <h3>SCM Connector</h3>
+            <p>Source control — GitHub, GitLab, Bitbucket, Azure DevOps</p>
+            <div class="detail-panel">
+              <h4>Contract</h4><ul><li><code>SC-SCM</code></li></ul>
+              <h4>Used by</h4><ul><li>All agents (branch, commit, PR ops)</li></ul>
+            </div>
+          </div>
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-skill">Skill</span>
+            <h3>Design Connector</h3>
+            <p>Design tool integration — Figma, Sketch</p>
+            <div class="detail-panel">
+              <h4>Contract</h4><ul><li><code>SC-DESIGN</code></li></ul>
+              <h4>Used by</h4><ul><li>Agent 2 (Design Architect), Agent 3b (Builder)</li></ul>
+            </div>
+          </div>
+          <div class="agent-card" onclick="toggleCard(this)">
+            <span class="agent-badge badge-skill">Skill</span>
+            <h3>Testing Skill</h3>
+            <p>Test framework conventions & execution</p>
+            <div class="detail-panel">
+              <h4>Contract</h4><ul><li><code>SC-TEST</code></li></ul>
+              <h4>Used by</h4><ul><li>Agent 6 (Tester), Agent 4 (Verifier)</li></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════ PREFLIGHT VIEW ═══════════════ -->
+  <div id="preflight" class="view">
+    <h2 style="margin-bottom: 24px;">Preflight Agent — Phase-by-Phase</h2>
+    <div class="pipeline">
+
+      <div class="pipeline-row" style="flex-direction: column; gap: 12px; align-items: stretch;">
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-preflight">Phase 1</span>
+          <h3>Validate Onboarding Answers</h3>
+          <p>Read and validate <code>customer_onboarding_answers.md</code> against the schema</p>
+          <div class="detail-panel">
+            <h4>What It Does</h4>
+            <ul>
+              <li>Reads <code>customer_onboarding_answers.md</code></li>
+              <li>Validates against <code>schemas/onboarding_answers_schema.md</code></li>
+              <li>Checks: company name, LLM provider, PM system, SCM, default branch, guardrails</li>
+              <li>Asks clarifying questions for missing/ambiguous required fields</li>
+            </ul>
+            <h4>Scripts</h4><ul><li>None (agent logic only)</li></ul>
+            <h4>Checkpoint</h4><ul><li>Saves state after completion</li></ul>
+          </div>
+        </div>
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-preflight">Phase 2</span>
+          <h3>Collect Repository List</h3>
+          <p>Ask the customer for all repositories in scope, validate names</p>
+          <div class="detail-panel">
+            <h4>What It Does</h4>
+            <ul>
+              <li>Prompts user for repo list (one per line or JSON array)</li>
+              <li>Validates repo names (alphanumeric, hyphens, no duplicates)</li>
+              <li>Confirms list with user before proceeding</li>
+            </ul>
+            <h4>Scripts</h4><ul><li>None</li></ul>
+          </div>
+        </div>
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-preflight">Phase 3</span>
+          <h3>Clone Repositories</h3>
+          <p>Generate SCM connector and clone all repos using <code>scm-bootstrap.py</code></p>
+          <div class="detail-panel">
+            <h4>What It Does</h4>
+            <ul>
+              <li>Generates SCM connector SKILL.md from <code>SC-SCM</code> contract</li>
+              <li>Clones repos to <code>.sdlc-preflight/repos/</code></li>
+              <li>Handles failures per-repo: retry, skip, or alternative URL</li>
+              <li>All repos failing = blocking error, pauses workflow</li>
+            </ul>
+            <h4>Scripts</h4>
+            <ul><li><code>python3 scripts/scm-bootstrap.py --repos '[...]' --scm github --org &lt;org&gt; --target-dir .sdlc-preflight/repos</code></li></ul>
+          </div>
+        </div>
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-preflight">Phase 4</span>
+          <h3>Smart Code Scan</h3>
+          <p>Scan each repo for structure, deps, patterns. Parallel for 3+ repos via sub-agents</p>
+          <div class="detail-panel">
+            <h4>What It Does</h4>
+            <ul>
+              <li>Scans each cloned repo for: file structure, dependencies, build tools, linters, test frameworks, patterns</li>
+              <li>Smart filtering: ignores node_modules, dist, binary files, lock files, etc.</li>
+              <li>Tags files as: source, test, config, docs, ci_cd, schema, style, infra</li>
+              <li>Raises clarification questions for ambiguous patterns (e.g., Jest + Vitest both found)</li>
+              <li>Parallel scanning via sub-agents for 3+ repos</li>
+            </ul>
+            <h4>Scripts</h4>
+            <ul><li><code>python3 scripts/repo-scanner.py --repo-path .sdlc-preflight/repos/&lt;repo&gt; --output-dir .sdlc-preflight/scans --format both --max-depth 6</code></li></ul>
+          </div>
+        </div>
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-preflight">Phase 5</span>
+          <h3>Generate Instruction Files</h3>
+          <p>Create <code>.github/instructions/&lt;repo&gt;.instructions.md</code> per repo</p>
+          <div class="detail-panel">
+            <h4>What It Does</h4>
+            <ul>
+              <li>Generates instruction files with: YAML frontmatter, repo structure, deps, tools, patterns, CI/CD, conventions</li>
+              <li>Each file scoped via <code>applyTo</code> pattern to its repo</li>
+              <li>Includes custom instructions placeholder for customer</li>
+            </ul>
+            <h4>Scripts</h4>
+            <ul><li><code>python3 scripts/instructions-generator.py --scan-dir .sdlc-preflight/scans --output-dir .github/instructions</code></li></ul>
+          </div>
+        </div>
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-preflight">Phase 6</span>
+          <h3>Generate Setup Script & Connectors</h3>
+          <p>Create <code>setup.sh</code>, connector skills, observability stack</p>
+          <div class="detail-panel">
+            <h4>What It Does</h4>
+            <ul>
+              <li>Generates <code>setup.sh</code> with: ticket connector, SCM connector, design connector, observability, preflight checks</li>
+              <li>Generates SKILL.md for each connector (from contracts SC-TICKET, SC-SCM, SC-DESIGN, SC-TEST)</li>
+              <li>Optionally installs OTel Collector + Prometheus binaries</li>
+            </ul>
+            <h4>Scripts</h4>
+            <ul><li><code>scripts/install-observability.sh</code> (optional)</li></ul>
+          </div>
+        </div>
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-preflight">Phase 7</span>
+          <h3>Generate hooks.json</h3>
+          <p>Register all hooks: guard, secrets, lint, observability, telemetry, learnings</p>
+          <div class="detail-panel">
+            <h4>Hooks Registered</h4>
+            <ul>
+              <li>Guard destructive commands (<code>HC-GUARD-CMD</code>) — always</li>
+              <li>Guard secrets (<code>HC-GUARD-SEC</code>) — always</li>
+              <li>Lint on save (<code>HC-LINT</code>) — if linter detected</li>
+              <li>Observability lifecycle (<code>HC-OBSERVABILITY</code>) — if enabled</li>
+              <li>OTel telemetry (<code>HC-OTEL-TELEMETRY</code>) — if enabled</li>
+              <li>Session learnings (<code>HC-LEARN</code>) — optional</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-preflight">Phase 8</span>
+          <h3>Outcome Inspection & Report</h3>
+          <p>Self-validate all outputs, write <code>preflight_report.md</code></p>
+          <div class="detail-panel">
+            <h4>What It Checks</h4>
+            <ul>
+              <li>Structural completeness — all required files exist</li>
+              <li>Content quality — no empty/placeholder-only files</li>
+              <li>Consistency — instruction files match scan results</li>
+              <li>Security — no credentials in generated files</li>
+              <li>Functionality — setup.sh has shebang, hooks.json is valid JSON</li>
+            </ul>
+            <h4>Scripts</h4>
+            <ul>
+              <li><code>python3 scripts/outcome-inspector.py --type preflight --output-dir . --format markdown</code></li>
+              <li><code>python3 scripts/outcome-inspector.py --type instructions --instructions-dir .github/instructions --format markdown</code></li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ GENERATOR VIEW ═══════════════ -->
+  <div id="generator" class="view">
+    <h2 style="margin-bottom: 24px;">Pipeline Generator — Phase-by-Phase</h2>
+    <div class="pipeline">
+
+      <div class="pipeline-row" style="flex-direction: column; gap: 12px; align-items: stretch;">
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-generator">Phase 1</span>
+          <h3>Load Context</h3>
+          <p>Read all contracts, customer onboarding answers, and preflight outputs</p>
+          <div class="detail-panel">
+            <h4>Reads</h4>
+            <ul>
+              <li>All agent contracts: <code>contracts/agent*.contract.md</code>, <code>contracts/orchestrator.contract.md</code></li>
+              <li>All hook contracts: <code>contracts/hooks/hook_*.contract.md</code></li>
+              <li>All skill contracts: <code>contracts/skills/skill_*.contract.md</code></li>
+              <li><code>customer_onboarding_answers.md</code></li>
+              <li><code>.github/sdlc-pipeline/codebase_scan_results.md</code> (from Preflight)</li>
+              <li><code>.github/sdlc-pipeline/preflight_report.md</code> (from Preflight)</li>
+              <li><code>.github/instructions/*.instructions.md</code> (from Preflight)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-generator">Phase 2</span>
+          <h3>Ask Clarification Questions</h3>
+          <p>CI/CD, code standards, testing strategy, security, design systems, observability</p>
+          <div class="detail-panel">
+            <h4>Topics Covered</h4>
+            <ul>
+              <li>Tools & Automation — CI/CD, deployment, custom CLIs</li>
+              <li>Ways of Working — PR reviews, approvals, branching strategy</li>
+              <li>Code Standards — architecture patterns, import ordering</li>
+              <li>Testing Strategy — E2E, integration, coverage thresholds</li>
+              <li>Security — scanning tools (Snyk, SonarQube), SAST/DAST</li>
+              <li>Design & UI — design system, component library, Storybook</li>
+              <li>Documentation — ADRs, Swagger/OpenAPI, changelog</li>
+              <li>Observability — APM, structured logging</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-generator">Phase 3</span>
+          <h3>Resolve Model Mapping</h3>
+          <p>Map contract model tiers to customer's approved LLM models</p>
+          <div class="detail-panel">
+            <h4>Tier Mapping</h4>
+            <ul>
+              <li><strong>reasoning</strong> → Best available model (analysis, design, review)</li>
+              <li><strong>coding</strong> → Code-optimized model (building, scaffolding)</li>
+              <li><strong>fast</strong> → Lowest-latency model (quick checks, lint)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-generator">Phase 4</span>
+          <h3>Generate Agent Definitions</h3>
+          <p>Create .md files for each pipeline agent. Parallel groups: A (analysis), B (impl), C (verify)</p>
+          <div class="detail-panel">
+            <h4>Parallel Groups</h4>
+            <ul>
+              <li><strong>Group A:</strong> Agent 0, 1, 2, 2a (analysis/design)</li>
+              <li><strong>Group B:</strong> Agent 3a, 3b, 3c (implementation)</li>
+              <li><strong>Group C:</strong> Agent 4, 5, 6 (verification)</li>
+              <li><strong>Sequential:</strong> Orchestrator (depends on all above)</li>
+            </ul>
+            <h4>Generation Rules</h4>
+            <ul>
+              <li>Prime Directive copied verbatim from contract</li>
+              <li>Customer's behavioral guardrails injected into every agent</li>
+              <li>Tool references adapted to customer's stack</li>
+              <li>Custom client context loading instruction included</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-generator">Phase 5</span>
+          <h3>Generate Skills</h3>
+          <p>Create SKILL.md files for ticket, SCM, design, and testing connectors</p>
+          <div class="detail-panel">
+            <h4>Skills Generated (parallel)</h4>
+            <ul>
+              <li>Ticket Connector — from <code>SC-TICKET</code> (Jira/Linear/ADO/GitHub Issues)</li>
+              <li>SCM Connector — from <code>SC-SCM</code> (GitHub/GitLab/Bitbucket/ADO)</li>
+              <li>Design Connector — from <code>SC-DESIGN</code> (Figma, if applicable)</li>
+              <li>Testing Skill — from <code>SC-TEST</code></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-generator">Phase 6</span>
+          <h3>Generate Hooks</h3>
+          <p>Create hook scripts and hooks.json from hook contracts</p>
+          <div class="detail-panel">
+            <h4>Hooks Generated (parallel)</h4>
+            <ul>
+              <li>Guard Destructive — protected paths/branches from onboarding</li>
+              <li>Guard Secrets — protected file patterns</li>
+              <li>Lint on Save — detected linter command</li>
+              <li>Observability Lifecycle — if observability enabled</li>
+              <li>OTel Telemetry — if observability enabled</li>
+              <li>Session Learnings — memory storage path</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-generator">Phase 7</span>
+          <h3>Custom Client Context Templates</h3>
+          <p>Create empty <code>&lt;agent&gt;_custom_client_context.md</code> for each agent</p>
+          <div class="detail-panel">
+            <h4>Template Sections</h4>
+            <ul>
+              <li>Domain-Specific Rules</li>
+              <li>Additional Constraints</li>
+              <li>Patterns & Preferences</li>
+              <li>Examples</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-generator">Phase 8</span>
+          <h3>Generate Support Files</h3>
+          <p>Workflow README, repository index template</p>
+          <div class="detail-panel">
+            <h4>Outputs</h4>
+            <ul>
+              <li><code>.github/agents/agents-workflow/readme.md</code></li>
+              <li><code>index.md</code> — repo routing table</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
+          <span class="agent-badge badge-generator">Phase 9</span>
+          <h3>Outcome Inspection & Validation</h3>
+          <p>Validate all generated agents against their contracts</p>
+          <div class="detail-panel">
+            <h4>Checks</h4>
+            <ul>
+              <li>Every agent has a corresponding contract</li>
+              <li>Every contract Key Outcome is addressable</li>
+              <li>hooks.json references valid script paths</li>
+              <li>Skill SKILL.md files reference correct CLIs</li>
+              <li>Custom context templates exist for all agents</li>
+              <li>Prime Directives match contracts verbatim</li>
+            </ul>
+            <h4>Scripts</h4>
+            <ul><li><code>python3 scripts/outcome-inspector.py --type generator --output-dir . --contracts-dir contracts --format markdown</code></li></ul>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ SCRIPTS VIEW ═══════════════ -->
+  <div id="scripts" class="view">
+    <h2 style="margin-bottom: 24px;">Scripts Reference</h2>
+
+    <div class="scripts-grid">
+
+      <div class="script-card">
+        <h3><span class="agent-badge badge-script">Python</span> repo-scanner.py</h3>
+        <p>Smart repository scanner — analyzes structure, dependencies, build tools, linters, test frameworks, patterns, and conventions.</p>
+        <div class="usage">python3 scripts/repo-scanner.py \<br>  --repo-path .sdlc-preflight/repos/&lt;repo&gt; \<br>  --output-dir .sdlc-preflight/scans \<br>  --format both --max-depth 6</div>
+        <div class="used-by">Used by: <span>Preflight Phase 4</span></div>
+      </div>
+
+      <div class="script-card">
+        <h3><span class="agent-badge badge-script">Python</span> scm-bootstrap.py</h3>
+        <p>Clones customer repositories. Supports GitHub, GitLab, Bitbucket, Azure DevOps. Shallow clone, retry logic, branch targeting.</p>
+        <div class="usage">python3 scripts/scm-bootstrap.py \<br>  --repos '["repo1","repo2"]' \<br>  --scm github --org &lt;org&gt; \<br>  --target-dir .sdlc-preflight/repos</div>
+        <div class="used-by">Used by: <span>Preflight Phase 3</span></div>
+      </div>
+
+      <div class="script-card">
+        <h3><span class="agent-badge badge-script">Python</span> instructions-generator.py</h3>
+        <p>Generates <code>.github/instructions/&lt;repo&gt;.instructions.md</code> files from scan JSON. Includes YAML frontmatter, structure, deps, tools, patterns.</p>
+        <div class="usage">python3 scripts/instructions-generator.py \<br>  --scan-dir .sdlc-preflight/scans \<br>  --output-dir .github/instructions</div>
+        <div class="used-by">Used by: <span>Preflight Phase 5</span></div>
+      </div>
+
+      <div class="script-card">
+        <h3><span class="agent-badge badge-script">Python</span> checkpoint-manager.py</h3>
+        <p>Manages pipeline state — save, load, reset, feedback, error tracking. Enables pause/resume/re-run workflows.</p>
+        <div class="usage">python3 scripts/checkpoint-manager.py save \<br>  --agent preflight \<br>  --phase "Phase 4: Code Scan" \<br>  --status completed \<br>  --state-file .github/sdlc-pipeline/checkpoint_state.json</div>
+        <div class="used-by">Used by: <span>All Phases</span><span>Both Agents</span></div>
+      </div>
+
+      <div class="script-card">
+        <h3><span class="agent-badge badge-script">Python</span> outcome-inspector.py</h3>
+        <p>Self-validates agent outputs — structural completeness, content quality, consistency, security, functionality.</p>
+        <div class="usage">python3 scripts/outcome-inspector.py \<br>  --type preflight \<br>  --output-dir . \<br>  --format markdown</div>
+        <div class="used-by">Used by: <span>Preflight Phase 8</span><span>Generator Phase 9</span></div>
+      </div>
+
+      <div class="script-card">
+        <h3><span class="agent-badge badge-script">Bash</span> install-observability.sh</h3>
+        <p>Downloads OTel Collector + Prometheus binaries. No sudo/Docker required. Auto-detects macOS/Linux, arm64/amd64.</p>
+        <div class="usage">scripts/install-observability.sh          # install<br>scripts/install-observability.sh --check   # verify<br>scripts/install-observability.sh --json    # status JSON</div>
+        <div class="used-by">Used by: <span>Preflight Phase 6</span><span>HC-OBSERVABILITY hook</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════ PROMPTS VIEW ═══════════════ -->
+  <div id="prompts" class="view">
+    <h2 style="margin-bottom: 24px;">Prompt Commands (Slash Commands)</h2>
+    <p style="color: var(--text-muted); margin-bottom: 24px;">
+      These <code>.prompt.md</code> files in <code>.github/prompts/</code> are auto-discovered by VS Code Copilot as slash commands.
+      For GitHub Copilot CLI, use the equivalent <code>gh copilot chat</code> commands shown below.
+    </p>
+
+    <div class="prompts-list">
+
+      <div class="prompt-card">
+        <div>
+          <div class="cmd">/preflight</div>
+          <div class="cmd-file">.github/prompts/preflight.prompt.md</div>
+        </div>
+        <div>
+          <div class="desc">Run the SDLC Preflight Agent — validates onboarding, clones & scans repos, generates setup artifacts. This is <strong>Step 1</strong>.</div>
+          <div class="examples">
+            <div class="example">/preflight customer_onboarding_answers.md</div>
+          </div>
+          <div class="cli-alt">CLI: <code>gh copilot chat "Run the SDLC Preflight Agent on customer_onboarding_answers.md"</code></div>
+        </div>
+      </div>
+
+      <div class="prompt-card">
+        <div>
+          <div class="cmd">/generate-pipeline</div>
+          <div class="cmd-file">.github/prompts/generate-pipeline.prompt.md</div>
+        </div>
+        <div>
+          <div class="desc">Run the SDLC Pipeline Generator — creates customer-specific agents, skills, hooks from contracts. This is <strong>Step 2</strong> (requires Preflight to be complete).</div>
+          <div class="examples">
+            <div class="example">/generate-pipeline</div>
+          </div>
+          <div class="cli-alt">CLI: <code>gh copilot chat "Run the SDLC Pipeline Generator"</code></div>
+        </div>
+      </div>
+
+      <div class="prompt-card">
+        <div>
+          <div class="cmd">/resume-pipeline</div>
+          <div class="cmd-file">.github/prompts/resume-pipeline.prompt.md</div>
+        </div>
+        <div>
+          <div class="desc">Resume a previously paused Preflight or Generator run from the last checkpoint. Automatically detects which agent was active.</div>
+          <div class="examples">
+            <div class="example">/resume-pipeline</div>
+          </div>
+          <div class="cli-alt">CLI: <code>gh copilot chat "Resume the SDLC Pipeline"</code></div>
+        </div>
+      </div>
+
+      <div class="prompt-card">
+        <div>
+          <div class="cmd">/pipeline-status</div>
+          <div class="cmd-file">.github/prompts/pipeline-status.prompt.md</div>
+        </div>
+        <div>
+          <div class="desc">Check current pipeline progress — shows completed phases, current phase, pending feedback, and errors.</div>
+          <div class="examples">
+            <div class="example">/pipeline-status</div>
+          </div>
+          <div class="cli-alt">CLI: <code>gh copilot chat "Show SDLC Pipeline status"</code></div>
+        </div>
+      </div>
+
+      <div class="prompt-card">
+        <div>
+          <div class="cmd">/rerun-phase</div>
+          <div class="cmd-file">.github/prompts/rerun-phase.prompt.md</div>
+        </div>
+        <div>
+          <div class="desc">Re-run a specific phase with feedback. Provide the phase name and your feedback to the agent.</div>
+          <div class="examples">
+            <div class="example">/rerun-phase Phase 4 Code Scan — scan repo-X with deeper analysis</div>
+            <div class="example">/rerun-phase Phase 4 Agent Gen — regenerate Agent 3b with stricter typing</div>
+          </div>
+          <div class="cli-alt">CLI: <code>gh copilot chat "Re-run Preflight Phase 4 with feedback: deeper scan"</code></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.view).classList.add('active');
+    });
+  });
+
+  // Card expand/collapse
+  function toggleCard(card) {
+    const wasExpanded = card.classList.contains('expanded');
+    // Collapse all siblings first
+    card.parentElement.querySelectorAll('.agent-card.expanded').forEach(c => {
+      if (c !== card) c.classList.remove('expanded');
+    });
+    card.classList.toggle('expanded', !wasExpanded);
+  }
+</script>
+
+</body>
+</html>

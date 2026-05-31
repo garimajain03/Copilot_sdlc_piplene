@@ -1,0 +1,6 @@
+.bin/
+.pids/
+.logs/
+.prom-data/
+.hook-state/
+.timestamps/

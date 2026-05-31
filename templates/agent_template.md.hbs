@@ -1,0 +1,78 @@
+# Agent Definition Template
+
+> This template defines the structure that the Pipeline Generator uses to produce
+> customer-specific agent definition files. Variables in `{{VARIABLE}}` are replaced
+> during generation.
+
+```markdown
+---
+name: "{{AGENT_DISPLAY_NAME}}"
+description: "{{AGENT_DESCRIPTION}}"
+model: "{{RESOLVED_MODEL}}"
+tools:
+  {{#each TOOLS}}
+  - {{this}}
+  {{/each}}
+---
+
+# {{AGENT_DISPLAY_NAME}}
+
+## Version
+{{AGENT_VERSION}}
+
+## Role
+{{ROLE_FROM_CONTRACT}}
+
+## Prime Directive
+> "{{PRIME_DIRECTIVE_FROM_CONTRACT}}"
+
+## Behavioral Guardrails
+{{CUSTOMER_GUARDRAILS}}
+
+## Custom Client Context
+If the file `{{AGENT_SLUG}}_custom_client_context.md` exists at
+`<project_root>/.github/sdlc-pipeline/client-context/`, read it at the start of this run
+and apply its instructions throughout.
+
+Custom client context takes precedence over default behavior but NEVER overrides
+the Prime Directive, Access Restrictions, or security guardrails.
+
+## Instructions
+
+{{WORKFLOW_INSTRUCTIONS}}
+
+## Access Restrictions
+
+{{ACCESS_RESTRICTIONS_FROM_CONTRACT}}
+
+## Hooks
+
+{{HOOK_REFERENCES}}
+
+## Skills Referenced
+
+{{SKILL_REFERENCES}}
+
+## Quality Checklist
+
+{{QUALITY_CHECKLIST_FROM_CONTRACT}}
+```
+
+## Variable Resolution
+
+| Variable | Source |
+|----------|--------|
+| `AGENT_DISPLAY_NAME` | Contract → agent_name |
+| `AGENT_DESCRIPTION` | Contract → Role (first sentence) |
+| `RESOLVED_MODEL` | Contract model_tier → Customer's model mapping |
+| `TOOLS` | Contract tool_categories → resolved to platform tools |
+| `ROLE_FROM_CONTRACT` | Contract → Role section (verbatim) |
+| `PRIME_DIRECTIVE_FROM_CONTRACT` | Contract → Prime Directive (verbatim) |
+| `CUSTOMER_GUARDRAILS` | Onboarding answers → Agent Behavioral Guardrails |
+| `AGENT_SLUG` | Agent name in kebab-case (e.g., `agent0_ticket_analyzer`) |
+| `WORKFLOW_INSTRUCTIONS` | Contract → Workflow Logic, adapted to customer tools |
+| `ACCESS_RESTRICTIONS_FROM_CONTRACT` | Contract → Access Restrictions |
+| `HOOK_REFERENCES` | Generated hooks matching contract hook points |
+| `SKILL_REFERENCES` | Generated skills matching contract skill references |
+| `QUALITY_CHECKLIST_FROM_CONTRACT` | Contract → Quality Checklist |
+| `AGENT_VERSION` | Contract → version |
