@@ -222,6 +222,10 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
             with open(cpath, "r", encoding="utf-8") as f:
                 contract_content = f.read()
 
+            # Extract contract_id
+            cid_match = re.search(r"\|\s*contract_id\s*\|\s*(\S+)\s*\|", contract_content)
+            cid = cid_match.group(1) if cid_match else cf
+
             # Extract prime directive from contract
             pd_match = re.search(r'> "(.+?)"', contract_content)
             if pd_match:
@@ -236,6 +240,65 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
                 if not found_in_agent:
                     inspector.warning("consistency",
                                       f"Contract {cf} prime directive not found in any generated agent", cf)
+
+            # Contract compliance: Key Outcomes coverage
+            outcomes = re.findall(r"\*\*\[OUTCOME-([A-Z0-9_-]+)\]\*\*", contract_content)
+            if outcomes:
+                for af in agent_files:
+                    with open(os.path.join(agents_dir, af), "r", encoding="utf-8") as f:
+                        agent_content = f.read()
+                    # Check if this agent corresponds to this contract (by prime directive)
+                    if pd_match and pd_match.group(1) in agent_content:
+                        missing = [o for o in outcomes if f"OUTCOME-{o}" not in agent_content]
+                        if missing:
+                            inspector.warning("compliance",
+                                              f"Agent {af} missing Key Outcomes from {cid}: {', '.join(missing)}", af)
+
+    # Cross-reference integrity: verify hook/skill file references
+    hooks_path = os.path.join(output_dir, ".github", "hooks", "hooks.json")
+    if os.path.exists(hooks_path):
+        try:
+            with open(hooks_path, "r") as f:
+                hooks_config = json.load(f)
+            # Verify referenced hook scripts exist
+            for event_type, event_hooks in hooks_config.get("hooks", {}).items():
+                if isinstance(event_hooks, list):
+                    for hook in event_hooks:
+                        script = hook.get("script", hook.get("path", ""))
+                        if script:
+                            script_path = os.path.join(output_dir, script)
+                            if not os.path.exists(script_path):
+                                inspector.error("cross_reference",
+                                                f"hooks.json references non-existent script: {script}", "hooks.json")
+        except (json.JSONDecodeError, IOError):
+            pass
+
+    # Verify skill directories have SKILL.md
+    skills_dir = os.path.join(output_dir, ".github", "skills")
+    if os.path.isdir(skills_dir):
+        for skill_name in os.listdir(skills_dir):
+            skill_path = os.path.join(skills_dir, skill_name)
+            if os.path.isdir(skill_path):
+                skill_md = os.path.join(skill_path, "SKILL.md")
+                if not os.path.exists(skill_md):
+                    inspector.error("cross_reference",
+                                    f"Skill directory {skill_name}/ missing SKILL.md", skill_name)
+
+    # Frontmatter schema validation for agents
+    for agent_file in agent_files:
+        filepath = os.path.join(agents_dir, agent_file)
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+        if content.startswith("---"):
+            parts = content.split("---", 2)
+            if len(parts) >= 3:
+                fm = parts[1]
+                if "name:" not in fm:
+                    inspector.error("frontmatter", "Missing 'name' in frontmatter", agent_file)
+                if "model:" not in fm:
+                    inspector.error("frontmatter", "Missing 'model' in frontmatter", agent_file)
+                if "tools:" not in fm:
+                    inspector.warning("frontmatter", "Missing 'tools' in frontmatter", agent_file)
 
 
 def inspect_instructions(instructions_dir: str, inspector: Inspector):

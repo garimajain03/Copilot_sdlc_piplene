@@ -28,21 +28,34 @@ Ticket/Requirement
 │  Architect       │◄────│                      │
 └────────┬─────────┘     └──────────────────────┘
          │ design_spec.md
-         ▼
-┌──────────────────┐
-│  Agent 3a        │
-│  Scaffolder      │
-└────────┬─────────┘
-         │ scaffold_manifest.md
-         ▼
-┌──────────────────┐     ┌──────────────────────┐
-│  Agent 3b        │     │  Agent 6             │
-│  Builder         │────►│  Tester              │
-└────────┬─────────┘     └──────────┬───────────┘
-         │ impl_manifest.md          │ test_report.md
-         ▼                           │
-┌──────────────────┐                 │
-│  Agent 4         │◄────────────────┘
+         │
+    ┌────┴────────────┐
+    │ Ticket Type?     │
+    └────┬────────┬────┘
+    Code │        │ IaC/DevOps
+         ▼        ▼
+┌──────────────┐  ┌──────────────────┐
+│  Agent 3a    │  │  Agent 8         │
+│  Scaffolder  │  │  IaC/DevOps      │
+└────────┬─────┘  │  Specialist      │
+         │        └────────┬─────────┘
+         │ scaffold_       │ iac_manifest.md
+         │ manifest.md     │
+         ▼                 │
+┌──────────────────┐       │
+│  Agent 3b        │       │
+│  Builder         │       │
+└────────┬─────────┘       │
+         │ impl_manifest   │
+         ▼                 │
+┌──────────────────┐       │
+│  Agent 6         │       │
+│  Tester          │       │
+└────────┬─────────┘       │
+         │ test_report.md  │
+         ▼                 │
+┌──────────────────┐       │
+│  Agent 4         │◄──────┘
 │  Verifier        │
 └────────┬─────────┘
          │ verification_report.md
@@ -60,7 +73,15 @@ Ticket/Requirement
        │                   │ risk_assessment.md
        └──► re-run Agent 4 │
                            ▼
-                    Ship Recommendation
+                    ┌──────────────────┐
+                    │  Agent 7         │
+                    │  Documentation   │
+                    │  Generator       │
+                    └────────┬─────────┘
+                             │ pr_description.md
+                             │ documentation_manifest.md
+                             ▼
+                      Ship Recommendation
 ```
 
 ## Agent Contracts
@@ -77,6 +98,8 @@ Ticket/Requirement
 | `AC-004` | Verifier | [agent4_verifier.contract.md](agent4_verifier.contract.md) | Validate implementation against requirements |
 | `AC-005` | Critic | [agent5_critic.contract.md](agent5_critic.contract.md) | Adversarial risk analysis |
 | `AC-006` | Tester | [agent6_tester.contract.md](agent6_tester.contract.md) | Write and execute tests |
+| `AC-007` | Documentation Generator | [agent7_documentation.contract.md](agent7_documentation.contract.md) | Generate API docs, changelog, PR descriptions, ADRs |
+| `AC-008` | IaC/DevOps Specialist | [agent8_iac_devops.contract.md](agent8_iac_devops.contract.md) | Infrastructure changes, CI/CD, database migrations |
 | `AC-ORCH` | Orchestrator | [orchestrator.contract.md](orchestrator.contract.md) | Coordinate pipeline, delegate to agents |
 
 ## Skill Contracts
@@ -115,6 +138,13 @@ Ticket/Requirement
 | `fix_request.md` | Agent 4 | Agent 3c | Markdown (issues to fix) |
 | `fix_manifest.md` | Agent 3c | Agent 4 (re-verification) | Markdown (fixes applied) |
 | `risk_assessment.md` | Agent 5 | Orchestrator, Human | Markdown (risks, ship recommendation) |
+| `documentation_manifest.md` | Agent 7 | Orchestrator | Markdown (docs generated) |
+| `pr_description.md` | Agent 7 | Orchestrator, Human | Markdown (PR body) |
+| `commit_messages.md` | Agent 7 | Orchestrator, Human | Markdown (conventional commits) |
+| `iac_manifest.md` | Agent 8 | Verifier, Orchestrator | Markdown (IaC changes summary) |
+| `blast_radius_assessment.md` | Agent 8 | Critic, Human | Markdown (impact analysis) |
+| `rollback_plan.md` | Agent 8 | Human, Orchestrator | Markdown (revert steps) |
+| `iac_plan_output.md` | Agent 8 | Verifier, Human | Markdown (plan/preview output) |
 | `checkpoint.md` | All agents | All agents | Markdown (pipeline state tracking) |
 | `telemetry_report.md` | HC-OTEL-TELEMETRY | Orchestrator, Human | Markdown (per-agent time, tokens, cost) |
 

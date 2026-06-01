@@ -1,7 +1,7 @@
 ---
 name: "SDLC Pipeline Generator"
 description: "Generates customer-specific SDLC agents, skills, hooks, and orchestrator from reusable contracts and onboarding answers. Asks clarification questions about tools, technologies, and ways of working before generating."
-argumentHint: "Path to customer_onboarding_answers.md or 'resume' to continue from checkpoint"
+argumentHint: "Path to intake-sources.md or 'resume' to continue from checkpoint"
 tools:
   - execute
   - read
@@ -42,12 +42,14 @@ This agent runs from the **repository root** of the `github-copilot-sdlc-templat
 
 ## Inputs
 
-1. **`customer_onboarding_answers.md`** — Customer configuration
+1. **`intake-sources.md`** — Customer configuration
 2. **`codebase_scan_results.md`** — Auto-detected codebase characteristics (from Preflight Agent)
 3. **`preflight_report.md`** — Validation results (from Preflight Agent)
 4. **`.github/instructions/*.instructions.md`** — Per-repo instruction files (from Preflight Agent)
-5. **Agent Contracts** — `contracts/` (the reusable blueprints)
-6. **Templates** — `templates/` (generation templates)
+5. **`.github/sdlc-pipeline/connector_config.md`** — Connector configuration: PM endpoints, SCM org, MCP server definitions (from Preflight Agent)
+6. **`.env.template`** — Required environment variable names for runtime auth (from Preflight Agent)
+7. **Agent Contracts** — `contracts/` (the reusable blueprints)
+8. **Templates** — `templates/` (generation templates)
 
 ## Outputs
 
@@ -60,6 +62,48 @@ This agent runs from the **repository root** of the `github-copilot-sdlc-templat
 7. **Workflow README** — `.github/agents/agents-workflow/readme.md`
 8. **Repository index template** — `index.md`
 9. **`generation_report.md`** — Summary of what was generated
+
+> **Note:** The Pipeline Generator is the sole owner of agent definitions, skill SKILL.md
+> files, hook scripts, and hooks.json. The Preflight Agent handles only setup.sh,
+> connector configuration (endpoints, MCP configs), `.env.template`, scan results, and
+> instruction files. Auth is performed by developers at runtime, not during onboarding.
+
+---
+
+## Dry-Run / Preview Mode
+
+The generator supports a **dry-run mode** that shows what would be generated without writing files.
+
+### Usage
+
+When the customer passes `--dry-run` or requests a preview:
+
+1. **Run all phases** (context loading, clarification, model mapping, generation) but **do not write files**
+2. **Produce a preview report** listing:
+   - Files that would be created (with paths)
+   - Agent → contract mapping
+   - Model tier → model resolution
+   - Skills and hooks that would be generated
+   - Estimated file count and total size
+3. **Present the preview** to the customer for approval before proceeding
+4. If approved, re-run in normal mode (or flush buffered writes)
+
+### Preview Report Format
+
+```markdown
+# Pipeline Generation Preview
+
+## Files to Generate
+| # | File | Source Contract | Model |
+|---|------|----------------|-------|
+| 1 | .github/agents/agent0_ticket_analyzer.md | AC-000 | claude-sonnet-4 |
+| ... |
+
+## Skills: 4 | Hooks: 6 | Context Templates: 12
+## Estimated total: ~45 files
+
+Proceed with generation? [Yes] [No] [Adjust]
+```
 
 ---
 
@@ -206,16 +250,18 @@ When a non-critical generation step fails, continue with reduced output:
 
 1. **Check for checkpoint** — load existing state if available
 2. **Read** all contracts from `contracts/`:
-   - All agent contracts (AC-000 through AC-006, AC-ORCH)
+   - All agent contracts (AC-000 through AC-008, AC-ORCH)
    - All hook contracts (HC-*)
    - All skill contracts (SC-*)
    - Contract index and schema
 
 3. **Read** customer context:
-   - `customer_onboarding_answers.md`
+   - `intake-sources.md`
    - `codebase_scan_results.md` (from Preflight)
    - `preflight_report.md` (from Preflight)
    - `.github/instructions/*.instructions.md` (from Preflight)
+   - `.github/sdlc-pipeline/connector_config.md` (from Preflight — PM endpoints, SCM org, MCP configs)
+   - `.env.template` (from Preflight — required env var names for runtime auth)
 
 4. **Save checkpoint** for Phase 1
 
@@ -223,7 +269,37 @@ When a non-critical generation step fails, continue with reduced output:
 
 5. **Before generating, ask the customer** about anything not covered in the onboarding answers. Use `vscode/askQuestions` for each round.
 
-   **Mandatory clarification areas:**
+   **Smart Defaults & Express Mode:**
+
+   Before asking questions, offer the customer a setup mode:
+
+   ```
+   "How would you like to configure the pipeline?"
+   Options:
+   [Express] — Use industry-based smart defaults, minimal questions (recommended for quick start)
+   [Standard] — Answer key questions, defaults for the rest
+   [Detailed] — Full configuration with all options
+   ```
+
+   **Industry-Based Defaults:**
+
+   | Industry | Default Patterns |
+   |----------|-----------------|
+   | **Fintech/Banking** | Strict approval gates, SAST required, ADRs required, detailed PR descriptions |
+   | **Healthcare** | HIPAA compliance hooks, audit logging, strict guardrails |
+   | **E-commerce/SaaS** | Batch approval, E2E tests, performance testing emphasis |
+   | **Startup/General** | Auto approval, fast iteration, minimal ceremony |
+   | **Enterprise** | Standard security, documentation required, trunk-based development |
+
+   For **Express mode**: Apply industry defaults, only ask about:
+   1. CI/CD system (if not auto-detected)
+   2. Any critical tool choices not detectable from the codebase
+
+   For **Standard mode**: Ask about 3-4 key areas, defaults for the rest.
+
+   For **Detailed mode**: Full question set below.
+
+   **Mandatory clarification areas (Detailed mode):**
 
    | Area | Questions |
    |------|-----------|
@@ -237,11 +313,13 @@ When a non-critical generation step fails, continue with reduced output:
    | **Observability** | What APM/monitoring do you use? Structured logging requirements? |
 
    **Rules for questions:**
-   - Do NOT ask about things already answered in `customer_onboarding_answers.md`
+   - Do NOT ask about things already answered in `intake-sources.md`
+   - Do NOT re-ask things detectable from codebase scan results
    - Do NOT assume — always ask if unclear
    - Group related questions (max 7 per round, max 3 rounds)
    - For each question, explain why it matters for pipeline generation
    - Accept "Not applicable" or "Use defaults" as valid answers
+   - **Show the default value** for each question so customers can quickly accept
 
 6. **Save checkpoint** for Phase 2
 
@@ -263,12 +341,13 @@ When a non-critical generation step fails, continue with reduced output:
 
 ### Phase 4: Generate Agents
 
-9. **For each agent contract (AC-000 through AC-006)**, generate a customer-specific agent definition file:
+9. **For each agent contract (AC-000 through AC-008, AC-ORCH)**, generate a customer-specific agent definition file:
 
    For parallel generation (when contracts are independent), spawn sub-agents for groups:
    - **Group A** (parallel): Agent 0, Agent 1, Agent 2, Agent 2a — analysis/design agents
    - **Group B** (parallel): Agent 3a, Agent 3b, Agent 3c — implementation agents
    - **Group C** (parallel): Agent 4, Agent 5, Agent 6 — verification agents
+   - **Group D** (parallel): Agent 7, Agent 8 — documentation & IaC agents
    - **Sequential**: Orchestrator (depends on all others)
 
    **Generation rules:**
@@ -294,22 +373,30 @@ When a non-critical generation step fails, continue with reduced output:
 
 11. **Save checkpoint** for Phase 4
 
-### Phase 5: Generate Skills
+### Phase 5: Generate Connector Skills
 
-12. **For each skill contract**, generate a customer-specific SKILL.md:
+12. **Read connector configuration** from Preflight output:
+    - Load `.github/sdlc-pipeline/connector_config.md` (generated by Preflight Agent)
+    - This contains: PM type & endpoint, SCM provider & org, design tool MCP config, custom MCP servers
+    - Load `.env.template` to verify which environment variables the skills should reference for auth
+
+13. **For each skill contract**, generate a customer-specific SKILL.md at `.github/skills/<skill>/SKILL.md`:
 
     Spawn sub-agents for parallel skill generation:
-    - Ticket Connector (from `SC-TICKET`)
-    - SCM Connector (from `SC-SCM`)
-    - Design Connector (from `SC-DESIGN`, if applicable)
-    - Testing Skill (from `SC-TEST`)
+    - **Ticket Connector** (from `SC-TICKET`) — uses PM type/endpoint from `connector_config.md`
+    - **SCM Connector** (from `SC-SCM`) — uses SCM provider/org from `connector_config.md`
+    - **Design Connector** (from `SC-DESIGN`, if applicable) — uses MCP config from `connector_config.md`
+    - **Testing Skill** (from `SC-TEST`) — uses test runner/framework from codebase scan
 
     Each sub-agent:
-    - Reads the corresponding contract
-    - Adapts to customer's tool choice (e.g., Jira vs Linear)
-    - Generates the SKILL.md with proper CLI commands and error handling
+    - Reads the corresponding skill contract
+    - Reads the relevant section of `connector_config.md` for endpoints, project keys, MCP definitions
+    - Adapts to customer's tool choice (e.g., Jira vs Linear, GitHub vs GitLab)
+    - References environment variables from `.env.template` for auth (e.g., `$JIRA_TOKEN`, `$GITHUB_TOKEN`)
+    - Generates the SKILL.md with proper CLI commands, error handling, and auth-via-env-var instructions
+    - **Does NOT embed or prompt for actual credentials** — skills read tokens from environment at runtime
 
-13. **Save checkpoint** for Phase 5
+14. **Save checkpoint** for Phase 5
 
 ### Phase 6: Generate Hooks
 
