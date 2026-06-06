@@ -13,7 +13,7 @@ This repository is a **standalone, reusable SDLC Pipeline Bundle** containing **
 │                    SDLC ONBOARDING FLOW                        │
 │                                                                 │
 │  1. Customer fills HTML Wizard (client-onboarding-wizard.html)  │
-│     → Downloads customer_onboarding_answers.md                  │
+│     → Downloads intake-sources.md                               │
 │                                                                 │
 │  2. Preflight Agent reads answers                               │
 │     → Generates setup scripts, MCP/connector configs            │
@@ -61,6 +61,8 @@ sdlc-pipeline-bundle/                  ← This standalone repository
 │   ├── agent4_verifier.contract.md
 │   ├── agent5_critic.contract.md
 │   ├── agent6_tester.contract.md
+│   ├── agent7_documentation.contract.md   ← Documentation Generator
+│   ├── agent8_iac_devops.contract.md      ← IaC/DevOps Specialist
 │   ├── orchestrator.contract.md
 │   ├── hooks/
 │   │   ├── hook_guard_destructive.contract.md
@@ -89,12 +91,15 @@ sdlc-pipeline-bundle/                  ← This standalone repository
 │   ├── scm-bootstrap.py
 │   ├── checkpoint-manager.py
 │   ├── outcome-inspector.py
+│   ├── pipeline-migrator.py               ← Version & migration manager
 │   └── install-observability.sh
 └── observability/                     ← Telemetry stack templates
     ├── otel-collector-config.yml
     ├── prometheus/
     │   └── prometheus.yml
     └── .gitignore
+├── tests/                             ← Test suite
+│   └── test_scripts.py                ← Unit tests for all scripts
 ├── docs/                              ← Documentation
 │   ├── getting-started.md             ← How to run guide
 │   └── workflow.html                  ← Interactive workflow visualization
@@ -121,17 +126,17 @@ sdlc-pipeline-bundle/                  ← This standalone repository
 
 1. Clone this repo into your project or as a standalone workspace
 2. Open in VS Code with GitHub Copilot extension
-3. Open `client-onboarding-wizard.html` → fill → download `customer_onboarding_answers.md`
-4. In Copilot Chat: `@workspace /preflight customer_onboarding_answers.md`
-5. In Copilot Chat: `@workspace /generate-pipeline customer_onboarding_answers.md`
+3. Open `client-onboarding-wizard.html` → fill → download `intake-sources.md`
+4. In Copilot Chat: `@workspace /preflight intake-sources.md`
+5. In Copilot Chat: `@workspace /generate-pipeline intake-sources.md`
 6. Customize per-agent context in `<agent>_custom_client_context.md` files
 7. Run the generated Orchestrator
 
 ### GitHub Copilot CLI
 
 1. Clone this repo alongside your project repositories
-2. Fill `customer_onboarding_answers.md` via the wizard or manually
-3. `gh copilot chat "Run the SDLC Preflight Agent on customer_onboarding_answers.md"`
+2. Fill `intake-sources.md` via the wizard or manually
+3. `gh copilot chat "Run the SDLC Preflight Agent on intake-sources.md"`
 4. `gh copilot chat "Run the SDLC Pipeline Generator"`
 5. Review and customize generated agents
 

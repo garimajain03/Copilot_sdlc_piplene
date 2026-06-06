@@ -799,11 +799,11 @@
         <div class="agent-card" style="max-width: 100%;" onclick="toggleCard(this)">
           <span class="agent-badge badge-preflight">Phase 1</span>
           <h3>Validate Onboarding Answers</h3>
-          <p>Read and validate <code>customer_onboarding_answers.md</code> against the schema</p>
+          <p>Read and validate <code>intake-sources.md</code> against the schema</p>
           <div class="detail-panel">
             <h4>What It Does</h4>
             <ul>
-              <li>Reads <code>customer_onboarding_answers.md</code></li>
+              <li>Reads <code>intake-sources.md</code></li>
               <li>Validates against <code>schemas/onboarding_answers_schema.md</code></li>
               <li>Checks: company name, LLM provider, PM system, SCM, default branch, guardrails</li>
               <li>Asks clarifying questions for missing/ambiguous required fields</li>
@@ -954,7 +954,7 @@
               <li>All agent contracts: <code>contracts/agent*.contract.md</code>, <code>contracts/orchestrator.contract.md</code></li>
               <li>All hook contracts: <code>contracts/hooks/hook_*.contract.md</code></li>
               <li>All skill contracts: <code>contracts/skills/skill_*.contract.md</code></li>
-              <li><code>customer_onboarding_answers.md</code></li>
+              <li><code>intake-sources.md</code></li>
               <li><code>.github/sdlc-pipeline/codebase_scan_results.md</code> (from Preflight)</li>
               <li><code>.github/sdlc-pipeline/preflight_report.md</code> (from Preflight)</li>
               <li><code>.github/instructions/*.instructions.md</code> (from Preflight)</li>
@@ -1169,9 +1169,9 @@
         <div>
           <div class="desc">Run the SDLC Preflight Agent — validates onboarding, clones & scans repos, generates setup artifacts. This is <strong>Step 1</strong>.</div>
           <div class="examples">
-            <div class="example">/preflight customer_onboarding_answers.md</div>
+            <div class="example">/preflight intake-sources.md</div>
           </div>
-          <div class="cli-alt">CLI: <code>gh copilot chat "Run the SDLC Preflight Agent on customer_onboarding_answers.md"</code></div>
+          <div class="cli-alt">CLI: <code>gh copilot chat "Run the SDLC Preflight Agent on intake-sources.md"</code></div>
         </div>
       </div>
 

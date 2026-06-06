@@ -22,6 +22,7 @@ Exit codes:
 """
 
 import argparse
+import fcntl
 import json
 import os
 import sys
@@ -33,11 +34,15 @@ def utc_now() -> str:
 
 
 def load_state(state_file: str) -> dict:
-    """Load existing state or create empty state."""
+    """Load existing state or create empty state. Uses file locking to prevent corruption."""
     if os.path.exists(state_file):
         try:
             with open(state_file, "r", encoding="utf-8") as f:
-                return json.load(f)
+                fcntl.flock(f.fileno(), fcntl.LOCK_SH)
+                try:
+                    return json.load(f)
+                finally:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
         except (json.JSONDecodeError, IOError):
             pass
 
@@ -50,11 +55,15 @@ def load_state(state_file: str) -> dict:
 
 
 def save_state(state_file: str, state: dict):
-    """Save state to file."""
+    """Save state to file. Uses exclusive file locking to prevent corruption from parallel agents."""
     state["updated_at"] = utc_now()
     os.makedirs(os.path.dirname(state_file) or ".", exist_ok=True)
     with open(state_file, "w", encoding="utf-8") as f:
-        json.dump(state, f, indent=2)
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        try:
+            json.dump(state, f, indent=2)
+        finally:
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
 
 def cmd_save(args):

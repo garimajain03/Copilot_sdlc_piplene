@@ -1,6 +1,6 @@
 # Onboarding Answers Schema — SDLC Pipeline Bundle
 
-> Defines the expected structure of `customer_onboarding_answers.md` that the Preflight Agent and Pipeline Generator consume.
+> Defines the expected structure of `intake-sources.md` that the Preflight Agent and Pipeline Generator consume.
 
 ## Required Sections
 
@@ -91,6 +91,24 @@
 | Existing agents | No | Conflict avoidance |
 | CMS | No | Content management skill |
 
+### 9. Pipeline Configuration (Optional)
+
+| Field | Required | Default | Purpose |
+|-------|----------|---------|---------|
+| `setup_mode` | No | `standard` | Controls clarification question depth: `express` (1-2 questions), `standard` (essential questions), `detailed` (full questionnaire) |
+| `approval_mode` | No | `batch` | Approval gate strategy: `strict` (approve every phase), `batch` (approve at design + ship), `auto` (all gates auto-approved) |
+| `dry_run` | No | `false` | If `true`, generate preview report without writing files |
+| `include_documentation_agent` | No | `true` | Whether to generate Agent 7 (Documentation Generator) |
+| `include_iac_agent` | No | `false` | Whether to generate Agent 8 (IaC/DevOps Specialist) |
+
+**Approval Mode Details:**
+
+| Mode | Gates Requiring Approval | Best For |
+|------|--------------------------|----------|
+| `strict` | Design review, pre-implementation, post-test, pre-ship | Regulated industries (finance, healthcare) |
+| `batch` | Design review, ship recommendation | Most teams |
+| `auto` | None (all auto-approved) | Prototyping, hackathons, trusted pipelines |
+
 ## Validation Rules
 
 1. **Organisation.Company** — Must be non-empty
@@ -99,3 +117,8 @@
 4. **Workflow.Developer.Default Branch** — Must be a valid branch name
 5. **Sources.SCM** — Must be one of: `github`, `gitlab`, `bitbucket`, `azure-devops`
 6. **Constraints.Agent Behavioral Guardrails** — Must be non-empty (at minimum: scope control, security)
+7. **Pipeline.setup_mode** — If present, must be one of: `express`, `standard`, `detailed`
+8. **Pipeline.approval_mode** — If present, must be one of: `strict`, `batch`, `auto`
+9. **Pipeline.dry_run** — If present, must be boolean
+10. **Pipeline.include_documentation_agent** — If present, must be boolean
+11. **Pipeline.include_iac_agent** — If present, must be boolean

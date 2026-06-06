@@ -15,7 +15,7 @@ The pipeline has two phases:
 - [VS Code](https://code.visualstudio.com/) with [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) extension installed **OR** [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli)
 - Python 3.9+ (for automation scripts)
 - Git (for repository cloning)
-- A completed `customer_onboarding_answers.md` (generated from `client-onboarding-wizard.html`)
+- A completed `intake-sources.md` (generated from `client-onboarding-wizard.html`)
 
 ---
 
@@ -23,18 +23,18 @@ The pipeline has two phases:
 
 ### 1. Fill the Onboarding Wizard
 
-Open `client-onboarding-wizard.html` in a browser and fill in your organization details, tech stack, tools, and preferences. Save the output as `customer_onboarding_answers.md` in the repo root.
+Open `client-onboarding-wizard.html` in a browser and fill in your organization details, tech stack, tools, and preferences. Save the output as `intake-sources.md` in the repo root.
 
 ### 2. Run Preflight
 
 **VS Code Copilot Chat:**
 ```
-/preflight customer_onboarding_answers.md
+/preflight intake-sources.md
 ```
 
 **GitHub Copilot CLI:**
 ```bash
-gh copilot chat "Run the SDLC Preflight Agent on customer_onboarding_answers.md"
+gh copilot chat "Run the SDLC Preflight Agent on intake-sources.md"
 ```
 
 ### 3. Run Pipeline Generator
@@ -119,7 +119,7 @@ The Preflight Agent validates your onboarding answers, clones your repositories,
 
 | Phase | Name | What Happens | Scripts Used |
 |-------|------|-------------|--------------|
-| 1 | Validate Onboarding | Reads `customer_onboarding_answers.md`, validates against `schemas/onboarding_answers_schema.md`, asks clarifying questions for missing fields | — |
+| 1 | Validate Onboarding | Reads `intake-sources.md`, validates against `schemas/onboarding_answers_schema.md`, asks clarifying questions for missing fields | — |
 | 2 | Collect Repos | Asks for repository list, validates names, confirms with user | — |
 | 3 | Clone Repos | Clones repos using SCM connector, handles failures per-repo | `scripts/scm-bootstrap.py` |
 | 4 | Smart Code Scan | Scans each repo for structure, dependencies, patterns, conventions. Parallel scanning for 3+ repos via sub-agents | `scripts/repo-scanner.py` |
@@ -267,7 +267,7 @@ github-copilot-sdlc-template/
 │   ├── getting-started.md                   ← This file
 │   └── workflow.html                        ← Interactive workflow visualization
 ├── client-onboarding-wizard.html            ← Onboarding wizard
-├── customer_onboarding_answers.md           ← Customer config (generated)
+├── intake-sources.md                        ← Customer config (generated)
 └── README.md
 ```
 

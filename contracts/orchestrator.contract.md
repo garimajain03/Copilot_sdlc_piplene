@@ -30,7 +30,7 @@ Coordinates the full SDLC pipeline. Accepts tickets or requirements, delegates t
 | Artifact | Source | Required | Description |
 |----------|--------|----------|-------------|
 | Ticket ID or requirement file | User | Yes | Entry point for pipeline |
-| `customer_onboarding_answers.md` | Setup | No | Client configuration (read once at start) |
+| `intake-sources.md` | Setup | No | Client configuration (read once at start) |
 | Custom client context | Client | No | `orchestrator_custom_client_context.md` — routing rules, model overrides |
 
 ## Outputs
@@ -113,9 +113,19 @@ Coordinates the full SDLC pipeline. Accepts tickets or requirements, delegates t
 - **Action:** Invoke Agent 5 with: all specs, verification_report, codebase
 - **Output:** `risk_assessment.md` with ship recommendation
 
-### Step 14: Pipeline Summary
+### Step 14: Run Documentation Generator (Agent 7)
+- **Condition:** Verification passed AND ticket is not config-only
+- **Action:** Invoke Agent 7 with: problem_spec, design_spec, implementation_manifest, verification_report, test_report, risk_assessment
+- **Output:** `documentation_manifest.md`, `pr_description.md`, `commit_messages.md`, updated API docs, changelog, ADRs
+
+### Step 15: Run IaC/DevOps Specialist (Agent 8)
+- **Condition:** Ticket classified as infrastructure/devops change
+- **Action:** Invoke Agent 8 with: problem_spec, design_spec, ticket_analysis
+- **Output:** `iac_manifest.md`, `blast_radius_assessment.md`, `rollback_plan.md`, `iac_plan_output.md`
+
+### Step 16: Pipeline Summary
 - **Condition:** Pipeline complete
-- **Action:** Report: agents run, time per agent, total tokens, ship recommendation, outstanding risks
+- **Action:** Report: agents run, time per agent, total tokens, ship recommendation, outstanding risks, documentation generated, IaC changes (if any)
 - **Output:** Terminal summary
 
 ## Conditions & Decision Points
@@ -123,11 +133,13 @@ Coordinates the full SDLC pipeline. Accepts tickets or requirements, delegates t
 | Condition | Action | Reasoning |
 |-----------|--------|-----------|
 | Low complexity bug fix | Skip Agents 2a, 3a, 5 | Lightweight path |
-| Config change | Skip Agents 2a, 3a, 5, 6 | Minimal pipeline |
+| Config change | Skip Agents 2a, 3a, 5, 6, 7 | Minimal pipeline |
+| Infrastructure/DevOps change | Route to Agent 8 (skip 3a/3b/3c/6) | IaC-specific pipeline |
 | Clarification needed | Loop Agent 1 ↔ User (max 2) | Resolve ambiguity |
 | Design rejected | Loop Agent 2 ↔ 2a (max 2) | Iterate design |
 | Verification fails | Loop Agent 3c ↔ 4 (max 3) | Fix → verify cycle |
 | Input is raw requirement (no ticket) | Skip Agent 0 | No ticket to analyze |
+| Multi-repo feature | Multi-repo orchestration | Coordinate across repos |
 
 ## Coordinator-and-Worker Pattern
 
@@ -251,6 +263,83 @@ If observability infrastructure is unavailable (binaries not installed, health c
 - [ ] Time/token tracking complete
 - [ ] Pipeline summary produced
 - [ ] Custom client context loaded if present
+
+## Approval Gate Strategy
+
+The orchestrator supports three configurable approval gate modes, set via `orchestrator_custom_client_context.md` or onboarding answers.
+
+| Mode | Behavior | Best For |
+|------|----------|----------|
+| `strict` | Human approval required at every agent handoff | Regulated industries, early adoption |
+| `batch` | Approval required only at phase boundaries (design → implementation, implementation → verification) | Balanced teams |
+| `auto` | Automatic progression, human approval only for ship recommendation (Agent 5) and destructive changes | High-trust teams, rapid iteration |
+
+### Gate Decision Points
+
+| Gate | `strict` | `batch` | `auto` |
+|------|----------|---------|--------|
+| After Ticket Analysis (Agent 0) | Ask | Auto | Auto |
+| After Problem Decomposition (Agent 1) | Ask | Ask | Auto |
+| After Design (Agent 2 + 2a) | Ask | Ask | Auto |
+| After Scaffolding (Agent 3a) | Ask | Auto | Auto |
+| After Build (Agent 3b) | Ask | Ask | Auto |
+| After Testing (Agent 6) | Ask | Auto | Auto |
+| After Verification (Agent 4) | Ask | Ask | Auto |
+| After Fix Loop (Agent 3c) | Ask | Auto | Auto |
+| Ship Recommendation (Agent 5) | Ask | Ask | Ask |
+| Destructive IaC Changes (Agent 8) | Ask | Ask | Ask |
+
+### Configuration
+
+```markdown
+## Approval Gate Strategy
+
+approval_mode: batch   # strict | batch | auto
+```
+
+Default: `batch` (if not specified in onboarding or custom context).
+
+## Multi-Repository Orchestration
+
+When a feature spans multiple repositories, the orchestrator coordinates cross-repo work.
+
+### Multi-Repo Strategy
+
+| Phase | Strategy |
+|-------|----------|
+| **Dependency Ordering** | Analyze repo dependencies (shared-libs first, then services, then UI). Run pipeline in dependency order |
+| **Parallel Where Safe** | Independent repos (e.g., frontend + backend with stable API contract) can run in parallel |
+| **Cross-Repo Verification** | After all repos pass individual verification, run cross-repo integration check |
+| **Coordinated PRs** | Group related PRs with cross-references. Link PRs via "Part of feature-X" labels |
+| **Partial Failure Rollback** | If repo B fails after repo A succeeded: pause, report, ask human whether to rollback A or fix B |
+
+### Multi-Repo Workflow
+
+1. **Analyze repo graph** — identify which repos are affected and their dependencies
+2. **Order execution** — topological sort: shared libraries → services → consumers → UI
+3. **Run pipeline per repo** — each repo gets its own agent pipeline (Agents 0-6)
+4. **Cross-repo verification** — after individual pipelines complete:
+   - Verify API contract compatibility (OpenAPI spec diffing)
+   - Verify shared type/schema consistency
+   - Run integration test suite (if available)
+5. **Coordinated PR creation** — create linked PRs across repos with:
+   - Cross-references (e.g., "Depends on org/shared-lib#42")
+   - Merge order instructions
+   - Combined changelog entry
+6. **Rollback on partial failure** — if any repo fails:
+   - Pause all in-progress repos
+   - Report failure with blast radius
+   - Present options: fix failed repo, rollback completed repos, or proceed with partial delivery
+
+### Multi-Repo Conditions
+
+| Condition | Action |
+|-----------|--------|
+| Single repo feature | Standard pipeline, no multi-repo overhead |
+| Multi-repo, independent | Run pipelines in parallel |
+| Multi-repo, dependent | Run in dependency order |
+| Cross-repo API change | Add API compatibility verification step |
+| Partial failure | Pause, report, ask human for decision |
 
 ## Customization Points
 

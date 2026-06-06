@@ -304,10 +304,22 @@ def detect_linter(repo_path: str) -> dict[str, Any]:
         linters["flake8"] = ".flake8"
     if os.path.exists(os.path.join(repo_path, "setup.cfg")):
         linters["flake8_or_mypy"] = "setup.cfg"
-    if os.path.exists(os.path.join(repo_path, ".golangci.yml")):
+    if os.path.exists(os.path.join(repo_path, ".golangci.yml")) or os.path.exists(os.path.join(repo_path, ".golangci.yaml")):
         linters["golangci-lint"] = ".golangci.yml"
     if os.path.exists(os.path.join(repo_path, "sonar-project.properties")):
         linters["sonarqube"] = "sonar-project.properties"
+    if os.path.exists(os.path.join(repo_path, "ruff.toml")) or os.path.exists(os.path.join(repo_path, ".ruff.toml")):
+        linters["ruff"] = "ruff.toml"
+    if os.path.exists(os.path.join(repo_path, "mypy.ini")):
+        linters["mypy"] = "mypy.ini"
+    if os.path.exists(os.path.join(repo_path, ".rubocop.yml")):
+        linters["rubocop"] = ".rubocop.yml"
+    if os.path.exists(os.path.join(repo_path, "phpstan.neon")):
+        linters["phpstan"] = "phpstan.neon"
+    if os.path.exists(os.path.join(repo_path, "clippy.toml")):
+        linters["clippy"] = "clippy.toml"
+    if os.path.exists(os.path.join(repo_path, "checkstyle.xml")):
+        linters["checkstyle"] = "checkstyle.xml"
 
     return linters
 
@@ -329,6 +341,22 @@ def detect_formatter(repo_path: str) -> dict[str, Any]:
         formatters["editorconfig"] = ".editorconfig"
     if os.path.exists(os.path.join(repo_path, "dprint.json")):
         formatters["dprint"] = "dprint.json"
+    if os.path.exists(os.path.join(repo_path, "pyproject.toml")):
+        try:
+            with open(os.path.join(repo_path, "pyproject.toml"), "r") as f:
+                content = f.read()
+                if "[tool.black]" in content:
+                    formatters["black"] = "pyproject.toml"
+                if "[tool.isort]" in content:
+                    formatters["isort"] = "pyproject.toml"
+        except IOError:
+            pass
+    if os.path.exists(os.path.join(repo_path, "rustfmt.toml")) or os.path.exists(os.path.join(repo_path, ".rustfmt.toml")):
+        formatters["rustfmt"] = "rustfmt.toml"
+    if os.path.exists(os.path.join(repo_path, "gofmt.toml")) or os.path.exists(os.path.join(repo_path, "go.mod")):
+        # Go projects use gofmt by convention
+        if os.path.exists(os.path.join(repo_path, "go.mod")):
+            formatters["gofmt"] = "(built-in)"
 
     return formatters
 
@@ -363,6 +391,30 @@ def detect_test_runner(repo_path: str) -> dict[str, Any]:
                 content = f.read()
                 if "[tool.pytest" in content:
                     runners["pytest"] = "pyproject.toml"
+        except IOError:
+            pass
+    if os.path.exists(os.path.join(repo_path, "go.mod")):
+        runners["go_test"] = "(built-in)"
+    if os.path.exists(os.path.join(repo_path, "Cargo.toml")):
+        runners["cargo_test"] = "(built-in)"
+    for csproj in [f for f in os.listdir(repo_path) if f.endswith(".csproj")]:
+        try:
+            with open(os.path.join(repo_path, csproj), "r") as f:
+                if "Microsoft.NET.Test.Sdk" in f.read():
+                    runners["dotnet_test"] = csproj
+                    break
+        except IOError:
+            pass
+    # Java test frameworks
+    pom_path = os.path.join(repo_path, "pom.xml")
+    if os.path.exists(pom_path):
+        try:
+            with open(pom_path, "r") as f:
+                pom_content = f.read()
+            if "junit" in pom_content.lower():
+                runners["junit"] = "pom.xml"
+            if "testng" in pom_content.lower():
+                runners["testng"] = "pom.xml"
         except IOError:
             pass
 
@@ -419,6 +471,238 @@ def detect_precommit(repo_path: str) -> dict[str, Any]:
             break
 
     return hooks
+
+
+# ─── Multi-Language Build System Parsers ──────────────────────────────────────
+
+def parse_java_build(repo_path: str) -> dict[str, Any]:
+    """Detect Java build system (Maven or Gradle) and extract metadata."""
+    result: dict[str, Any] = {}
+
+    pom_path = os.path.join(repo_path, "pom.xml")
+    if os.path.exists(pom_path):
+        result["build_tool"] = "maven"
+        try:
+            with open(pom_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            gid = re.search(r"<groupId>(.+?)</groupId>", content)
+            aid = re.search(r"<artifactId>(.+?)</artifactId>", content)
+            ver = re.search(r"<version>(.+?)</version>", content)
+            if gid:
+                result["group_id"] = gid.group(1)
+            if aid:
+                result["artifact_id"] = aid.group(1)
+            if ver:
+                result["version"] = ver.group(1)
+            # Detect Spring Boot
+            if "spring-boot" in content:
+                result.setdefault("frameworks", []).append("Spring Boot")
+            if "quarkus" in content.lower():
+                result.setdefault("frameworks", []).append("Quarkus")
+            if "micronaut" in content.lower():
+                result.setdefault("frameworks", []).append("Micronaut")
+            # Java version
+            java_ver = re.search(r"<java\.version>(.+?)</java\.version>", content)
+            if not java_ver:
+                java_ver = re.search(r"<maven\.compiler\.source>(.+?)</maven\.compiler\.source>", content)
+            if java_ver:
+                result["java_version"] = java_ver.group(1)
+        except IOError:
+            pass
+        return result
+
+    gradle_path = os.path.join(repo_path, "build.gradle")
+    gradle_kts_path = os.path.join(repo_path, "build.gradle.kts")
+    for gp in [gradle_kts_path, gradle_path]:
+        if os.path.exists(gp):
+            result["build_tool"] = "gradle"
+            result["build_file"] = os.path.basename(gp)
+            try:
+                with open(gp, "r", encoding="utf-8") as f:
+                    content = f.read()
+                if "spring-boot" in content or "org.springframework.boot" in content:
+                    result.setdefault("frameworks", []).append("Spring Boot")
+                if "quarkus" in content.lower():
+                    result.setdefault("frameworks", []).append("Quarkus")
+                java_ver = re.search(r"(?:sourceCompatibility|java\.toolchain\.languageVersion)[^'\"]*['\"]?(\d+)", content)
+                if java_ver:
+                    result["java_version"] = java_ver.group(1)
+            except IOError:
+                pass
+            return result
+
+    return result
+
+
+def parse_python_project(repo_path: str) -> dict[str, Any]:
+    """Detect Python project metadata from pyproject.toml, setup.py, or requirements.txt."""
+    result: dict[str, Any] = {}
+
+    pyproject_path = os.path.join(repo_path, "pyproject.toml")
+    if os.path.exists(pyproject_path):
+        try:
+            with open(pyproject_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            name_match = re.search(r'name\s*=\s*"(.+?)"', content)
+            ver_match = re.search(r'version\s*=\s*"(.+?)"', content)
+            if name_match:
+                result["name"] = name_match.group(1)
+            if ver_match:
+                result["version"] = ver_match.group(1)
+            if "[tool.pytest" in content:
+                result.setdefault("tools", []).append("pytest")
+            if "[tool.mypy]" in content:
+                result.setdefault("tools", []).append("mypy")
+            if "[tool.ruff]" in content:
+                result.setdefault("tools", []).append("ruff")
+            if "[tool.black]" in content:
+                result.setdefault("tools", []).append("black")
+            if "[tool.isort]" in content:
+                result.setdefault("tools", []).append("isort")
+            if "django" in content.lower():
+                result.setdefault("frameworks", []).append("Django")
+            if "fastapi" in content.lower():
+                result.setdefault("frameworks", []).append("FastAPI")
+            if "flask" in content.lower():
+                result.setdefault("frameworks", []).append("Flask")
+            # Build system
+            if "[build-system]" in content:
+                build_match = re.search(r'build-backend\s*=\s*"(.+?)"', content)
+                if build_match:
+                    result["build_backend"] = build_match.group(1)
+        except IOError:
+            pass
+        return result
+
+    setup_path = os.path.join(repo_path, "setup.py")
+    if os.path.exists(setup_path):
+        result["build_tool"] = "setuptools"
+        try:
+            with open(setup_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            name_match = re.search(r'name\s*=\s*["\'](.+?)["\']', content)
+            if name_match:
+                result["name"] = name_match.group(1)
+        except IOError:
+            pass
+        return result
+
+    req_path = os.path.join(repo_path, "requirements.txt")
+    if os.path.exists(req_path):
+        result["build_tool"] = "pip"
+        try:
+            with open(req_path, "r", encoding="utf-8") as f:
+                deps = [l.strip().split("==")[0].split(">=")[0].split("~=")[0]
+                        for l in f if l.strip() and not l.startswith("#") and not l.startswith("-")]
+            result["dependencies"] = deps[:50]
+            dep_set = {d.lower() for d in deps}
+            if "django" in dep_set:
+                result.setdefault("frameworks", []).append("Django")
+            if "fastapi" in dep_set:
+                result.setdefault("frameworks", []).append("FastAPI")
+            if "flask" in dep_set:
+                result.setdefault("frameworks", []).append("Flask")
+        except IOError:
+            pass
+
+    return result
+
+
+def parse_dotnet_project(repo_path: str) -> dict[str, Any]:
+    """Detect .NET project metadata from .csproj or .sln files."""
+    result: dict[str, Any] = {}
+
+    # Find .csproj files
+    csproj_files = [f for f in os.listdir(repo_path) if f.endswith(".csproj")]
+    sln_files = [f for f in os.listdir(repo_path) if f.endswith(".sln")]
+
+    if sln_files:
+        result["solution_file"] = sln_files[0]
+
+    if csproj_files:
+        result["project_files"] = csproj_files
+        try:
+            with open(os.path.join(repo_path, csproj_files[0]), "r", encoding="utf-8") as f:
+                content = f.read()
+            tf_match = re.search(r"<TargetFramework>(.+?)</TargetFramework>", content)
+            if tf_match:
+                result["target_framework"] = tf_match.group(1)
+            if "Microsoft.NET.Sdk.Web" in content:
+                result.setdefault("frameworks", []).append("ASP.NET")
+            if "Microsoft.NET.Sdk.BlazorWebAssembly" in content:
+                result.setdefault("frameworks", []).append("Blazor")
+            # NuGet packages
+            packages = re.findall(r'<PackageReference Include="(.+?)"', content)
+            if packages:
+                result["packages"] = packages[:30]
+        except IOError:
+            pass
+
+    return result
+
+
+def parse_go_module(repo_path: str) -> dict[str, Any]:
+    """Detect Go module metadata from go.mod."""
+    result: dict[str, Any] = {}
+    gomod_path = os.path.join(repo_path, "go.mod")
+    if not os.path.exists(gomod_path):
+        return result
+
+    try:
+        with open(gomod_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        mod_match = re.search(r"^module\s+(.+)$", content, re.MULTILINE)
+        go_match = re.search(r"^go\s+(\S+)$", content, re.MULTILINE)
+        if mod_match:
+            result["module"] = mod_match.group(1).strip()
+        if go_match:
+            result["go_version"] = go_match.group(1).strip()
+        # Count dependencies
+        requires = re.findall(r"^\s+(\S+)\s+v", content, re.MULTILINE)
+        result["dependency_count"] = len(requires)
+        if "gin-gonic/gin" in content:
+            result.setdefault("frameworks", []).append("Gin")
+        if "labstack/echo" in content:
+            result.setdefault("frameworks", []).append("Echo")
+        if "gofiber/fiber" in content:
+            result.setdefault("frameworks", []).append("Fiber")
+    except IOError:
+        pass
+
+    return result
+
+
+def parse_rust_cargo(repo_path: str) -> dict[str, Any]:
+    """Detect Rust project metadata from Cargo.toml."""
+    result: dict[str, Any] = {}
+    cargo_path = os.path.join(repo_path, "Cargo.toml")
+    if not os.path.exists(cargo_path):
+        return result
+
+    try:
+        with open(cargo_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        name_match = re.search(r'name\s*=\s*"(.+?)"', content)
+        ver_match = re.search(r'version\s*=\s*"(.+?)"', content)
+        ed_match = re.search(r'edition\s*=\s*"(.+?)"', content)
+        if name_match:
+            result["name"] = name_match.group(1)
+        if ver_match:
+            result["version"] = ver_match.group(1)
+        if ed_match:
+            result["edition"] = ed_match.group(1)
+        if "actix-web" in content:
+            result.setdefault("frameworks", []).append("Actix Web")
+        if "axum" in content:
+            result.setdefault("frameworks", []).append("Axum")
+        if "tokio" in content:
+            result.setdefault("frameworks", []).append("Tokio")
+        if "[workspace]" in content:
+            result["is_workspace"] = True
+    except IOError:
+        pass
+
+    return result
 
 
 def scan_directory_structure(repo_path: str, max_depth: int = 6) -> dict[str, Any]:
@@ -597,6 +881,12 @@ def scan_repo(repo_path: str, max_depth: int = 6) -> dict[str, Any]:
         result["ci_cd"] = detect_ci_cd(repo_path)
         result["precommit_hooks"] = detect_precommit(repo_path)
         result["structure"] = scan_directory_structure(repo_path, max_depth)
+        # Multi-language build systems
+        result["java"] = parse_java_build(repo_path)
+        result["python"] = parse_python_project(repo_path)
+        result["dotnet"] = parse_dotnet_project(repo_path)
+        result["go"] = parse_go_module(repo_path)
+        result["rust"] = parse_rust_cargo(repo_path)
         result["patterns"] = detect_patterns(repo_path, result["package_info"])
         result["ambiguous_items"] = result["structure"].pop("ambiguous_items", [])
     except Exception as e:

@@ -16,7 +16,7 @@ Run the **SDLC Preflight Agent** to prepare a customer's project for the SDLC Pi
 
 ## What This Does
 
-1. Validates `customer_onboarding_answers.md` against the schema
+1. Validates `intake-sources.md` against the schema
 2. Collects the customer's repository list
 3. Clones repositories via `scripts/scm-bootstrap.py`
 4. Smart-scans each repo for structure, dependencies, and patterns via `scripts/repo-scanner.py`
@@ -29,7 +29,7 @@ Run the **SDLC Preflight Agent** to prepare a customer's project for the SDLC Pi
 
 Read and follow the full agent instructions at `.github/agents/sdlc-preflight.agent.md`.
 
-**Start by reading** `customer_onboarding_answers.md` in the workspace root. If it doesn't exist, ask the user to provide it or point to its location.
+**Start by reading** `intake-sources.md` in the workspace root. If it doesn't exist, ask the user to provide it or point to its location.
 
 **Checkpoint:** Check for existing state at `.github/sdlc-pipeline/checkpoint_state.json`. If found, resume from the last completed phase. If not, start fresh from Phase 1.
 
