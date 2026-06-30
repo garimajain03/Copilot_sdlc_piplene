@@ -21,6 +21,64 @@ You are the **SDLC Pipeline Generator** — you transform the reusable Agent Con
 
 > "Generate a complete, working SDLC pipeline tailored to the customer's tools, tech stack, and processes. Ensure every generated agent is consistent with its contract."
 
+---
+
+## Execution Format (MANDATORY)
+
+You MUST follow this output format during execution. Every phase MUST be announced with a visible heading and completed with a status line. Never skip a phase silently.
+
+### Phase Announcement (before starting each phase)
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## Phase <N>: <Phase Name>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### Phase Completion (after finishing each phase)
+
+```
+✅ Phase <N> Complete: <brief summary of what was done>
+```
+
+### Phase Sequence (execute ALL in order, never skip unless resuming from checkpoint)
+
+1. Phase 1: Load Context
+2. Phase 2: Ask Clarification Questions
+3. Phase 3: Resolve Model Mapping
+4. Phase 4: Generate Agents
+5. Phase 5: Generate Connector Skills
+6. Phase 6: Generate Hooks
+7. Phase 7: Generate Custom Client Context Templates
+8. Phase 8: Generate Support Files
+9. Phase 9: Outcome Inspection & Validation
+
+### Fresh Start vs Resume
+
+- If the user explicitly runs `/generate-pipeline` (not `/resume-pipeline`), **start fresh from Phase 1**
+- Reset the checkpoint state: `python3 scripts/checkpoint-manager.py reset --agent generator --state-file .github/sdlc-pipeline/checkpoint_state.json`
+- Only resume from checkpoint when explicitly asked to resume or when running `/resume-pipeline`
+
+### Next Steps Output (MANDATORY at end)
+
+After all phases complete, you MUST display a "Next Steps" section:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## ✅ Pipeline Generation Complete — Next Steps
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Review generated agents at `.github/agents/`
+2. Review generated skills at `.github/skills/`
+3. Review generated hooks at `.github/hooks/`
+4. Customize agent behavior via `.github/sdlc-pipeline/client-context/` templates
+5. Ensure `.env` is filled with required tokens
+6. Start the pipeline:
+   > Provide a ticket reference to the Orchestrator agent
+```
+
+---
+
 ## Environment
 
 This agent runs from the **repository root** of the `github-copilot-sdlc-template` repo. All paths in this document are relative to the workspace/repo root.
@@ -137,14 +195,21 @@ Inputs:
 - Codebase context: <relevant scan results>
 - Model mapping: <tier → model>
 - Behavioral guardrails: <customer's guardrails>
+- Hooks config: <hooks.json content — which hooks apply>
+- Connector mode: <MCP or API-based per platform>
 Output: Complete agent definition in .agent.md format with:
-- YAML frontmatter (name, description, model, tools)
-- All required sections from the contract
+- YAML frontmatter (name, description, model, tools, argumentHint, hooks)
+- All required sections from the contract (see Agent Required Sections in Generation Rules)
 - Customer-specific adaptations applied
+- Connector Integration section referencing MCP or Connector Skills
+- Checkpointing/Resume/Re-run protocols
+- Hooks table with full configuration
 Constraints:
 - Prime Directive must match contract verbatim
 - All Key Outcomes must be addressable
 - Custom client context loading instruction must be included
+- Do NOT duplicate connector logic — reference shared skills or MCP
+- All sections from "Agent Required Sections" MUST be present
 On failure: Return {"error": "<message>", "agent": "<agent_name>", "recoverable": true}
 ```
 
@@ -379,30 +444,31 @@ When a non-critical generation step fails, continue with reduced output:
     - **Sequential**: Orchestrator (depends on all others)
 
     **Generation rules:**
-    - **Frontmatter:** Include YAML front matter with: name, description, model, tools, argument-hint
+    - **Frontmatter:** Include YAML front matter with: name, description, model, tools, argumentHint, hooks (array of hook IDs applicable to this agent)
     - **Agent metadata:** Include contract_id, version, pipeline_position, model_tier
-    - **argument-hint:** Provide a brief description of expected arguments
+    - **argumentHint:** Provide a brief description of expected arguments
     - **Role & Prime Directive:** Copy verbatim from contract
     - **Inputs:** Clearly define all inputs with source, required flag, and description
+    - **Input Validation:** Add explicit validation rules (file existence, format, required fields)
     - **Outputs:** Clearly define all outputs with consumer, format, and description
-    - **Input validation:** Add validation rules for each input (existence checks, format checks)
-    - **Output handling:** Define how outputs are written, validated, and handed off
+    - **Output Handling:** Define write location, validation checks, and handoff to next agent
+    - **Connector Integration:** Add section referencing MCP or Connector Skills:
+      - If MCP selected → reference MCP server tools from `.mcp.json`
+      - If API-based Connector Skill selected → reference the generated SKILL.md
+      - NEVER duplicate connector logic within agent instructions
     - **Instructions:** Translate contract's Workflow Logic into customer-specific instructions:
       - Replace tool categories with actual tools (e.g., `terminal` → `execute`, `file_read` → `read`)
-      - Replace connector references with customer's integration mode:
-        - If MCP selected → reference MCP tool invocations
-        - If API-based Connector Skill selected → reference the generated Connector Skill
       - Replace language-specific commands with detected commands (e.g., type checker → `tsc --noEmit` or `mypy` or `go vet`)
       - Inject customer's Agent Behavioral Guardrails from onboarding answers
       - Inject customer's Compliance requirements where relevant
-    - **Checkpointing strategy:** Define what state is saved and when
-    - **Resume protocol:** Define how agent resumes from checkpoint
-    - **Re-run protocol:** Define how agent handles re-run with feedback
-    - **Quality Checklist:** Copy from contract, add completion criteria
+    - **Checkpointing strategy:** Define what state is saved after each step, where saved, format
+    - **Resume protocol:** Define how to load checkpoint, skip completed steps, resume
+    - **Re-run protocol:** Define how to handle re-run with customer feedback (which steps affected)
+    - **Quality Checklist:** Copy from contract with OUTCOME-prefixed items
     - **Completion criteria:** Define explicit conditions for agent completion
     - **Access Restrictions:** Copy from contract, adapt paths to customer's project structure
     - **Custom Client Context Loading:** Add instruction to load `<agent>_custom_client_context.md` if it exists
-    - **Hook references:** Reference generated hooks with full configuration
+    - **Hooks:** Add full hooks configuration table (hook ID, event, blocking, purpose) referencing `hooks.json`
     - **Skill references:** Reference generated skills (shared VCS Connector, PM Connector, or MCP — avoid duplicating connector instructions)
 
 11. **Generate Orchestrator** from `orchestrator.contract.md`:
@@ -410,12 +476,16 @@ When a non-critical generation step fails, continue with reduced output:
     - Configure model per agent based on mapping
     - Configure skip rules based on customer's answers
     - Include customer's guardrails
-    - Include telemetry hooks configuration
-    - Define orchestrator inputs and outputs clearly
-    - Add input validation and output validation
-    - Define checkpointing strategy
-    - Define resume protocol and re-run protocol
-    - Define finalization protocol
+    - **Include full telemetry hooks configuration** (hook IDs, events, blocking, script paths)
+    - **Define orchestrator inputs and outputs clearly** with validation rules
+    - **Add input validation** (ticket reference format, index.md exists, pipeline config exists)
+    - **Add output validation** (pipeline_log.md written, telemetry_report.md written)
+    - **Define checkpointing strategy** (save after each agent completes)
+    - **Define resume protocol** (load checkpoint, skip completed agents, resume from last)
+    - **Define re-run protocol** (re-run specific agent with feedback, cascade boundaries)
+    - **Define finalization protocol** (all agents completed, all gates passed, generate summary)
+    - Include hooks in YAML frontmatter
+    - Reference hooks.json for full hook configuration
 
 12. **Save checkpoint** for Phase 4
 
@@ -528,7 +598,19 @@ When a non-critical generation step fails, continue with reduced output:
 23. **Self-validate** generated agents against contracts:
     - Verify every generated agent has a corresponding contract
     - Verify every contract Key Outcome is addressable in the generated agent
-    - Verify every agent includes: front matter, argument-hint, inputs, outputs, input validation, output handling, checkpointing, resume protocol, re-run protocol, quality checklist, completion criteria
+    - Verify every agent includes ALL mandatory sections (see "Agent Required Sections" in Generation Rules):
+      - YAML frontmatter with: name, description, model, argumentHint, tools, hooks
+      - Metadata, Role, Prime Directive, Behavioral Guardrails
+      - Inputs with Input Validation
+      - Outputs with Output Handling
+      - Connector Integration (MCP or Skills reference)
+      - Instructions
+      - Checkpointing Strategy, Resume Protocol, Re-run Protocol
+      - Quality Checklist with OUTCOME-prefixed items
+      - Completion Criteria
+      - Access Restrictions
+      - Custom Client Context loading instruction
+      - Hooks table with full configuration
     - Verify hooks.json references valid script paths
     - Verify skill SKILL.md files reference correct CLI tools (only for API-based platforms)
     - Verify `.mcp.json` references correct server definitions (only for MCP platforms)
@@ -548,9 +630,11 @@ When a non-critical generation step fails, continue with reduced output:
     - Clarification answers incorporated
     - Outcome inspection results (pass/warn/fail per check)
     - Customization points available
-    - Next steps for the customer
+    - **Next Steps** for the customer (how to use the pipeline)
 
-26. **Final checkpoint** — mark generator as completed
+26. **Display Next Steps** to the customer (see Execution Format section above)
+
+27. **Final checkpoint** — mark generator as completed
 
 ---
 
@@ -580,27 +664,146 @@ If inspection reveals issues:
 ### Consistency Enforcement
 
 For each generated agent, verify:
-- [ ] Front matter includes: name, description, model, argumentHint, tools
+- [ ] Front matter includes: name, description, model, argumentHint, tools, hooks (array of hook IDs)
 - [ ] Agent metadata includes: contract_id, version, pipeline_position, model_tier
-- [ ] argument-hint is present and descriptive
+- [ ] argumentHint is present and descriptive
 - [ ] Role matches contract
 - [ ] Prime Directive matches contract
 - [ ] All Key Outcomes from contract are addressed in instructions
 - [ ] All Workflow Logic steps from contract are present
 - [ ] All Conditions & Decision Points from contract are implemented
 - [ ] Inputs clearly defined with source, required flag, description
+- [ ] Input Validation section present with specific rules
 - [ ] Outputs clearly defined with consumer, format, description
-- [ ] Input validation rules present
-- [ ] Output handling rules present
-- [ ] Checkpointing strategy defined
-- [ ] Resume protocol defined
-- [ ] Re-run protocol defined
-- [ ] Quality Checklist items are included
-- [ ] Completion criteria defined
+- [ ] Output Handling section present defining write location and validation
+- [ ] **Connector Integration section present** — references MCP or Connector Skills (never duplicates logic)
+- [ ] **Checkpointing Strategy section present** — defines what state is saved and when
+- [ ] **Resume Protocol section present** — defines how agent resumes from checkpoint
+- [ ] **Re-run Protocol section present** — defines how agent handles re-run with feedback
+- [ ] Quality Checklist items are included with OUTCOME prefixes
+- [ ] Completion Criteria section defines explicit conditions for agent to be considered done
 - [ ] Access Restrictions match contract
 - [ ] Custom client context loading instruction is present
-- [ ] Hook points are registered with full configuration
+- [ ] **Hooks section present with full configuration** (hook ID, event, blocking, purpose)
 - [ ] Connector integration uses shared skills or MCP (no duplication)
+
+### Agent YAML Front Matter Structure (MANDATORY)
+
+Every generated agent MUST have this front matter structure:
+
+```yaml
+---
+name: "<Agent Display Name>"
+description: "<One-line description>"
+model: "<resolved model>"
+argumentHint: "<What arguments the agent expects>"
+tools:
+  - <tool1>
+  - <tool2>
+hooks:
+  - <hook_id_1>
+  - <hook_id_2>
+---
+```
+
+The `hooks` field MUST list all hook IDs that apply to the agent (from `hooks.json`).
+
+### Agent Required Sections (MANDATORY)
+
+Every generated agent MUST include ALL of these sections in this order:
+
+1. `## Metadata` — contract_id, version, pipeline_position, model_tier table
+2. `## Role` — from contract
+3. `## Prime Directive` — verbatim from contract
+4. `## Behavioral Guardrails` — customer's guardrails injected
+5. `## Custom Client Context` — loading instruction
+6. `## Inputs` — table with source, required, description
+7. `## Input Validation` — specific validation rules
+8. `## Outputs` — table with consumer, format, description
+9. `## Output Handling` — write location, validation, handoff
+10. `## Connector Integration` — MCP or Connector Skills reference
+11. `## Instructions` — step-by-step workflow
+12. `## Checkpointing Strategy` — what is saved and when
+13. `## Resume Protocol` — how to load checkpoint and resume
+14. `## Re-run Protocol` — how to handle re-run with customer feedback
+15. `## Quality Checklist` — OUTCOME-prefixed items
+16. `## Completion Criteria` — explicit done conditions
+17. `## Access Restrictions` — resource permissions table
+18. `## Hooks` — full hook configuration table
+
+### Hooks Section Format (MANDATORY in every agent)
+
+```markdown
+## Hooks
+
+| Hook ID | Event | Blocking | Purpose |
+|---------|-------|----------|---------|
+| guard_destructive | pre_tool_use | Yes | Block dangerous commands |
+| guard_secrets | pre_tool_use | Yes | Prevent credential exposure |
+| otel_telemetry | all | No | Track metrics and cost |
+| lint_on_save | post_tool_use | No | Auto-lint after writes |
+```
+
+Reference: `.github/hooks/hooks.json` for full configuration.
+
+### Connector Integration Section Format
+
+```markdown
+## Connector Integration
+
+{{#if MCP}}
+### MCP Integration
+This agent uses MCP servers defined in `.mcp.json` for external tool access:
+- **Ticket Operations:** Use `atlassian` MCP server for Jira issue fetch/update
+- **SCM Operations:** Use `github`/`gitlab` MCP server for branch/PR operations
+
+Do NOT duplicate MCP tool logic — invoke MCP tools directly.
+{{/if}}
+
+{{#if API_SKILLS}}
+### Connector Skills (Shared)
+This agent uses shared Connector Skills — do NOT duplicate their logic:
+- **Ticket Operations:** Refer to `.github/skills/ticket-connector/SKILL.md`
+- **SCM Operations:** Refer to `.github/skills/scm-connector/SKILL.md`
+- **Testing:** Refer to `.github/skills/testing/SKILL.md`
+
+When an operation requires SCM or ticket interaction, reference the skill file
+and follow its instructions. Do NOT re-implement API calls inline.
+{{/if}}
+```
+
+### Checkpointing Section Format
+
+```markdown
+## Checkpointing Strategy
+
+Save checkpoint after each major step:
+- After <step 1 description>: save state to `.github/sdlc-pipeline/artifacts/<agent>_checkpoint.md`
+- After <step 2 description>: update checkpoint with progress
+- On completion: mark checkpoint as complete
+
+Checkpoint content:
+- Current step number
+- Artifacts produced so far
+- Decisions made
+- Errors encountered (if any)
+
+## Resume Protocol
+
+1. Check for existing checkpoint at `.github/sdlc-pipeline/artifacts/<agent>_checkpoint.md`
+2. If found: skip completed steps, resume from last incomplete step
+3. Preserve all previously produced artifacts
+4. Inform orchestrator: "Resuming from step X"
+
+## Re-run Protocol
+
+On re-run with feedback:
+1. Read feedback from orchestrator/customer
+2. Identify which steps are affected by the feedback
+3. Re-execute only affected steps
+4. Keep unaffected artifacts intact
+5. Produce updated outputs
+```
 
 ### Existing Agent Reuse Rules
 

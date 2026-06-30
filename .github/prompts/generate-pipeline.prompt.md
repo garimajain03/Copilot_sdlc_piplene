@@ -21,7 +21,7 @@ Run the **SDLC Pipeline Generator** to create customer-specific SDLC agents from
 3. Determines connector integration mode per platform (MCP vs API-based from `.mcp.json` and `connector_config.md`)
 4. Asks clarification questions about tools, ways of working, and standards
 5. Maps contract model tiers (reasoning/coding/fast) to customer's approved models
-6. Generates agent definitions (`.github/agents/agent<N>_<name>.md`) with full metadata, inputs/outputs, validation, checkpointing, and completion criteria
+6. Generates agent definitions (`.github/agents/agent<N>_<name>.md`) with full metadata, inputs/outputs, validation, checkpointing, hooks, connector integration, and completion criteria
 7. Generates connector skill definitions only for API-based platforms (`.github/skills/<skill>/SKILL.md`)
 8. Generates cross-platform hook scripts (`.github/hooks/<hook>.py`) and `hooks.json`
 9. Creates custom client context templates for each agent
@@ -41,8 +41,15 @@ The `/preflight` command must have completed successfully first. Required output
 
 Read and follow the full agent instructions at `.github/agents/sdlc-pipeline-generator.agent.md`.
 
+**IMPORTANT — Execution Format:**
+- You MUST announce each phase with a visible heading before starting it
+- You MUST show a completion status after each phase
+- You MUST execute all phases sequentially (Phase 1 through Phase 9)
+- You MUST NOT skip any phase unless resuming from a checkpoint
+- You MUST display "Next Steps" at the end
+
 **Start by verifying** the preflight outputs exist. If they don't, tell the user to run `/preflight` first.
 
-**Checkpoint:** Check for existing state at `.github/sdlc-pipeline/checkpoint_state.json`. If found for agent `generator`, resume from the last completed phase. If not, start fresh from Phase 1.
+**Fresh Start:** When running `/generate-pipeline`, always start fresh from Phase 1. Reset any existing generator checkpoint state first.
 
-**On completion:** Report the generation summary and tell the user their SDLC pipeline is ready.
+**On completion:** Display the Next Steps section with instructions on how to use the generated pipeline.

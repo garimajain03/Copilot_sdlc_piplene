@@ -14,6 +14,10 @@ tools:
   {{#each TOOLS}}
   - {{this}}
   {{/each}}
+hooks:
+  {{#each HOOKS}}
+  - {{this}}
+  {{/each}}
 ---
 
 # {{AGENT_DISPLAY_NAME}}
@@ -35,14 +39,6 @@ tools:
 
 ## Behavioral Guardrails
 {{CUSTOMER_GUARDRAILS}}
-
-## Custom Client Context
-If the file `{{AGENT_SLUG}}_custom_client_context.md` exists at
-`<project_root>/.github/sdlc-pipeline/client-context/`, read it at the start of this run
-and apply its instructions throughout.
-
-Custom client context takes precedence over default behavior but NEVER overrides
-the Prime Directive, Access Restrictions, or security guardrails.
 
 ## Inputs
 
@@ -68,23 +64,28 @@ the Prime Directive, Access Restrictions, or security guardrails.
 
 {{OUTPUT_HANDLING_RULES}}
 
-## Instructions
-
-{{WORKFLOW_INSTRUCTIONS}}
-
 ## Connector Integration
 
 {{#if USE_MCP}}
 ### MCP Integration
-This agent uses MCP servers for external tool integration. Invoke MCP tools directly:
+This agent uses MCP servers defined in `.mcp.json` for external tool access:
 {{MCP_TOOL_REFERENCES}}
+
+Do NOT duplicate MCP tool logic — invoke MCP tools directly.
 {{/if}}
 
 {{#if USE_CONNECTOR_SKILLS}}
-### Connector Skills
-This agent uses shared Connector Skills for external tool integration:
+### Connector Skills (Shared)
+This agent uses shared Connector Skills — do NOT duplicate their logic:
 {{SKILL_REFERENCES}}
+
+When an operation requires SCM or ticket interaction, reference the skill file
+and follow its instructions. Do NOT re-implement API calls inline.
 {{/if}}
+
+## Instructions
+
+{{WORKFLOW_INSTRUCTIONS}}
 
 ## Checkpointing Strategy
 
@@ -98,14 +99,6 @@ This agent uses shared Connector Skills for external tool integration:
 
 {{RERUN_PROTOCOL}}
 
-## Access Restrictions
-
-{{ACCESS_RESTRICTIONS_FROM_CONTRACT}}
-
-## Hooks
-
-{{HOOK_REFERENCES}}
-
 ## Quality Checklist
 
 {{QUALITY_CHECKLIST_FROM_CONTRACT}}
@@ -113,6 +106,28 @@ This agent uses shared Connector Skills for external tool integration:
 ## Completion Criteria
 
 {{COMPLETION_CRITERIA}}
+
+## Access Restrictions
+
+{{ACCESS_RESTRICTIONS_FROM_CONTRACT}}
+
+## Custom Client Context
+
+If the file `{{AGENT_SLUG}}_custom_client_context.md` exists at `.github/sdlc-pipeline/client-context/`,
+read it at the start of this run and apply its instructions throughout.
+
+Custom client context takes precedence over default behavior but NEVER overrides
+the Prime Directive, Access Restrictions, or security guardrails.
+
+## Hooks
+
+| Hook ID | Event | Blocking | Purpose |
+|---------|-------|----------|---------|
+{{#each HOOK_TABLE}}
+| {{this.id}} | {{this.event}} | {{this.blocking}} | {{this.purpose}} |
+{{/each}}
+
+Reference: `.github/hooks/hooks.json` for full hook configuration.
 ```
 
 ## Variable Resolution
@@ -122,11 +137,12 @@ This agent uses shared Connector Skills for external tool integration:
 | `AGENT_DISPLAY_NAME` | Contract → agent_name |
 | `AGENT_DESCRIPTION` | Contract → Role (first sentence) |
 | `RESOLVED_MODEL` | Contract model_tier → Customer's model mapping |
-| `ARGUMENT_HINT` | Contract → argument-hint or generated from inputs |
+| `ARGUMENT_HINT` | Contract → argument_hint or generated from inputs |
 | `CONTRACT_ID` | Contract → contract_id |
 | `PIPELINE_POSITION` | Contract → pipeline_position |
 | `MODEL_TIER` | Contract → model_tier |
 | `TOOLS` | Contract tool_categories → resolved to platform tools |
+| `HOOKS` | Hook IDs applicable to this agent (from hooks.json) |
 | `ROLE_FROM_CONTRACT` | Contract → Role section (verbatim) |
 | `PRIME_DIRECTIVE_FROM_CONTRACT` | Contract → Prime Directive (verbatim) |
 | `CUSTOMER_GUARDRAILS` | Onboarding answers → Agent Behavioral Guardrails |
@@ -134,17 +150,17 @@ This agent uses shared Connector Skills for external tool integration:
 | `INPUTS` | Contract → Inputs table |
 | `INPUT_VALIDATION_RULES` | Generated from contract inputs (file existence, format checks) |
 | `OUTPUTS` | Contract → Outputs table |
-| `OUTPUT_HANDLING_RULES` | Generated from contract outputs (write location, validation) |
+| `OUTPUT_HANDLING_RULES` | Generated from contract outputs (write location, validation, handoff) |
 | `WORKFLOW_INSTRUCTIONS` | Contract → Workflow Logic, adapted to customer tools |
 | `USE_MCP` | True if platform uses MCP integration |
 | `MCP_TOOL_REFERENCES` | MCP server/tool invocation instructions from `.mcp.json` |
 | `USE_CONNECTOR_SKILLS` | True if platform uses API-based Connector Skills |
 | `SKILL_REFERENCES` | Generated skills matching contract skill references |
-| `CHECKPOINTING_STRATEGY` | Generated: what state to save, when, format |
-| `RESUME_PROTOCOL` | Generated: how to load checkpoint and resume |
+| `CHECKPOINTING_STRATEGY` | Generated: what state to save, when, where, format |
+| `RESUME_PROTOCOL` | Generated: how to load checkpoint, skip completed steps, resume |
 | `RERUN_PROTOCOL` | Generated: how to handle re-run with customer feedback |
 | `ACCESS_RESTRICTIONS_FROM_CONTRACT` | Contract → Access Restrictions |
-| `HOOK_REFERENCES` | Generated hooks matching contract hook points |
-| `QUALITY_CHECKLIST_FROM_CONTRACT` | Contract → Quality Checklist |
+| `HOOK_TABLE` | Generated table rows: id, event, blocking, purpose per hook |
+| `QUALITY_CHECKLIST_FROM_CONTRACT` | Contract → Quality Checklist (OUTCOME-prefixed) |
 | `COMPLETION_CRITERIA` | Generated: explicit conditions for agent to be considered done |
 | `AGENT_VERSION` | Contract → version |

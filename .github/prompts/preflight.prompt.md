@@ -28,15 +28,23 @@ Run the **SDLC Preflight Agent** to prepare a customer's project for the SDLC Pi
 10. Generates `copilot-instructions.md` using scanned repository context
 11. Generates `setup.sh` (macOS/Linux) and `setup.ps1` (Windows) — both include prerequisite installation, workspace config, submodule init, and validation
 12. Generates connector configs, `.env.template`, and `.gitmodules` (if default workspace)
-13. Self-validates all outputs via `scripts/outcome-inspector.py`
-14. Writes `preflight_report.md` with results and next steps
+13. Runs the appropriate setup script to install all prerequisites
+14. Self-validates all outputs via `scripts/outcome-inspector.py`
+15. Writes `preflight_report.md` with results and next steps
 
 ## Instructions
 
 Read and follow the full agent instructions at `.github/agents/sdlc-preflight.agent.md`.
 
+**IMPORTANT — Execution Format:**
+- You MUST announce each phase with a visible heading before starting it
+- You MUST show a completion status after each phase
+- You MUST execute all phases sequentially (Phase 1 through Phase 10)
+- You MUST NOT skip any phase unless resuming from a checkpoint
+- You MUST display "Next Steps" at the end
+
 **Start by reading** `intake-sources.md` in the workspace root. If it doesn't exist, ask the user to provide it or point to its location.
 
-**Checkpoint:** Check for existing state at `.github/sdlc-pipeline/checkpoint_state.json`. If found, resume from the last completed phase. If not, start fresh from Phase 1.
+**Fresh Start:** When running `/preflight`, always start fresh from Phase 1. Reset any existing checkpoint state first.
 
-**On completion:** Tell the user to run `/generate-pipeline` next.
+**On completion:** Display the Next Steps section telling the user to run `/generate-pipeline` next.

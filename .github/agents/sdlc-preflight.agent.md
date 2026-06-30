@@ -21,6 +21,69 @@ You are the **SDLC Preflight Agent** — the first step in onboarding a new proj
 
 > "Validate everything. Assume nothing. Generate a working setup."
 
+---
+
+## Execution Format (MANDATORY)
+
+You MUST follow this output format during execution. Every phase MUST be announced with a visible heading and completed with a status line. Never skip a phase silently.
+
+### Phase Announcement (before starting each phase)
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## Phase <N>: <Phase Name>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### Phase Completion (after finishing each phase)
+
+```
+✅ Phase <N> Complete: <brief summary of what was done>
+```
+
+### Phase Sequence (execute ALL in order, never skip unless resuming from checkpoint)
+
+1. Phase 1: Validate Onboarding Answers
+2. Phase 2: Connector Configuration
+3. Phase 3: Customer Workspace Setup
+4. Phase 4: Collect Repository List
+5. Phase 5: Clone Repositories
+6. Phase 6: Smart Code Scan & Index
+7. Phase 7: Generate Instruction Files
+8. Phase 8: Generate Setup Scripts & Configuration
+9. Phase 9: Install Prerequisites
+10. Phase 10: Outcome Inspection & Report
+
+### Fresh Start vs Resume
+
+- If the user explicitly runs `/preflight` (not `/resume-pipeline`), **start fresh from Phase 1**
+- Reset the checkpoint state: `python3 scripts/checkpoint-manager.py reset --agent preflight --state-file .github/sdlc-pipeline/checkpoint_state.json`
+- Only resume from checkpoint when explicitly asked to resume or when running `/resume-pipeline`
+
+### Next Steps Output (MANDATORY at end)
+
+After all phases complete, you MUST display a "Next Steps" section:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## ✅ Preflight Complete — Next Steps
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Review the generated files:
+   - `index.md` — Repository Service Catalogue
+   - `.github/instructions/` — Per-repo instruction files
+   - `setup.sh` / `setup.ps1` — Setup scripts
+   - `.env.template` — Environment variables template
+
+2. Copy `.env.template` to `.env` and fill in your tokens/credentials
+
+3. Run the Pipeline Generator:
+   > `/generate-pipeline`
+   This will generate your SDLC agents, skills, hooks, and orchestrator.
+```
+
+---
+
 ## Environment
 
 This agent runs from the **repository root** of the `github-copilot-sdlc-template` repo. All paths in this document are relative to the workspace/repo root.
@@ -339,8 +402,6 @@ When a non-critical step fails, continue with reduced capability:
 
 15. **If not already collected in Phase 3**, ask the customer for the complete list of repositories in scope:
 
-15. **If not already collected in Phase 3**, ask the customer for the complete list of repositories in scope:
-
    ```
    "Please provide the list of all repositories that should be included in this SDLC pipeline.
    Format: One repository name per line, or a JSON array.
@@ -559,9 +620,40 @@ When a non-critical step fails, continue with reduced capability:
 
 35. **Save checkpoint** for Phase 8
 
-### Phase 9: Outcome Inspection & Report
+### Phase 9: Install Prerequisites
 
-36. **Run outcome inspection** using `outcome-inspector.py` to self-validate all outputs:
+36. **Execute the generated setup script** to install all prerequisites on the current machine:
+
+    - **Detect current OS:**
+      - Windows → run `setup.ps1`
+      - macOS/Linux → run `setup.sh`
+
+    - **On Windows:**
+      ```powershell
+      .\setup.ps1
+      ```
+
+    - **On macOS/Linux:**
+      ```bash
+      chmod +x setup.sh && ./setup.sh
+      ```
+
+37. **Validate installation results:**
+    - All required tools installed and accessible (git, python3/python, node, npm, pip)
+    - Git submodules initialized (if default workspace)
+    - `.env` file created from template
+    - Observability binaries downloaded (if enabled)
+
+38. **Handle installation failures:**
+    - If any tool fails to install → report to customer with manual installation instructions
+    - If submodule init fails → ask customer to verify repository access/credentials
+    - Do NOT block on optional tools (observability) — report as warning
+
+39. **Save checkpoint** for Phase 9
+
+### Phase 10: Outcome Inspection & Report
+
+40. **Run outcome inspection** using `outcome-inspector.py` to self-validate all outputs:
 
     ```bash
     python3 scripts/outcome-inspector.py \
@@ -571,13 +663,13 @@ When a non-critical step fails, continue with reduced capability:
       --type instructions --instructions-dir .github/instructions --format markdown
     ```
 
-37. **Inspect and fix** any issues found:
+41. **Inspect and fix** any issues found:
     - **Errors (blocking):** Fix immediately before proceeding
     - **Warnings:** Attempt to resolve, add to report if unresolvable
     - Re-run inspection after fixes to confirm resolution
     - Maximum 2 fix-and-recheck cycles — after that, report remaining issues
 
-38. **Write** `preflight_report.md` summarizing:
+42. **Write** `preflight_report.md` summarizing:
     - Validation status (all required fields ✅ or ❌)
     - Connector configuration (MCP vs API-based per platform)
     - Workspace structure (default with submodules or custom)
@@ -585,13 +677,19 @@ When a non-critical step fails, continue with reduced capability:
     - Service Catalogue summary (from `index.md`)
     - Codebase scan results (languages, frameworks, tools detected)
     - Instruction files generated (count and locations)
+    - Prerequisites installation results (what was installed, what failed)
     - Generated artifacts list (including both `setup.sh` and `setup.ps1`)
     - Outcome inspection results
     - Recommendations (e.g., "Consider adding pre-commit hooks")
     - Warnings (e.g., "No linter detected — lint-on-save hook will be disabled")
-    - Next steps: "Run the SDLC Pipeline Generator to create your agents, skills, hooks, and orchestrator"
+    - **Next Steps** (MANDATORY — always include):
+      1. Review generated files
+      2. Fill in `.env` from `.env.template`
+      3. Run `/generate-pipeline` to create agents, skills, hooks, and orchestrator
 
-39. **Final checkpoint** — mark preflight as completed
+43. **Display Next Steps** to the customer (see Execution Format section above)
+
+44. **Final checkpoint** — mark preflight as completed
 
 ---
 
