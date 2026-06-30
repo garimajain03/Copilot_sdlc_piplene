@@ -3,6 +3,17 @@
 > This template defines the structure that the Pipeline Generator uses to produce
 > customer-specific agent definition files. Variables in `{{VARIABLE}}` are replaced
 > during generation.
+>
+> **CRITICAL:** Every variable MUST be resolved with SPECIFIC content from the contract.
+> NEVER use generic placeholder text. If a variable cannot be resolved, the generator
+> must read the contract again and extract the specific content.
+>
+> **ANTI-PATTERNS (NEVER produce these):**
+> - `{{WORKFLOW_INSTRUCTIONS}}` → "Execute contract workflow logic" ❌ (must be full step-by-step from contract)
+> - `{{INPUTS}}` → "Contract-required upstream artifacts" ❌ (must list exact artifacts from contract)
+> - `{{OUTPUTS}}` → "Stage outputs" ❌ (must list exact artifacts from contract)
+> - `{{QUALITY_CHECKLIST_FROM_CONTRACT}}` → "Address this contract outcome" ❌ (must include full descriptive text)
+> - `{{COMPLETION_CRITERIA}}` → Same 4 lines for every agent ❌ (must be agent-specific)
 
 ```markdown
 ---
@@ -132,35 +143,35 @@ Reference: `.github/hooks/hooks.json` for full hook configuration.
 
 ## Variable Resolution
 
-| Variable | Source |
-|----------|--------|
-| `AGENT_DISPLAY_NAME` | Contract → agent_name |
-| `AGENT_DESCRIPTION` | Contract → Role (first sentence) |
-| `RESOLVED_MODEL` | Contract model_tier → Customer's model mapping |
-| `ARGUMENT_HINT` | Contract → argument_hint or generated from inputs |
-| `CONTRACT_ID` | Contract → contract_id |
-| `PIPELINE_POSITION` | Contract → pipeline_position |
-| `MODEL_TIER` | Contract → model_tier |
-| `TOOLS` | Contract tool_categories → resolved to platform tools |
-| `HOOKS` | Hook IDs applicable to this agent (from hooks.json) |
-| `ROLE_FROM_CONTRACT` | Contract → Role section (verbatim) |
-| `PRIME_DIRECTIVE_FROM_CONTRACT` | Contract → Prime Directive (verbatim) |
-| `CUSTOMER_GUARDRAILS` | Onboarding answers → Agent Behavioral Guardrails |
-| `AGENT_SLUG` | Agent name in kebab-case (e.g., `agent0_ticket_analyzer`) |
-| `INPUTS` | Contract → Inputs table |
-| `INPUT_VALIDATION_RULES` | Generated from contract inputs (file existence, format checks) |
-| `OUTPUTS` | Contract → Outputs table |
-| `OUTPUT_HANDLING_RULES` | Generated from contract outputs (write location, validation, handoff) |
-| `WORKFLOW_INSTRUCTIONS` | Contract → Workflow Logic, adapted to customer tools |
-| `USE_MCP` | True if platform uses MCP integration |
-| `MCP_TOOL_REFERENCES` | MCP server/tool invocation instructions from `.mcp.json` |
-| `USE_CONNECTOR_SKILLS` | True if platform uses API-based Connector Skills |
-| `SKILL_REFERENCES` | Generated skills matching contract skill references |
-| `CHECKPOINTING_STRATEGY` | Generated: what state to save, when, where, format |
-| `RESUME_PROTOCOL` | Generated: how to load checkpoint, skip completed steps, resume |
-| `RERUN_PROTOCOL` | Generated: how to handle re-run with customer feedback |
-| `ACCESS_RESTRICTIONS_FROM_CONTRACT` | Contract → Access Restrictions |
-| `HOOK_TABLE` | Generated table rows: id, event, blocking, purpose per hook |
-| `QUALITY_CHECKLIST_FROM_CONTRACT` | Contract → Quality Checklist (OUTCOME-prefixed) |
+| Variable | Source | Expected Content (NOT generic) |
+|----------|--------|-------------------------------|
+| `AGENT_DISPLAY_NAME` | Contract → agent_name | e.g., "Ticket Analyzer" |
+| `AGENT_DESCRIPTION` | Contract → Role (first sentence) | e.g., "Fetches ticket context and classifies for routing" |
+| `RESOLVED_MODEL` | Contract model_tier → Customer's model mapping | e.g., "gpt-4o" |
+| `ARGUMENT_HINT` | Contract → argument_hint or generated from inputs | e.g., "Ticket ID or requirement file path" |
+| `CONTRACT_ID` | Contract → contract_id | e.g., "AC-000" |
+| `PIPELINE_POSITION` | Contract → pipeline_position | e.g., "0" |
+| `MODEL_TIER` | Contract → model_tier | e.g., "reasoning" |
+| `TOOLS` | Contract tool_categories → resolved to platform tools | e.g., ["execute", "read", "edit"] |
+| `HOOKS` | Hook IDs applicable to this agent (from hooks.json) | e.g., ["guard_destructive", "otel_telemetry"] |
+| `ROLE_FROM_CONTRACT` | Contract → Role section (verbatim) | Full role paragraph from contract |
+| `PRIME_DIRECTIVE_FROM_CONTRACT` | Contract → Prime Directive (verbatim) | Exact quote from contract |
+| `CUSTOMER_GUARDRAILS` | Onboarding answers → Agent Behavioral Guardrails | Customer's specific guardrails list |
+| `AGENT_SLUG` | Agent name in kebab-case (e.g., `agent0_ticket_analyzer`) | Used for file references |
+| `INPUTS` | Contract → Inputs table (EXACT rows, not generic) | Every artifact row from contract's Inputs table |
+| `INPUT_VALIDATION_RULES` | Contract → Input Validation section (specific rules per input) | e.g., "Ticket ID must match prefix regex" |
+| `OUTPUTS` | Contract → Outputs table (EXACT rows, not generic) | Every artifact row from contract's Outputs table |
+| `OUTPUT_HANDLING_RULES` | Contract → specific write paths, validation, handoff per output | e.g., "Write ticket_analysis.md to outputs/<ID>/" |
+| `WORKFLOW_INSTRUCTIONS` | Contract → Workflow Logic (ALL steps with conditions/actions/outputs) | Full numbered step-by-step, typically 30-100 lines |
+| `USE_MCP` | True if platform uses MCP integration | Boolean |
+| `MCP_TOOL_REFERENCES` | MCP server/tool invocation instructions from `.mcp.json` | Server names and usage |
+| `USE_CONNECTOR_SKILLS` | True if platform uses API-based Connector Skills | Boolean |
+| `SKILL_REFERENCES` | Generated skills matching contract skill references | Skill paths and purposes |
+| `CHECKPOINTING_STRATEGY` | Generated: agent-specific state fields, save triggers, file path, format example | e.g., "Save ticket_id, classification, repo_candidates after step 6" |
+| `RESUME_PROTOCOL` | Generated: agent-specific resume from checkpoint with step references | e.g., "If classification exists, skip steps 1-5, resume from step 6" |
+| `RERUN_PROTOCOL` | Generated: agent-specific cascade effects and affected steps | e.g., "If reclassify requested, invalidate downstream routing" |
+| `ACCESS_RESTRICTIONS_FROM_CONTRACT` | Contract → Access Restrictions table | Permission table from contract |
+| `HOOK_TABLE` | Generated table rows: id, event, blocking, purpose per hook | Full hook config rows |
+| `QUALITY_CHECKLIST_FROM_CONTRACT` | Contract → Key Outcomes with FULL descriptive text | e.g., "[OUTCOME-FETCH] All relevant ticket context retrieved and materialized" |
 | `COMPLETION_CRITERIA` | Generated: explicit conditions for agent to be considered done |
 | `AGENT_VERSION` | Contract → version |

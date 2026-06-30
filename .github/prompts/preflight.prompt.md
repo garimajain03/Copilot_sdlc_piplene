@@ -37,10 +37,11 @@ Run the **SDLC Preflight Agent** to prepare a customer's project for the SDLC Pi
 Read and follow the full agent instructions at `.github/agents/sdlc-preflight.agent.md`.
 
 **IMPORTANT — Execution Format:**
-- You MUST announce each phase with a visible heading before starting it
+- You MUST announce each phase with a visible heading before starting it (single separator line above the heading only, no line below)
 - You MUST show a completion status after each phase
 - You MUST execute all phases sequentially (Phase 1 through Phase 10)
 - You MUST NOT skip any phase unless resuming from a checkpoint
+- You MUST NOT ask "Continue/Pause/Re-run" between phases — auto-continue to the next phase immediately
 - You MUST display "Next Steps" at the end
 
 **Start by reading** `intake-sources.md` in the workspace root. If it doesn't exist, ask the user to provide it or point to its location.

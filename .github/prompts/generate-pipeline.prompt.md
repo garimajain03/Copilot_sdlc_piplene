@@ -42,11 +42,18 @@ The `/preflight` command must have completed successfully first. Required output
 Read and follow the full agent instructions at `.github/agents/sdlc-pipeline-generator.agent.md`.
 
 **IMPORTANT — Execution Format:**
-- You MUST announce each phase with a visible heading before starting it
+- You MUST announce each phase with a visible heading before starting it (single separator line above the heading only, no line below)
 - You MUST show a completion status after each phase
 - You MUST execute all phases sequentially (Phase 1 through Phase 9)
 - You MUST NOT skip any phase unless resuming from a checkpoint
+- You MUST NOT ask "Continue/Pause/Re-run" between phases — auto-continue to the next phase immediately
 - You MUST display "Next Steps" at the end
+
+**Content Quality — CRITICAL:**
+- Generated agent Instructions sections MUST contain ALL steps from the contract's Workflow Logic (not generic boilerplate)
+- Generated Inputs/Outputs tables MUST list the EXACT artifacts from each contract (not generic placeholders)
+- Generated Quality Checklists MUST include full descriptive text from contract Key Outcomes
+- The Orchestrator MUST include pipeline sequence, routing table, finalization protocol, and re-run boundaries from its contract
 
 **Start by verifying** the preflight outputs exist. If they don't, tell the user to run `/preflight` first.
 

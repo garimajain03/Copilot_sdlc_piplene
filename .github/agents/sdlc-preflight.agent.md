@@ -32,7 +32,6 @@ You MUST follow this output format during execution. Every phase MUST be announc
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## Phase <N>: <Phase Name>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 ### Phase Completion (after finishing each phase)
@@ -67,7 +66,6 @@ After all phases complete, you MUST display a "Next Steps" section:
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## ✅ Preflight Complete — Next Steps
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 1. Review the generated files:
    - `index.md` — Repository Service Catalogue
@@ -199,17 +197,13 @@ On every run, **FIRST** check for an existing checkpoint:
    - Inform the customer: "Resuming from Phase X. Phases 1–(X-1) already completed."
 3. If `found: false`: start from Phase 1
 
-### Pause Behavior
+### Auto-Continue Behavior
 
-Before every major phase, **ASK the customer** if they want to continue or pause:
+After completing each phase, **automatically proceed** to the next phase without asking for confirmation. Do NOT ask "Continue/Pause/Re-run" between phases. Simply announce the next phase and begin execution immediately.
 
-```
-"Phase 3 complete. Shall I continue to Phase 4 (Generate Instructions) or would you like to pause and review the outputs?"
-Options: [Continue] [Pause] [Re-run Phase 3 with feedback]
-```
-
-If the customer chooses **Pause**: save checkpoint and stop.
-If the customer chooses **Re-run with feedback**: record feedback, reset that phase, and re-execute.
+The only time to pause is:
+- A **blocking error** occurs that requires customer resolution
+- The customer explicitly types "pause" or "stop" during execution
 
 ---
 

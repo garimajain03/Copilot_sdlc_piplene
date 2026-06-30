@@ -32,7 +32,6 @@ You MUST follow this output format during execution. Every phase MUST be announc
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## Phase <N>: <Phase Name>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 ### Phase Completion (after finishing each phase)
@@ -66,7 +65,6 @@ After all phases complete, you MUST display a "Next Steps" section:
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## ✅ Pipeline Generation Complete — Next Steps
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 1. Review generated agents at `.github/agents/`
 2. Review generated skills at `.github/skills/`
@@ -190,7 +188,7 @@ When spawning a sub-agent for agent generation, use this prompt pattern:
 ```
 Task: Generate agent definition for <agent_name> from contract <contract_id>
 Inputs:
-- Contract: <full contract content or path>
+- Contract: <full contract content — MUST include the complete Workflow Logic section>
 - Customer config: <relevant onboarding answers>
 - Codebase context: <relevant scan results>
 - Model mapping: <tier → model>
@@ -202,8 +200,15 @@ Output: Complete agent definition in .agent.md format with:
 - All required sections from the contract (see Agent Required Sections in Generation Rules)
 - Customer-specific adaptations applied
 - Connector Integration section referencing MCP or Connector Skills
-- Checkpointing/Resume/Re-run protocols
+- Checkpointing/Resume/Re-run protocols SPECIFIC to this agent's workflow
 - Hooks table with full configuration
+CRITICAL RULES:
+- The Instructions section MUST reproduce ALL steps from the contract's Workflow Logic — every step with condition, action, reasoning, and output
+- The Inputs table MUST list the EXACT artifacts from the contract — never use "Contract-required upstream artifacts"
+- The Outputs table MUST list the EXACT artifacts from the contract — never use "Stage outputs"
+- The Quality Checklist MUST include the full descriptive text from contract Key Outcomes — never use "Address this contract outcome"
+- The Completion Criteria MUST be specific to this agent's outputs
+- NEVER produce generic/boilerplate content that could apply to any agent
 Constraints:
 - Prime Directive must match contract verbatim
 - All Key Outcomes must be addressable
@@ -255,18 +260,13 @@ On every run, **FIRST** check for an existing checkpoint:
    - Inform the customer: "Resuming from Phase X. Phases 1–(X-1) already completed."
 3. If `found: false`: start from Phase 1
 
-### Pause Behavior
+### Auto-Continue Behavior
 
-After each major phase, **ASK the customer** if they want to continue or pause:
+After completing each phase, **automatically proceed** to the next phase without asking for confirmation. Do NOT ask "Continue/Pause/Re-run" between phases. Simply announce the next phase and begin execution immediately.
 
-```
-"Phase 4 (Agent Generation) complete. Generated 12 agent definitions.
-Shall I continue to Phase 5 (Skill Generation) or would you like to pause and review the agents?"
-Options: [Continue] [Pause] [Re-run Phase 4 with feedback]
-```
-
-If the customer chooses **Pause**: save checkpoint and stop.
-If the customer chooses **Re-run with feedback**: record feedback, reset that phase, and re-execute.
+The only time to pause is:
+- A **blocking error** occurs that requires customer resolution
+- The customer explicitly types "pause" or "stop" during execution
 
 ---
 
@@ -379,7 +379,15 @@ When a non-critical generation step fails, continue with reduced output:
    1. CI/CD system (if not auto-detected)
    2. Any critical tool choices not detectable from the codebase
 
-   For **Standard mode**: Ask about 3-4 key areas, defaults for the rest.
+   For **Standard mode**: Ask about these key areas (in addition to basics):
+   1. CI/CD system (if not auto-detected from codebase scan)
+   2. Approval gate mode (batch, strict, or auto)
+   3. Test coverage threshold
+   4. Documentation level
+   5. Security scanning requirements
+   6. Observability preferences
+   7. Ways of Working (PR reviews, approvals count, branching strategy)
+   8. Testing strategy (E2E tests, integration tests, test frameworks)
 
    For **Detailed mode**: Full question set below.
 
@@ -443,47 +451,88 @@ When a non-critical generation step fails, continue with reduced output:
     - **Group D** (parallel): Agent 7, Agent 8 — documentation & IaC agents
     - **Sequential**: Orchestrator (depends on all others)
 
-    **Generation rules:**
+    **Generation rules (MANDATORY — follow exactly):**
+
     - **Frontmatter:** Include YAML front matter with: name, description, model, tools, argumentHint, hooks (array of hook IDs applicable to this agent)
     - **Agent metadata:** Include contract_id, version, pipeline_position, model_tier
     - **argumentHint:** Provide a brief description of expected arguments
     - **Role & Prime Directive:** Copy verbatim from contract
-    - **Inputs:** Clearly define all inputs with source, required flag, and description
-    - **Input Validation:** Add explicit validation rules (file existence, format, required fields)
-    - **Outputs:** Clearly define all outputs with consumer, format, and description
-    - **Output Handling:** Define write location, validation checks, and handoff to next agent
+    - **Inputs:** Copy the EXACT Inputs table from the contract — every row must appear with artifact name, source, required flag, and description. Do NOT use generic placeholders like "Contract-required upstream artifacts". Example: if the contract lists `ticket_analysis.md | Orchestrator | Yes | Classification and routing info`, that exact row must appear.
+    - **Input Validation:** Copy or adapt the Input Validation rules from the contract. Each input must have a specific validation rule (e.g., "Ticket ID must match prefix regex", "Repository index must list at least one repository"). Do NOT use generic rules like "artifacts must be non-empty".
+    - **Outputs:** Copy the EXACT Outputs table from the contract — every row must appear with artifact name, consumed-by, format, and description. Do NOT use generic placeholders like "Stage outputs". Example: if the contract lists `ticket_analysis.md | Orchestrator, Agent 1 | Markdown | Classification, repo candidates, pipeline recommendation`, that exact row must appear.
+    - **Output Handling:** Define specific write paths per artifact (e.g., "Write `ticket_analysis.md` to `outputs/<TICKET_ID>/ticket_analysis.md`"), specific validation checks per output, and explicit handoff instructions to the next agent.
     - **Connector Integration:** Add section referencing MCP or Connector Skills:
       - If MCP selected → reference MCP server tools from `.mcp.json`
       - If API-based Connector Skill selected → reference the generated SKILL.md
       - NEVER duplicate connector logic within agent instructions
-    - **Instructions:** Translate contract's Workflow Logic into customer-specific instructions:
+    - **Instructions (CRITICAL — this section must be contract-specific, NEVER generic):**
+      - Read the contract's **Workflow Logic** section completely
+      - Reproduce EVERY step from the contract's Workflow Logic as a numbered instruction
+      - Each step MUST include: Condition, Action, Reasoning, and Output (matching the contract)
       - Replace tool categories with actual tools (e.g., `terminal` → `execute`, `file_read` → `read`)
-      - Replace language-specific commands with detected commands (e.g., type checker → `tsc --noEmit` or `mypy` or `go vet`)
+      - Replace language-specific commands with detected commands from codebase scan (e.g., type checker → `tsc --noEmit` or `mypy` or `go vet`)
       - Inject customer's Agent Behavioral Guardrails from onboarding answers
       - Inject customer's Compliance requirements where relevant
-    - **Checkpointing strategy:** Define what state is saved after each step, where saved, format
-    - **Resume protocol:** Define how to load checkpoint, skip completed steps, resume
-    - **Re-run protocol:** Define how to handle re-run with customer feedback (which steps affected)
-    - **Quality Checklist:** Copy from contract with OUTCOME-prefixed items
-    - **Completion criteria:** Define explicit conditions for agent completion
+      - **NEVER** use generic boilerplate like "Execute contract workflow logic" or "Produce outputs and persist checkpoint state"
+      - The Instructions section must be the LONGEST section in the agent — typically 30-100 lines depending on the contract's workflow complexity
+      - If the contract has 8 workflow steps, the generated Instructions MUST have at least 8 detailed steps
+    - **Checkpointing strategy:** Define SPECIFIC state per agent based on what the contract's workflow produces:
+      - List what data is saved (e.g., "current_step, ticket_classification, repo_candidates, downloaded_attachments")
+      - Define when saves happen (e.g., "After each retrieval stage, after classification")
+      - Define the checkpoint file path (e.g., `.github/sdlc-pipeline/artifacts/agent0_checkpoint.md`)
+      - Include checkpoint format example showing the actual fields for this agent
+    - **Resume protocol:** Define agent-specific resume logic:
+      - Which steps can be skipped on resume (based on checkpoint data)
+      - How to validate previously produced outputs still exist
+      - How to handle partial completion (e.g., "If ticket was fetched but not classified, resume from classification step")
+    - **Re-run protocol:** Define agent-specific re-run logic:
+      - Which steps are affected by feedback (e.g., "If feedback says 'reclassify', only re-run steps 6-8")
+      - What downstream artifacts become invalid on re-run
+      - Maximum iteration count for re-runs
+    - **Quality Checklist:** Copy OUTCOME items from contract AND include the full descriptive text. Example: `- [ ] [OUTCOME-FETCH] All relevant ticket context (description, acceptance criteria, links, attachments) is retrieved and materialized as local Markdown artifacts`. Do NOT use generic text like "Address this contract outcome".
+    - **Completion criteria:** Define SPECIFIC conditions based on contract outputs:
+      - List each required output artifact and its validation (e.g., "`ticket_analysis.md` exists, contains Classification section, contains Repo Candidates section")
+      - List quality conditions (e.g., "Classification confidence ≥ 70%")
+      - List handoff conditions (e.g., "Orchestrator can read `ticket_analysis.md` and route to next agent")
     - **Access Restrictions:** Copy from contract, adapt paths to customer's project structure
     - **Custom Client Context Loading:** Add instruction to load `<agent>_custom_client_context.md` if it exists
     - **Hooks:** Add full hooks configuration table (hook ID, event, blocking, purpose) referencing `hooks.json`
     - **Skill references:** Reference generated skills (shared VCS Connector, PM Connector, or MCP — avoid duplicating connector instructions)
 
 11. **Generate Orchestrator** from `orchestrator.contract.md`:
+
+    The Orchestrator is the MOST complex agent — it coordinates all others. Its generated file MUST be significantly larger than other agents (typically 200-400 lines). It requires ALL of the following unique content from its contract:
+
+    - **Pipeline Sequence (MANDATORY):** Copy ALL steps (Step 1 through Step 17) from the orchestrator contract's Workflow Logic. Each step must include: condition, action, reasoning, and output. This is the core of the orchestrator and must NOT be abbreviated or genericized.
+    - **Conditions & Decision Points table (MANDATORY):** Copy the full routing table from the contract showing when to skip agents:
+      - Low complexity bug fix → Skip Agents 2a, 3a, 5
+      - Config change → Skip Agents 2a, 3a, 5, 6, 7
+      - Infrastructure/DevOps change → Route to Agent 8 (skip 3a/3b/3c/6)
+      - Clarification needed → Loop Agent 1 ↔ User (max 2)
+      - Design rejected → Loop Agent 2 ↔ 2a (max 2)
+      - Verification fails → Loop Agent 3c ↔ 4 (max 3)
+    - **Finalization Protocol (MANDATORY):** Include the 7-step finalization from the contract:
+      1. Verify all outputs exist and are valid
+      2. Produce final telemetry summary
+      3. Archive state with status "completed"
+      4. Generate ship recommendation with confidence score
+      5. Present deliverables with locations
+      6. Suggest next actions
+      7. Clean up temporary files
+    - **Clarification Loop Management:** Max 2 rounds for Agent 1 ↔ User
+    - **Design Refinement Loop:** Max 2 iterations for Agent 2 ↔ 2a
+    - **Fix Loop Management:** Max 3 iterations for Agent 3c ↔ 4
+    - **Re-run Boundaries Table (MANDATORY):** Copy the cascade-reset table from the contract showing which downstream agents are affected when a specific agent is re-run
+    - **Checkpoint Format (MANDATORY):** Include the JSON schema from the contract showing: feature_id, pipeline_started, current_step, completed_steps, completed_agents, agent_outputs, routing_decisions, clarification_answers, fix_loop_count, errors, status
+    - **Telemetry Tracking:** Per-agent time, tokens, and cost tracking configuration
     - Configure agent sequence based on customer's needs
     - Configure model per agent based on mapping
     - Configure skip rules based on customer's answers
     - Include customer's guardrails
     - **Include full telemetry hooks configuration** (hook IDs, events, blocking, script paths)
-    - **Define orchestrator inputs and outputs clearly** with validation rules
+    - **Define orchestrator inputs and outputs clearly** with validation rules (from contract)
     - **Add input validation** (ticket reference format, index.md exists, pipeline config exists)
     - **Add output validation** (pipeline_log.md written, telemetry_report.md written)
-    - **Define checkpointing strategy** (save after each agent completes)
-    - **Define resume protocol** (load checkpoint, skip completed agents, resume from last)
-    - **Define re-run protocol** (re-run specific agent with feedback, cascade boundaries)
-    - **Define finalization protocol** (all agents completed, all gates passed, generate summary)
     - Include hooks in YAML frontmatter
     - Reference hooks.json for full hook configuration
 
@@ -611,6 +660,19 @@ When a non-critical generation step fails, continue with reduced output:
       - Access Restrictions
       - Custom Client Context loading instruction
       - Hooks table with full configuration
+    - **Verify NO generic/boilerplate content exists in any agent:**
+      - Instructions section MUST NOT contain "Execute contract workflow logic" or similar generic text
+      - Inputs table MUST NOT contain "Contract-required upstream artifacts" — must list specific artifacts
+      - Outputs table MUST NOT contain "Stage outputs" — must list specific artifacts
+      - Quality Checklist MUST NOT contain "Address this contract outcome" — must have descriptive text
+      - Completion Criteria MUST NOT be identical across agents — each must be agent-specific
+      - Checkpointing Strategy MUST NOT be identical across agents — each must list agent-specific state
+    - **Verify Orchestrator has unique content:**
+      - Pipeline Sequence section with all 17 steps
+      - Conditions & Decision Points routing table
+      - Finalization Protocol
+      - Re-run Boundaries table
+      - Checkpoint Format JSON schema
     - Verify hooks.json references valid script paths
     - Verify skill SKILL.md files reference correct CLI tools (only for API-based platforms)
     - Verify `.mcp.json` references correct server definitions (only for MCP platforms)
@@ -644,12 +706,21 @@ Before delivering ANY output to the customer, validate:
 
 1. **Contract compliance** — Every generated agent matches its contract
 2. **Structural completeness** — All required files exist (agents, orchestrator, skills for API-based platforms, hooks, context templates)
-3. **Content quality** — No empty or placeholder-only agent definitions; all agents include inputs, outputs, validation, checkpointing, completion criteria
-4. **Consistency** — Agent references match actual file paths; connector integration mode consistent throughout
-5. **Security** — No credentials, proper guardrails in every agent
-6. **Functionality** — Hook scripts are Python (cross-platform), hooks.json is valid JSON, skills reference correct CLIs
-7. **Cross-platform** — All hook scripts use Python, no bash-specific constructs
-8. **No duplication** — Agents use shared Connector Skills or MCP; no agent duplicates connector logic internally
+3. **Content quality** — No empty or placeholder-only agent definitions; all agents include inputs, outputs, validation, checkpointing, completion criteria. **No generic boilerplate text** — every section must be contract-specific.
+4. **Content specificity** — Verify these anti-patterns do NOT exist in any generated agent:
+   - "Execute contract workflow logic" in Instructions
+   - "Contract-required upstream artifacts" in Inputs
+   - "Stage outputs" in Outputs
+   - "Address this contract outcome" in Quality Checklist
+   - Identical Instructions sections across different agents
+   - Identical Completion Criteria across different agents
+   - Checkpointing/Resume/Re-run sections that are identical across agents
+5. **Consistency** — Agent references match actual file paths; connector integration mode consistent throughout
+6. **Security** — No credentials, proper guardrails in every agent
+7. **Functionality** — Hook scripts are Python (cross-platform), hooks.json is valid JSON, skills reference correct CLIs
+8. **Cross-platform** — All hook scripts use Python, no bash-specific constructs
+9. **No duplication** — Agents use shared Connector Skills or MCP; no agent duplicates connector logic internally
+10. **Orchestrator completeness** — Orchestrator has pipeline sequence, routing table, finalization protocol, re-run boundaries, checkpoint format
 
 If inspection reveals issues:
 1. Log the issue
@@ -670,18 +741,20 @@ For each generated agent, verify:
 - [ ] Role matches contract
 - [ ] Prime Directive matches contract
 - [ ] All Key Outcomes from contract are addressed in instructions
-- [ ] All Workflow Logic steps from contract are present
+- [ ] All Workflow Logic steps from contract are present in the Instructions section (step count must match)
 - [ ] All Conditions & Decision Points from contract are implemented
-- [ ] Inputs clearly defined with source, required flag, description
-- [ ] Input Validation section present with specific rules
-- [ ] Outputs clearly defined with consumer, format, description
-- [ ] Output Handling section present defining write location and validation
+- [ ] Inputs table copied from contract with SPECIFIC artifact names (no generic "Contract-required upstream artifacts")
+- [ ] Input Validation section present with SPECIFIC rules per input (no generic "must be non-empty")
+- [ ] Outputs table copied from contract with SPECIFIC artifact names (no generic "Stage outputs")
+- [ ] Output Handling section present defining SPECIFIC write paths per artifact and handoff
 - [ ] **Connector Integration section present** — references MCP or Connector Skills (never duplicates logic)
-- [ ] **Checkpointing Strategy section present** — defines what state is saved and when
-- [ ] **Resume Protocol section present** — defines how agent resumes from checkpoint
-- [ ] **Re-run Protocol section present** — defines how agent handles re-run with feedback
-- [ ] Quality Checklist items are included with OUTCOME prefixes
-- [ ] Completion Criteria section defines explicit conditions for agent to be considered done
+- [ ] **Instructions section is contract-specific** — contains all numbered steps from contract's Workflow Logic with conditions, actions, and outputs. NEVER generic boilerplate.
+- [ ] **Instructions section length** — must be at least 30 lines for simple agents, 50+ for complex agents, 100+ for orchestrator
+- [ ] **Checkpointing Strategy section present** — defines SPECIFIC state fields for this agent (not generic "step index and artifacts")
+- [ ] **Resume Protocol section present** — defines SPECIFIC resume logic for this agent's workflow steps
+- [ ] **Re-run Protocol section present** — defines SPECIFIC cascade effects for this agent
+- [ ] Quality Checklist items include OUTCOME prefix AND full descriptive text from contract (not "Address this contract outcome")
+- [ ] Completion Criteria section defines SPECIFIC conditions per output artifact (not generic "required outputs present")
 - [ ] Access Restrictions match contract
 - [ ] Custom client context loading instruction is present
 - [ ] **Hooks section present with full configuration** (hook ID, event, blocking, purpose)
