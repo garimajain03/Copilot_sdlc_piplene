@@ -261,9 +261,28 @@ When a non-critical generation step fails, continue with reduced output:
    - `preflight_report.md` (from Preflight)
    - `.github/instructions/*.instructions.md` (from Preflight)
    - `.github/sdlc-pipeline/connector_config.md` (from Preflight — PM endpoints, SCM org, MCP configs)
+   - `.mcp.json` (from Preflight — MCP server definitions, if generated)
    - `.env.template` (from Preflight — required env var names for runtime auth)
+   - `index.md` (from Preflight — repository catalog and Service Catalogue)
 
-4. **Save checkpoint** for Phase 1
+4. **Check `intake-sources.md` for existing customer-defined agents:**
+   - Look for an `Existing Agents` or `AI Stack` section listing pre-existing agents
+   - If existing agents are found:
+     - Catalog their capabilities, triggers, and integration points
+     - Map them to equivalent pipeline agents (e.g., existing code review bot → Agent 5 Critic)
+     - **Reuse** existing agents wherever they provide equivalent functionality
+     - **Enhance** existing agents with additional capabilities from contracts when needed
+     - **Do NOT** create duplicate agents when equivalent functionality already exists
+   - If required functionality is missing from existing agents:
+     - Generate new Agents and corresponding Agent Contracts
+     - Integrate them into the pipeline alongside existing agents
+
+5. **Determine connector integration mode** per platform from Preflight outputs:
+   - Check `.mcp.json` — platforms configured via MCP
+   - Check `connector_config.md` — platforms configured via API-based Connector Skills
+   - Generated agents should reference the appropriate integration (MCP or Skill) per platform
+
+6. **Save checkpoint** for Phase 1
 
 ### Phase 2: Ask Clarification Questions
 
@@ -341,52 +360,83 @@ When a non-critical generation step fails, continue with reduced output:
 
 ### Phase 4: Generate Agents
 
-9. **For each agent contract (AC-000 through AC-008, AC-ORCH)**, generate a customer-specific agent definition file:
+9. **Check for existing customer agents** (from Phase 1 analysis):
+   - For each existing agent, determine if it can fulfill a pipeline role
+   - If an existing agent matches a contract's role:
+     - **Reuse** the existing agent definition as the base
+     - **Enhance** it with missing capabilities from the contract (inputs, outputs, validation, checkpointing)
+     - Document the enhancement in the generation report
+   - If no existing agent matches:
+     - Generate a new agent from the contract
 
-   For parallel generation (when contracts are independent), spawn sub-agents for groups:
-   - **Group A** (parallel): Agent 0, Agent 1, Agent 2, Agent 2a — analysis/design agents
-   - **Group B** (parallel): Agent 3a, Agent 3b, Agent 3c — implementation agents
-   - **Group C** (parallel): Agent 4, Agent 5, Agent 6 — verification agents
-   - **Group D** (parallel): Agent 7, Agent 8 — documentation & IaC agents
-   - **Sequential**: Orchestrator (depends on all others)
+10. **For each agent contract (AC-000 through AC-008, AC-ORCH)**, generate a customer-specific agent definition file:
 
-   **Generation rules:**
-   - **Frontmatter:** Use customer's model mapping, customer's tools configuration
-   - **Role & Prime Directive:** Copy verbatim from contract
-   - **Instructions:** Translate contract's Workflow Logic into customer-specific instructions:
-     - Replace tool categories with actual tools (e.g., `terminal` → `execute`, `file_read` → `read`)
-     - Replace connector references with customer's connectors (e.g., "ticket connector" → "Jira connector" or "Linear connector")
-     - Replace language-specific commands with detected commands (e.g., type checker → `tsc --noEmit` or `mypy` or `go vet`)
-     - Inject customer's Agent Behavioral Guardrails from onboarding answers
-     - Inject customer's Compliance requirements where relevant
-   - **Access Restrictions:** Copy from contract, adapt paths to customer's project structure
-   - **Quality Checklist:** Copy from contract
-   - **Custom Client Context Loading:** Add instruction to load `<agent>_custom_client_context.md` if it exists
-   - **Hook references:** Reference generated hooks
-   - **Skill references:** Reference generated skills
+    For parallel generation (when contracts are independent), spawn sub-agents for groups:
+    - **Group A** (parallel): Agent 0, Agent 1, Agent 2, Agent 2a — analysis/design agents
+    - **Group B** (parallel): Agent 3a, Agent 3b, Agent 3c — implementation agents
+    - **Group C** (parallel): Agent 4, Agent 5, Agent 6 — verification agents
+    - **Group D** (parallel): Agent 7, Agent 8 — documentation & IaC agents
+    - **Sequential**: Orchestrator (depends on all others)
 
-10. **Generate Orchestrator** from `orchestrator.contract.md`:
+    **Generation rules:**
+    - **Frontmatter:** Include YAML front matter with: name, description, model, tools, argument-hint
+    - **Agent metadata:** Include contract_id, version, pipeline_position, model_tier
+    - **argument-hint:** Provide a brief description of expected arguments
+    - **Role & Prime Directive:** Copy verbatim from contract
+    - **Inputs:** Clearly define all inputs with source, required flag, and description
+    - **Outputs:** Clearly define all outputs with consumer, format, and description
+    - **Input validation:** Add validation rules for each input (existence checks, format checks)
+    - **Output handling:** Define how outputs are written, validated, and handed off
+    - **Instructions:** Translate contract's Workflow Logic into customer-specific instructions:
+      - Replace tool categories with actual tools (e.g., `terminal` → `execute`, `file_read` → `read`)
+      - Replace connector references with customer's integration mode:
+        - If MCP selected → reference MCP tool invocations
+        - If API-based Connector Skill selected → reference the generated Connector Skill
+      - Replace language-specific commands with detected commands (e.g., type checker → `tsc --noEmit` or `mypy` or `go vet`)
+      - Inject customer's Agent Behavioral Guardrails from onboarding answers
+      - Inject customer's Compliance requirements where relevant
+    - **Checkpointing strategy:** Define what state is saved and when
+    - **Resume protocol:** Define how agent resumes from checkpoint
+    - **Re-run protocol:** Define how agent handles re-run with feedback
+    - **Quality Checklist:** Copy from contract, add completion criteria
+    - **Completion criteria:** Define explicit conditions for agent completion
+    - **Access Restrictions:** Copy from contract, adapt paths to customer's project structure
+    - **Custom Client Context Loading:** Add instruction to load `<agent>_custom_client_context.md` if it exists
+    - **Hook references:** Reference generated hooks with full configuration
+    - **Skill references:** Reference generated skills (shared VCS Connector, PM Connector, or MCP — avoid duplicating connector instructions)
+
+11. **Generate Orchestrator** from `orchestrator.contract.md`:
     - Configure agent sequence based on customer's needs
     - Configure model per agent based on mapping
     - Configure skip rules based on customer's answers
     - Include customer's guardrails
+    - Include telemetry hooks configuration
+    - Define orchestrator inputs and outputs clearly
+    - Add input validation and output validation
+    - Define checkpointing strategy
+    - Define resume protocol and re-run protocol
+    - Define finalization protocol
 
-11. **Save checkpoint** for Phase 4
+12. **Save checkpoint** for Phase 4
 
 ### Phase 5: Generate Connector Skills
 
-12. **Read connector configuration** from Preflight output:
+13. **Read connector configuration** from Preflight output:
     - Load `.github/sdlc-pipeline/connector_config.md` (generated by Preflight Agent)
+    - Load `.mcp.json` (if generated by Preflight Agent)
     - This contains: PM type & endpoint, SCM provider & org, design tool MCP config, custom MCP servers
     - Load `.env.template` to verify which environment variables the skills should reference for auth
 
-13. **For each skill contract**, generate a customer-specific SKILL.md at `.github/skills/<skill>/SKILL.md`:
+14. **For each skill contract**, generate a customer-specific SKILL.md at `.github/skills/<skill>/SKILL.md`:
+
+    **Only generate Connector Skills for platforms where API-based integration was selected.**
+    Do NOT generate Connector Skills for platforms using MCP.
 
     Spawn sub-agents for parallel skill generation:
-    - **Ticket Connector** (from `SC-TICKET`) — uses PM type/endpoint from `connector_config.md`
-    - **SCM Connector** (from `SC-SCM`) — uses SCM provider/org from `connector_config.md`
+    - **Ticket Connector** (from `SC-TICKET`) — only if API-based selected for Jira/PM
+    - **SCM Connector** (from `SC-SCM`) — only if API-based selected for GitHub/GitLab
     - **Design Connector** (from `SC-DESIGN`, if applicable) — uses MCP config from `connector_config.md`
-    - **Testing Skill** (from `SC-TEST`) — uses test runner/framework from codebase scan
+    - **Testing Skill** (from `SC-TEST`) — always generated (uses test runner/framework from codebase scan)
 
     Each sub-agent:
     - Reads the corresponding skill contract
@@ -396,23 +446,32 @@ When a non-critical generation step fails, continue with reduced output:
     - Generates the SKILL.md with proper CLI commands, error handling, and auth-via-env-var instructions
     - **Does NOT embed or prompt for actual credentials** — skills read tokens from environment at runtime
 
-14. **Save checkpoint** for Phase 5
+15. **Save checkpoint** for Phase 5
 
 ### Phase 6: Generate Hooks
 
-14. **For each hook contract**, generate a customer-specific hook script:
+16. **For each hook contract**, generate a **cross-platform** customer-specific hook script:
 
     Spawn sub-agents for parallel hook generation:
     - **Guard Destructive:** Configure protected paths and branches from onboarding answers
     - **Guard Secrets:** Configure protected file patterns
     - **Lint on Save:** Configure with detected linter command from codebase scan
-    - **Observability Lifecycle:** Start/stop OTel Collector + Prometheus (if observability enabled)
-    - **OTel Telemetry:** Per-agent metrics collection, cost estimation (if observability enabled)
+    - **Observability Lifecycle:** Start/stop OTel Collector + Prometheus (if observability enabled) — **cross-platform** (macOS + Windows)
+    - **OTel Telemetry:** Per-agent metrics collection, cost estimation (if observability enabled) — **cross-platform**
     - **Session Learnings:** Configure memory storage path
 
-15. **Generate `hooks.json`** registering all hooks with proper paths and timeouts
+    **Cross-platform requirements for telemetry hooks:**
+    - Hook scripts must use Python (cross-platform) — NOT bash scripts
+    - Process management must work on both macOS and Windows:
+      - Use `subprocess` with OS-appropriate signal handling
+      - Use `os.kill()` with platform-aware signal constants
+      - PID file management must use OS-appropriate paths
+    - Binary paths must use `os.path.join()` for cross-platform compatibility
+    - Health check endpoints use HTTP (cross-platform by nature)
 
-16. **Save checkpoint** for Phase 6
+17. **Generate `hooks.json`** registering all hooks with proper paths and timeouts
+
+18. **Save checkpoint** for Phase 6
 
 ### Phase 7: Generate Custom Client Context Templates
 
@@ -469,10 +528,14 @@ When a non-critical generation step fails, continue with reduced output:
 23. **Self-validate** generated agents against contracts:
     - Verify every generated agent has a corresponding contract
     - Verify every contract Key Outcome is addressable in the generated agent
+    - Verify every agent includes: front matter, argument-hint, inputs, outputs, input validation, output handling, checkpointing, resume protocol, re-run protocol, quality checklist, completion criteria
     - Verify hooks.json references valid script paths
-    - Verify skill SKILL.md files reference correct CLI tools
+    - Verify skill SKILL.md files reference correct CLI tools (only for API-based platforms)
+    - Verify `.mcp.json` references correct server definitions (only for MCP platforms)
     - Verify custom client context templates exist for all agents
     - Verify Prime Directives match contracts verbatim
+    - Verify agents use shared Connector Skills or MCP (no duplicated connector logic)
+    - Verify hook scripts are cross-platform (Python, not bash)
 
 24. **Fix issues** found by inspection:
     - **Errors:** Fix immediately, re-run inspection
@@ -496,11 +559,13 @@ When a non-critical generation step fails, continue with reduced output:
 Before delivering ANY output to the customer, validate:
 
 1. **Contract compliance** — Every generated agent matches its contract
-2. **Structural completeness** — All required files exist (agents, orchestrator, skills, hooks, context templates)
-3. **Content quality** — No empty or placeholder-only agent definitions
-4. **Consistency** — Agent references match actual file paths
+2. **Structural completeness** — All required files exist (agents, orchestrator, skills for API-based platforms, hooks, context templates)
+3. **Content quality** — No empty or placeholder-only agent definitions; all agents include inputs, outputs, validation, checkpointing, completion criteria
+4. **Consistency** — Agent references match actual file paths; connector integration mode consistent throughout
 5. **Security** — No credentials, proper guardrails in every agent
-6. **Functionality** — Hook scripts have correct shebang, hooks.json is valid JSON, skills reference correct CLIs
+6. **Functionality** — Hook scripts are Python (cross-platform), hooks.json is valid JSON, skills reference correct CLIs
+7. **Cross-platform** — All hook scripts use Python, no bash-specific constructs
+8. **No duplication** — Agents use shared Connector Skills or MCP; no agent duplicates connector logic internally
 
 If inspection reveals issues:
 1. Log the issue
@@ -515,15 +580,36 @@ If inspection reveals issues:
 ### Consistency Enforcement
 
 For each generated agent, verify:
+- [ ] Front matter includes: name, description, model, argumentHint, tools
+- [ ] Agent metadata includes: contract_id, version, pipeline_position, model_tier
+- [ ] argument-hint is present and descriptive
 - [ ] Role matches contract
 - [ ] Prime Directive matches contract
 - [ ] All Key Outcomes from contract are addressed in instructions
 - [ ] All Workflow Logic steps from contract are present
 - [ ] All Conditions & Decision Points from contract are implemented
-- [ ] Access Restrictions match contract
+- [ ] Inputs clearly defined with source, required flag, description
+- [ ] Outputs clearly defined with consumer, format, description
+- [ ] Input validation rules present
+- [ ] Output handling rules present
+- [ ] Checkpointing strategy defined
+- [ ] Resume protocol defined
+- [ ] Re-run protocol defined
 - [ ] Quality Checklist items are included
+- [ ] Completion criteria defined
+- [ ] Access Restrictions match contract
 - [ ] Custom client context loading instruction is present
-- [ ] Hook points are registered
+- [ ] Hook points are registered with full configuration
+- [ ] Connector integration uses shared skills or MCP (no duplication)
+
+### Existing Agent Reuse Rules
+
+When existing customer agents are found in `intake-sources.md`:
+- [ ] Existing agents mapped to equivalent pipeline roles
+- [ ] Reused agents enhanced with missing capabilities from contracts
+- [ ] No duplicate agents created for functionality that already exists
+- [ ] Enhancement documented in generation report
+- [ ] New agents generated only for missing functionality
 
 ### Behavioral Guardrails Injection
 

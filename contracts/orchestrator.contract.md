@@ -7,6 +7,7 @@
 | pipeline_position | coordinator |
 | version | 1.0.0 |
 | model_tier | reasoning |
+| argument_hint | Ticket ID, requirement file path, or 'resume' to continue from checkpoint |
 
 ## Role
 
@@ -32,6 +33,21 @@ Coordinates the full SDLC pipeline. Accepts tickets or requirements, delegates t
 | Ticket ID or requirement file | User | Yes | Entry point for pipeline |
 | `intake-sources.md` | Setup | No | Client configuration (read once at start) |
 | Custom client context | Client | No | `orchestrator_custom_client_context.md` — routing rules, model overrides |
+| `index.md` | Preflight | No | Repository catalog and Service Catalogue for routing |
+| `.mcp.json` | Preflight | No | MCP server definitions (if MCP integration selected) |
+| `connector_config.md` | Preflight | No | API-based connector configuration |
+
+### Input Validation
+
+1. **Ticket ID or requirement file** — Must be non-empty; if ticket ID, must match ticket prefix regex from onboarding
+2. **`intake-sources.md`** — If present, validate against onboarding schema (Organisation, LLM Models, Constraints sections required)
+3. **Custom client context** — If present, validate structure (expected sections: routing rules, model overrides)
+4. **`index.md`** — If present, verify at least one repository is listed
+5. **`.mcp.json`** — If present, validate JSON structure with `mcpServers` key
+6. **`connector_config.md`** — If present, verify at least one connector section exists
+
+If validation fails for a required input, **halt and report the error** to the user.
+If validation fails for an optional input, **log a warning** and proceed without it.
 
 ## Outputs
 
@@ -39,6 +55,18 @@ Coordinates the full SDLC pipeline. Accepts tickets or requirements, delegates t
 |----------|-------------|--------|-------------|
 | All pipeline artifacts | Human | Markdown | Via delegated agents |
 | Pipeline summary | Human | Terminal output | Agent sequence, timing, recommendation |
+| `telemetry_report.md` | Human | Markdown | Per-agent time, tokens, cost |
+| `checkpoint.md` | Self (resume) | Markdown | Pipeline state for resume/re-run |
+| `pipeline_log.md` | Human | Markdown | Full execution log with decisions |
+
+### Output Validation
+
+After pipeline completion, validate:
+1. All expected artifacts exist in the output folder
+2. No artifact is empty or contains only placeholders
+3. Pipeline summary includes all required sections (agents run, timing, recommendation)
+4. Telemetry report (if observability enabled) contains entries for each agent executed
+5. Checkpoint reflects final completed state
 
 ## Workflow Logic
 
@@ -128,6 +156,108 @@ Coordinates the full SDLC pipeline. Accepts tickets or requirements, delegates t
 - **Action:** Report: agents run, time per agent, total tokens, ship recommendation, outstanding risks, documentation generated, IaC changes (if any)
 - **Output:** Terminal summary
 
+### Step 17: Finalization
+- **Condition:** Pipeline summary produced
+- **Action:** Execute finalization protocol:
+  1. Validate all expected outputs exist and are non-empty
+  2. Verify checkpoint reflects completed state
+  3. Generate final telemetry summary (if observability enabled)
+  4. Archive pipeline state for audit/reference
+  5. Clean up temporary working files
+  6. Present final ship recommendation with confidence score
+- **Output:** Finalized pipeline state, archived artifacts
+
+## Checkpointing Strategy
+
+### What Is Saved
+
+| Data | When Saved | Purpose |
+|------|-----------|---------|
+| Current step number | After each step | Resume point |
+| Completed agents list | After each agent completes | Skip on resume |
+| Agent outputs (file paths) | After each agent produces output | Avoid re-generation |
+| Clarification answers | After user provides answers | Avoid re-asking |
+| Fix loop iteration count | After each fix attempt | Enforce max iterations |
+| Pipeline routing decisions | After classification | Consistent routing on resume |
+| Error state | On failure | Recovery on resume |
+
+### Checkpoint Format
+
+```json
+{
+  "feature_id": "<feature-id>",
+  "pipeline_started": "<timestamp>",
+  "current_step": 5,
+  "completed_steps": [1, 2, 3, 4],
+  "completed_agents": ["agent0", "agent1"],
+  "agent_outputs": {"agent0": "ticket_analysis.md", "agent1": "problem_spec.md"},
+  "routing_decisions": {"complexity": "High", "type": "feature", "skip": []},
+  "clarification_answers": {},
+  "fix_loop_count": 0,
+  "errors": [],
+  "status": "in_progress"
+}
+```
+
+### Save Frequency
+
+- Save **after every step completion** (not mid-step)
+- Save **before user interaction** (in case user abandons session)
+- Save **on error** (capture failure state for recovery)
+
+## Resume Protocol
+
+On every run, **FIRST** check for an existing checkpoint:
+
+1. Load checkpoint from `<output_folder>/checkpoint.md` or `.github/sdlc-pipeline/checkpoint_state.json`
+2. If checkpoint exists and `status != "completed"`:
+   - Read `current_step` — resume from this step
+   - Read `completed_agents` — skip already-completed agents
+   - Read `agent_outputs` — verify files still exist (re-run agent if output missing)
+   - Read `routing_decisions` — use same routing (don't re-classify)
+   - Read `errors` — attempt recovery for recoverable errors
+   - Inform user: "Resuming pipeline from Step X. Steps 1–(X-1) already completed."
+3. If no checkpoint exists or `status == "completed"`:
+   - Start fresh from Step 1
+4. If checkpoint is corrupted:
+   - Log warning, start fresh, inform user
+
+## Re-run Protocol
+
+When user requests re-run of a specific step or agent:
+
+1. **Validate request** — confirm which step/agent to re-run
+2. **Load checkpoint** — get current pipeline state
+3. **Accept feedback** — collect user feedback for the re-run (e.g., "Use stricter type checking")
+4. **Reset step** — mark the target step as incomplete in checkpoint
+5. **Cascade resets** — mark all downstream steps as incomplete (they depend on re-run output)
+6. **Re-execute** — run the target step with feedback incorporated
+7. **Continue pipeline** — proceed from re-run step through remaining steps
+8. **Update checkpoint** — save new state after re-run
+
+### Re-run Boundaries
+
+| Re-run Target | Cascade Resets | Reasoning |
+|---------------|---------------|-----------|
+| Agent 0 (Ticket Analyzer) | All downstream | Classification affects routing |
+| Agent 1 (Problem Decomposer) | Agent 2+ | New requirements affect everything |
+| Agent 2 (Design Architect) | Agent 3a+ | New design affects implementation |
+| Agent 3b (Builder) | Agent 4, 6 | New code needs re-verification |
+| Agent 4 (Verifier) | Agent 5, 7 | New verification may change risk/docs |
+| Agent 8 (IaC) | None | Independent path |
+
+## Finalization Protocol
+
+When the pipeline reaches completion:
+
+1. **Verify all outputs** — check every expected artifact exists and is valid
+2. **Produce final telemetry** — aggregate all per-agent metrics into pipeline summary
+3. **Archive state** — save final checkpoint with `status: "completed"`
+4. **Generate ship recommendation** — combine Critic's risk assessment with verification results
+5. **Present deliverables** — list all generated artifacts with locations
+6. **Suggest next actions** — based on pipeline results (e.g., "Create PR", "Run integration tests", "Review IaC plan")
+7. **Clean up** — remove temporary files, close telemetry backends if no other pipelines active
+
 ## Conditions & Decision Points
 
 | Condition | Action | Reasoning |
@@ -214,9 +344,9 @@ Pipeline End → Stop hook
   → HC-OBSERVABILITY: stop processes (if no other pipeline active)
 ```
 
-### Install Script
+### Install Scripts (Cross-Platform)
 
-The `scripts/install-observability.sh` script:
+**macOS/Linux:** `scripts/install-observability.sh`
 1. Detects OS (macOS/Linux) and architecture (arm64/amd64)
 2. Downloads official release binaries from GitHub Releases
 3. Extracts to `observability/.bin/`
@@ -228,6 +358,18 @@ Run modes:
 - `scripts/install-observability.sh` — install both binaries
 - `scripts/install-observability.sh --check` — check if binaries are present (no download)
 - `scripts/install-observability.sh --json` — output status as JSON for automation
+
+**Windows:** `scripts/install-observability.ps1`
+1. Detects architecture (amd64)
+2. Downloads official release binaries (`.exe`) from GitHub Releases
+3. Extracts to `observability/.bin/`
+4. Verifies binary presence
+5. Creates config files from templates if not present
+
+Run modes:
+- `.\scripts\install-observability.ps1` — install both binaries
+- `.\scripts\install-observability.ps1 -Check` — check if binaries are present
+- `.\scripts\install-observability.ps1 -Json` — output status as JSON for automation
 
 ### Configuration
 

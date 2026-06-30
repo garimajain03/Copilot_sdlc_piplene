@@ -16,13 +16,19 @@ This repository is a **standalone, reusable SDLC Pipeline Bundle** containing **
 │     → Downloads intake-sources.md                               │
 │                                                                 │
 │  2. Preflight Agent reads answers                               │
-│     → Generates setup scripts, MCP/connector configs            │
-│     → Clones & scans customer repos, generates instructions     │
+│     → Asks connector mode per platform (MCP vs API-based)       │
+│     → Configures workspace (submodules or custom layout)        │
+│     → Generates .mcp.json (for MCP platforms)                   │
+│     → Generates setup.sh + setup.ps1 (cross-platform)           │
+│     → Clones & scans repos, generates instructions + index.md   │
 │     → Asks clarification questions if unclear                   │
 │                                                                 │
 │  3. SDLC Pipeline Generator reads Contracts + answers           │
-│     → Generates customer-specific Agents, Skills, Hooks         │
-│     → Adapts to customer tools, tech stack, constraints         │
+│     → Checks for existing agents — reuses and enhances them     │
+│     → Generates Connector Skills only for API-based platforms   │
+│     → Generates agents with full metadata, validation,          │
+│       checkpointing, and completion criteria                    │
+│     → Generates cross-platform Python hook scripts              │
 │     → Includes telemetry hooks & observability setup            │
 │                                                                 │
 │  4. Customer adds custom context per agent (optional)           │
@@ -81,6 +87,7 @@ sdlc-pipeline-bundle/                  ← This standalone repository
 │   ├── hook_template.py.hbs
 │   ├── skill_template.md.hbs
 │   ├── setup_template.sh.hbs
+│   ├── setup_template.ps1.hbs         ← Windows PowerShell setup template
 │   └── custom_client_context_template.md
 ├── schemas/                           ← Validation Schemas
 │   ├── contract_schema.md
@@ -92,7 +99,8 @@ sdlc-pipeline-bundle/                  ← This standalone repository
 │   ├── checkpoint-manager.py
 │   ├── outcome-inspector.py
 │   ├── pipeline-migrator.py               ← Version & migration manager
-│   └── install-observability.sh
+│   ├── install-observability.sh           ← macOS/Linux binary installer
+│   └── install-observability.ps1          ← Windows binary installer
 └── observability/                     ← Telemetry stack templates
     ├── otel-collector-config.yml
     ├── prometheus/

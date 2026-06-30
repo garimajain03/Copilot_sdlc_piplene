@@ -7,6 +7,7 @@
 | pipeline_position | 2a |
 | version | 1.0.0 |
 | model_tier | reasoning |
+| argument_hint | Path to design_spec.md for review |
 
 ## Role
 

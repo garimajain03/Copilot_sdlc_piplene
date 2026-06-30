@@ -7,6 +7,7 @@
 | pipeline_position | 5 |
 | version | 1.0.0 |
 | model_tier | reasoning |
+| argument_hint | Path to verification_report.md and all pipeline specs |
 
 ## Role
 

@@ -7,6 +7,7 @@
 | pipeline_position | 3b |
 | version | 1.0.0 |
 | model_tier | coding |
+| argument_hint | Path to scaffold_manifest.md and design_spec.md |
 
 ## Role
 

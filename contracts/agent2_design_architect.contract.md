@@ -7,6 +7,7 @@
 | pipeline_position | 2 |
 | version | 1.0.0 |
 | model_tier | reasoning |
+| argument_hint | Path to problem_spec.md and output folder |
 
 ## Role
 

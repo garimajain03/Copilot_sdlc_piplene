@@ -7,6 +7,7 @@
 | pipeline_position | 1 |
 | version | 1.0.0 |
 | model_tier | reasoning |
+| argument_hint | Path to ticket_analysis.md or requirement file |
 
 ## Role
 

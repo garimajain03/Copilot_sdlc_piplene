@@ -16,6 +16,7 @@ Every agent contract MUST contain the following sections in order:
 | `pipeline_position` | Number | Yes | Order in pipeline (0-6, with sub-positions like 2a, 3a) |
 | `version` | SemVer | Yes | Contract version |
 | `model_tier` | Enum | Yes | `reasoning` / `coding` / `fast` — resolved to specific model at generation time |
+| `argument_hint` | String | Yes | Brief description of expected agent arguments/inputs |
 
 ### 2. Role & Prime Directive
 
@@ -38,11 +39,27 @@ What this agent MUST achieve (not how). List of outcome statements:
 |----------|--------|----------|-------------|
 | Name | Which agent/user provides it | Yes/No | What it contains |
 
+#### Input Validation
+
+Define validation rules for each input:
+- Required inputs: verify existence and non-empty content
+- Format validation: check expected structure (Markdown sections, JSON schema, etc.)
+- Cross-reference validation: verify referenced artifacts exist
+- On validation failure: halt with clear error message (required) or warn and continue (optional)
+
 ### 5. Outputs
 
 | Artifact | Consumed By | Format | Description |
 |----------|-------------|--------|-------------|
 | Name | Which agents use it | Markdown/Code/etc. | What it contains |
+
+#### Output Handling
+
+Define how outputs are managed:
+- Write location: exact path where output is written
+- Validation: how to verify output quality before handoff
+- Error handling: what happens if output generation fails
+- Downstream notification: how consuming agents know output is ready
 
 ### 6. Workflow Logic
 
@@ -102,13 +119,54 @@ Where hooks should fire (not which specific hooks):
 
 Pre-completion checklist items. Agent MUST verify all before declaring done.
 
-### 12. Customization Points
+### 12. Checkpointing Strategy
+
+Define what state is saved and when for resume/re-run support:
+
+| Data | When Saved | Purpose |
+|------|-----------|---------|
+| What is saved | When (after step X, on error, etc.) | Why it needs persisting |
+
+### 13. Resume Protocol
+
+Define how the agent resumes from a saved checkpoint:
+- How to detect existing checkpoint
+- Which steps to skip on resume
+- How to validate previously produced outputs still exist
+- How to inform the user about resume state
+
+### 14. Re-run Protocol
+
+Define how the agent handles a re-run with customer feedback:
+- How to accept feedback for the re-run
+- Which state to reset
+- Which downstream artifacts to invalidate
+- How to incorporate feedback into re-execution
+
+### 15. Completion Criteria
+
+Explicit conditions that must ALL be true for the agent to be considered done:
+- All outputs exist and are non-empty
+- Quality checklist fully satisfied
+- No blocking errors remain
+- Output validation passed
+
+### 16. Customization Points
 
 Where client-specific context can modify behavior:
 
 | Point | How Customized | Default |
 |-------|---------------|---------|
 | Description | Via onboarding answers or custom context file | Default value |
+
+### 17. Hook Points (with Configuration)
+
+Where hooks should fire, including full hook configuration:
+
+| Hook Point | Purpose | Behavior | Contract Reference |
+|------------|---------|----------|--------------------|
+| `pre_tool_use` | Before any tool execution | Guard, validate, block | HC-GUARD-CMD |
+| `post_tool_use` | After tool execution | Lint, format, validate | HC-LINT |
 
 ---
 

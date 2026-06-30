@@ -147,6 +147,16 @@ sum by (model, direction) (
 
 Telemetry collection MUST NEVER block the pipeline. All failures are non-blocking (exit 0 or 1, never 2).
 
+## Cross-Platform Requirements
+
+- Hook script **MUST** be written in Python for cross-platform compatibility
+- Use `urllib.request` or `requests` for Prometheus queries (HTTP — platform-independent)
+- Use `os.path.join()` for all file paths to hook state files
+- Use `json` module for state serialization (platform-independent)
+- Timestamps use ISO 8601 format (platform-independent)
+- Hook state directory: `observability/.hook-state/` (created with `os.makedirs()`)
+- No shell-specific commands (no `curl`, no `grep`) — use Python standard library
+
 ## Customization Points
 
 | Point | How Customized | Default |

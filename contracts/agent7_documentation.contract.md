@@ -7,6 +7,7 @@
 | pipeline_position | 7 |
 | version | 1.0.0 |
 | model_tier | coding |
+| argument_hint | Path to output folder containing all pipeline artifacts |
 
 ## Role
 

@@ -1,5 +1,5 @@
 ---
-description: "Run the SDLC Preflight Agent — validates onboarding answers, clones and scans repositories, generates setup scripts and instruction files"
+description: "Run the SDLC Preflight Agent — validates onboarding answers, configures connectors (MCP/API), sets up workspace with submodules, scans repositories, generates setup scripts (macOS + Windows) and instruction files"
 mode: "agent"
 tools:
   - execute
@@ -17,13 +17,19 @@ Run the **SDLC Preflight Agent** to prepare a customer's project for the SDLC Pi
 ## What This Does
 
 1. Validates `intake-sources.md` against the schema
-2. Collects the customer's repository list
-3. Clones repositories via `scripts/scm-bootstrap.py`
-4. Smart-scans each repo for structure, dependencies, and patterns via `scripts/repo-scanner.py`
-5. Generates `.github/instructions/<repo>.instructions.md` per repo via `scripts/instructions-generator.py`
-6. Generates `setup.sh`, connector configs, hook scripts, and `hooks.json`
-7. Self-validates all outputs via `scripts/outcome-inspector.py`
-8. Writes `preflight_report.md` with results and next steps
+2. Asks which integration mechanism to use per platform (MCP vs API-based Connector Skills)
+3. Generates `.mcp.json` for MCP-selected platforms
+4. Configures workspace structure (default with submodules or custom layout)
+5. Collects the customer's repository list
+6. Clones repositories via `scripts/scm-bootstrap.py`
+7. Smart-scans each repo for structure, dependencies, and patterns via `scripts/repo-scanner.py`
+8. Incrementally maintains `index.md` with repository catalog and Service Catalogue
+9. Generates `.github/instructions/<repo>.instructions.md` per repo via `scripts/instructions-generator.py`
+10. Generates `copilot-instructions.md` using scanned repository context
+11. Generates `setup.sh` (macOS/Linux) and `setup.ps1` (Windows) — both include prerequisite installation, workspace config, submodule init, and validation
+12. Generates connector configs, `.env.template`, and `.gitmodules` (if default workspace)
+13. Self-validates all outputs via `scripts/outcome-inspector.py`
+14. Writes `preflight_report.md` with results and next steps
 
 ## Instructions
 

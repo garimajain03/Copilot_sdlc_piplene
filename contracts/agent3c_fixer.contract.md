@@ -7,6 +7,7 @@
 | pipeline_position | 3c |
 | version | 1.0.0 |
 | model_tier | coding |
+| argument_hint | Path to fix_request.md from Verifier |
 
 ## Role
 

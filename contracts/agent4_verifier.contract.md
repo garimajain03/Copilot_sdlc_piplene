@@ -7,6 +7,7 @@
 | pipeline_position | 4 |
 | version | 1.0.0 |
 | model_tier | reasoning |
+| argument_hint | Path to implementation_manifest.md and test_report.md |
 
 ## Role
 

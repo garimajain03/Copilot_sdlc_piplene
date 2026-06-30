@@ -7,6 +7,7 @@
 | pipeline_position | 3a |
 | version | 1.0.0 |
 | model_tier | coding |
+| argument_hint | Path to design_spec.md and target codebase |
 
 ## Role
 

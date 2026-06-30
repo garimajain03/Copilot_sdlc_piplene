@@ -9,6 +9,7 @@
 name: "{{AGENT_DISPLAY_NAME}}"
 description: "{{AGENT_DESCRIPTION}}"
 model: "{{RESOLVED_MODEL}}"
+argumentHint: "{{ARGUMENT_HINT}}"
 tools:
   {{#each TOOLS}}
   - {{this}}
@@ -17,8 +18,14 @@ tools:
 
 # {{AGENT_DISPLAY_NAME}}
 
-## Version
-{{AGENT_VERSION}}
+## Metadata
+
+| Field | Value |
+|-------|-------|
+| contract_id | {{CONTRACT_ID}} |
+| version | {{AGENT_VERSION}} |
+| pipeline_position | {{PIPELINE_POSITION}} |
+| model_tier | {{MODEL_TIER}} |
 
 ## Role
 {{ROLE_FROM_CONTRACT}}
@@ -37,9 +44,59 @@ and apply its instructions throughout.
 Custom client context takes precedence over default behavior but NEVER overrides
 the Prime Directive, Access Restrictions, or security guardrails.
 
+## Inputs
+
+| Artifact | Source | Required | Description |
+|----------|--------|----------|-------------|
+{{#each INPUTS}}
+| {{this.artifact}} | {{this.source}} | {{this.required}} | {{this.description}} |
+{{/each}}
+
+### Input Validation
+
+{{INPUT_VALIDATION_RULES}}
+
+## Outputs
+
+| Artifact | Consumed By | Format | Description |
+|----------|-------------|--------|-------------|
+{{#each OUTPUTS}}
+| {{this.artifact}} | {{this.consumed_by}} | {{this.format}} | {{this.description}} |
+{{/each}}
+
+### Output Handling
+
+{{OUTPUT_HANDLING_RULES}}
+
 ## Instructions
 
 {{WORKFLOW_INSTRUCTIONS}}
+
+## Connector Integration
+
+{{#if USE_MCP}}
+### MCP Integration
+This agent uses MCP servers for external tool integration. Invoke MCP tools directly:
+{{MCP_TOOL_REFERENCES}}
+{{/if}}
+
+{{#if USE_CONNECTOR_SKILLS}}
+### Connector Skills
+This agent uses shared Connector Skills for external tool integration:
+{{SKILL_REFERENCES}}
+{{/if}}
+
+## Checkpointing Strategy
+
+{{CHECKPOINTING_STRATEGY}}
+
+## Resume Protocol
+
+{{RESUME_PROTOCOL}}
+
+## Re-run Protocol
+
+{{RERUN_PROTOCOL}}
 
 ## Access Restrictions
 
@@ -49,13 +106,13 @@ the Prime Directive, Access Restrictions, or security guardrails.
 
 {{HOOK_REFERENCES}}
 
-## Skills Referenced
-
-{{SKILL_REFERENCES}}
-
 ## Quality Checklist
 
 {{QUALITY_CHECKLIST_FROM_CONTRACT}}
+
+## Completion Criteria
+
+{{COMPLETION_CRITERIA}}
 ```
 
 ## Variable Resolution
@@ -65,14 +122,29 @@ the Prime Directive, Access Restrictions, or security guardrails.
 | `AGENT_DISPLAY_NAME` | Contract → agent_name |
 | `AGENT_DESCRIPTION` | Contract → Role (first sentence) |
 | `RESOLVED_MODEL` | Contract model_tier → Customer's model mapping |
+| `ARGUMENT_HINT` | Contract → argument-hint or generated from inputs |
+| `CONTRACT_ID` | Contract → contract_id |
+| `PIPELINE_POSITION` | Contract → pipeline_position |
+| `MODEL_TIER` | Contract → model_tier |
 | `TOOLS` | Contract tool_categories → resolved to platform tools |
 | `ROLE_FROM_CONTRACT` | Contract → Role section (verbatim) |
 | `PRIME_DIRECTIVE_FROM_CONTRACT` | Contract → Prime Directive (verbatim) |
 | `CUSTOMER_GUARDRAILS` | Onboarding answers → Agent Behavioral Guardrails |
 | `AGENT_SLUG` | Agent name in kebab-case (e.g., `agent0_ticket_analyzer`) |
+| `INPUTS` | Contract → Inputs table |
+| `INPUT_VALIDATION_RULES` | Generated from contract inputs (file existence, format checks) |
+| `OUTPUTS` | Contract → Outputs table |
+| `OUTPUT_HANDLING_RULES` | Generated from contract outputs (write location, validation) |
 | `WORKFLOW_INSTRUCTIONS` | Contract → Workflow Logic, adapted to customer tools |
+| `USE_MCP` | True if platform uses MCP integration |
+| `MCP_TOOL_REFERENCES` | MCP server/tool invocation instructions from `.mcp.json` |
+| `USE_CONNECTOR_SKILLS` | True if platform uses API-based Connector Skills |
+| `SKILL_REFERENCES` | Generated skills matching contract skill references |
+| `CHECKPOINTING_STRATEGY` | Generated: what state to save, when, format |
+| `RESUME_PROTOCOL` | Generated: how to load checkpoint and resume |
+| `RERUN_PROTOCOL` | Generated: how to handle re-run with customer feedback |
 | `ACCESS_RESTRICTIONS_FROM_CONTRACT` | Contract → Access Restrictions |
 | `HOOK_REFERENCES` | Generated hooks matching contract hook points |
-| `SKILL_REFERENCES` | Generated skills matching contract skill references |
 | `QUALITY_CHECKLIST_FROM_CONTRACT` | Contract → Quality Checklist |
+| `COMPLETION_CRITERIA` | Generated: explicit conditions for agent to be considered done |
 | `AGENT_VERSION` | Contract → version |

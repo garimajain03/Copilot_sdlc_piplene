@@ -104,13 +104,46 @@ Binaries are installed to `<project_root>/observability/.bin/` — no sudo requi
 | `0` | Processes managed successfully | Pipeline proceeds |
 | `1` | Warning — telemetry degraded (binary missing, health check failed) | Pipeline proceeds without telemetry |
 
+## Cross-Platform Requirements
+
+### Platform Support
+
+| Platform | Binary Extension | Signal | Process Management |
+|----------|-----------------|--------|-------------------|
+| macOS (arm64, amd64) | none | SIGTERM → SIGKILL | kill via PID |
+| Linux (arm64, amd64) | none | SIGTERM → SIGKILL | kill via PID |
+| Windows (amd64) | `.exe` | TerminateProcess | taskkill via PID |
+
+### Implementation Rules
+
+- Hook scripts **MUST** be written in Python (cross-platform by nature)
+- Use `os.name` or `platform.system()` for OS detection
+- Use `subprocess.Popen()` for process management (works on all platforms)
+- Use `os.path.join()` for all file paths (never hardcode `/` or `\`)
+- PID files use the same format on all platforms (plain text, one PID per file)
+- Process termination:
+  - macOS/Linux: `os.kill(pid, signal.SIGTERM)` → wait → `os.kill(pid, signal.SIGKILL)`
+  - Windows: `subprocess.run(["taskkill", "/F", "/PID", str(pid)])`
+- Health checks use HTTP requests (platform-independent)
+- Binary download URLs resolved per platform:
+  - macOS: `darwin-arm64` or `darwin-amd64`
+  - Linux: `linux-arm64` or `linux-amd64`
+  - Windows: `windows-amd64`
+
+### Install Script (Cross-Platform)
+
+| Platform | Install Script | Binary Location |
+|----------|---------------|-----------------|
+| macOS/Linux | `scripts/install-observability.sh` | `observability/.bin/otelcol-contrib`, `observability/.bin/prometheus` |
+| Windows | `scripts/install-observability.ps1` | `observability/.bin/otelcol-contrib.exe`, `observability/.bin/prometheus.exe` |
+
 ## Customization Points
 
 | Point | How Customized | Default |
 |-------|---------------|---------|
 | OTel Collector port | `otel-collector-config.yml` | `4317` (gRPC), `4318` (HTTP) |
 | Prometheus port | `prometheus/prometheus.yml` | `9090` |
-| Binary install path | `scripts/install-observability.sh` | `observability/.bin/` |
+| Binary install path | `scripts/install-observability.sh` or `scripts/install-observability.ps1` | `observability/.bin/` |
 | Log retention | Hook config | 3 most recent runs |
 | Health check timeout | Hook config | 3 retries × 2s |
 | Stale PID age | Hook config | 300 seconds |

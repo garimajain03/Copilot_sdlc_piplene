@@ -7,6 +7,7 @@
 | pipeline_position | 6 |
 | version | 1.0.0 |
 | model_tier | coding |
+| argument_hint | Path to problem_spec.md, design_spec.md, and implementation_manifest.md |
 
 ## Role
 

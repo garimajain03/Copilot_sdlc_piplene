@@ -7,6 +7,7 @@
 | pipeline_position | 8 |
 | version | 1.0.0 |
 | model_tier | coding |
+| argument_hint | Path to problem_spec.md and design_spec.md for infrastructure changes |
 
 ## Role
 

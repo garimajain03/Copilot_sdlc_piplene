@@ -7,6 +7,7 @@
 | pipeline_position | 0 |
 | version | 1.0.0 |
 | model_tier | reasoning |
+| argument_hint | Ticket ID or requirement file path (e.g., "ILO-123" or "requirements/feature.md") |
 
 ## Role
 
