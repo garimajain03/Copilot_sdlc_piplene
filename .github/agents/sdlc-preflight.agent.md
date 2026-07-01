@@ -543,7 +543,18 @@ When a non-critical step fails, continue with reduced capability:
 29. **Generate `copilot-instructions.md`** for each scanned repository:
     - Use the scanned repository context to produce relevant Copilot instructions
     - Include detected tech stack, conventions, patterns, and project-specific guidance
-    - Place at `.github/copilot-instructions.md` within the Agents repository context
+    - **Generate TWO locations per repo:**
+      1. **Per-repo file:** Place at `repos/<repo-name>/.github/copilot-instructions.md` within each scanned repo submodule directory
+      2. **Agents repo file:** Place a MERGED version at `.github/copilot-instructions.md` within the Agents repository (combining all repos)
+    - The merged Agents-repo file MUST:
+      - Have a clear `## <Repo Name>` section heading for each repo
+      - Include repo-specific context under each heading
+      - **NEVER duplicate content** — if two repos share the same convention (e.g., both use Python 3.11), state it ONCE in a shared section, not repeated under each repo
+    - **Duplicate prevention rules:**
+      - Before writing, collect all sections from all repos
+      - Extract common conventions into a `## Common Conventions` section at the top
+      - Only include repo-specific deviations under each repo heading
+      - Never repeat the same instruction verbatim in multiple sections
 
 30. **Save checkpoint** for Phase 7
 
@@ -730,7 +741,8 @@ All paths are relative to the repository/workspace root.
 | `connector_config.md` | `.github/sdlc-pipeline/connector_config.md` |
 | `.env.template` | `.env.template` |
 | `index.md` | `index.md` |
-| `copilot-instructions.md` | `.github/copilot-instructions.md` |
+| `copilot-instructions.md` | `.github/copilot-instructions.md` (merged, all repos) |
+| Per-repo copilot-instructions | `repos/<repo-name>/.github/copilot-instructions.md` (per scanned repo) |
 | Instruction files | `.github/instructions/<repo>.instructions.md` |
 | `codebase_scan_results.md` | `.github/sdlc-pipeline/codebase_scan_results.md` |
 | `preflight_report.md` | `.github/sdlc-pipeline/preflight_report.md` |

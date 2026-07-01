@@ -151,8 +151,140 @@ if (-not (Test-Path $prometheusPath)) {
 Write-Info "Verifying installation..."
 if ((Test-Path $otelcolPath) -and (Test-Path $prometheusPath)) {
     Write-Success "All observability binaries installed successfully"
+} else {
+    Write-Err "Installation verification failed — binaries missing"
+    exit 1
+}
+
+# ─── Start & Health-Check ────────────────────────────────────────────────────
+
+Write-Info "Starting observability stack for verification..."
+
+$PidDir = Join-Path $ObsDir ".pids"
+$LogDir = Join-Path $ObsDir ".logs"
+$PromDataDir = Join-Path $ObsDir ".prom-data"
+$OtelConfig = Join-Path $ObsDir "otel-collector-config.yml"
+$PromConfig = Join-Path $ObsDir "prometheus" "prometheus.yml"
+
+# Start OTel Collector
+$otelcolPidFile = Join-Path $PidDir "otelcol.pid"
+$otelcolLog = Join-Path $LogDir "otelcol.log"
+
+$otelcolRunning = $false
+if (Test-Path $otelcolPidFile) {
+    $existingPid = [int](Get-Content $otelcolPidFile -ErrorAction SilentlyContinue)
+    if ($existingPid -and (Get-Process -Id $existingPid -ErrorAction SilentlyContinue)) {
+        Write-Info "OTel Collector already running (PID $existingPid)"
+        $otelcolRunning = $true
+    }
+}
+
+if (-not $otelcolRunning) {
+    if (Test-Path $OtelConfig) {
+        Write-Info "Starting OTel Collector..."
+        $otelProc = Start-Process -FilePath $otelcolPath `
+            -ArgumentList "--config", $OtelConfig `
+            -RedirectStandardOutput $otelcolLog `
+            -RedirectStandardError (Join-Path $LogDir "otelcol-err.log") `
+            -PassThru -WindowStyle Hidden
+        Set-Content -Path $otelcolPidFile -Value $otelProc.Id
+        Write-Info "OTel Collector started (PID $($otelProc.Id))"
+    } else {
+        Write-Warn "OTel Collector config not found at $OtelConfig — skipping start"
+    }
+}
+
+# Start Prometheus
+$promPidFile = Join-Path $PidDir "prometheus.pid"
+$promLog = Join-Path $LogDir "prometheus.log"
+
+$promRunning = $false
+if (Test-Path $promPidFile) {
+    $existingPid = [int](Get-Content $promPidFile -ErrorAction SilentlyContinue)
+    if ($existingPid -and (Get-Process -Id $existingPid -ErrorAction SilentlyContinue)) {
+        Write-Info "Prometheus already running (PID $existingPid)"
+        $promRunning = $true
+    }
+}
+
+if (-not $promRunning) {
+    if (Test-Path $PromConfig) {
+        Write-Info "Starting Prometheus..."
+        $promProc = Start-Process -FilePath $prometheusPath `
+            -ArgumentList "--config.file=$PromConfig", "--storage.tsdb.path=$PromDataDir", "--web.listen-address=:9090" `
+            -RedirectStandardOutput $promLog `
+            -RedirectStandardError (Join-Path $LogDir "prometheus-err.log") `
+            -PassThru -WindowStyle Hidden
+        Set-Content -Path $promPidFile -Value $promProc.Id
+        Write-Info "Prometheus started (PID $($promProc.Id))"
+    } else {
+        Write-Warn "Prometheus config not found at $PromConfig — skipping start"
+    }
+}
+
+# Wait for startup
+Write-Info "Waiting for services to initialize (5s)..."
+Start-Sleep -Seconds 5
+
+# ─── Endpoint Health Checks ──────────────────────────────────────────────────
+
+$healthOk = $true
+
+# Check OTel Collector health endpoint (default: http://localhost:13133)
+Write-Info "Checking OTel Collector health endpoint (http://localhost:13133)..."
+try {
+    $otelHealth = Invoke-WebRequest -Uri "http://localhost:13133" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop
+    if ($otelHealth.StatusCode -eq 200) {
+        Write-Success "OTel Collector is healthy (HTTP 200)"
+    } else {
+        Write-Warn "OTel Collector responded with HTTP $($otelHealth.StatusCode)"
+        $healthOk = $false
+    }
+} catch {
+    Write-Warn "OTel Collector health check failed: $_"
+    $healthOk = $false
+}
+
+# Check Prometheus health endpoint (default: http://localhost:9090/-/healthy)
+Write-Info "Checking Prometheus health endpoint (http://localhost:9090/-/healthy)..."
+try {
+    $promHealth = Invoke-WebRequest -Uri "http://localhost:9090/-/healthy" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop
+    if ($promHealth.StatusCode -eq 200) {
+        Write-Success "Prometheus is healthy (HTTP 200)"
+    } else {
+        Write-Warn "Prometheus responded with HTTP $($promHealth.StatusCode)"
+        $healthOk = $false
+    }
+} catch {
+    Write-Warn "Prometheus health check failed: $_"
+    $healthOk = $false
+}
+
+# Check Prometheus query API
+Write-Info "Checking Prometheus query API (http://localhost:9090/api/v1/status/config)..."
+try {
+    $promApi = Invoke-WebRequest -Uri "http://localhost:9090/api/v1/status/config" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop
+    if ($promApi.StatusCode -eq 200) {
+        Write-Success "Prometheus API is accessible"
+    } else {
+        Write-Warn "Prometheus API responded with HTTP $($promApi.StatusCode)"
+    }
+} catch {
+    Write-Warn "Prometheus API check failed (non-critical): $_"
+}
+
+# ─── Summary ─────────────────────────────────────────────────────────────────
+
+Write-Host ""
+if ($healthOk) {
+    Write-Success "Observability stack is running and all endpoints are accessible"
+    Write-Info "  OTel Collector: http://localhost:13133 (health) / http://localhost:4318 (OTLP)"
+    Write-Info "  Prometheus:     http://localhost:9090 (UI + API)"
     exit 0
 } else {
-    Write-Err "Installation verification failed"
+    Write-Warn "Observability stack started but some health checks failed"
+    Write-Info "Check logs at: $LogDir"
+    Write-Info "  OTel Collector log: $otelcolLog"
+    Write-Info "  Prometheus log:     $promLog"
     exit 1
 }

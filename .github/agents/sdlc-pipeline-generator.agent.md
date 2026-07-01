@@ -453,7 +453,7 @@ When a non-critical generation step fails, continue with reduced output:
 
     **Generation rules (MANDATORY — follow exactly):**
 
-    - **Frontmatter:** Include YAML front matter with: name, description, model, tools, argumentHint, hooks (array of hook IDs applicable to this agent)
+    - **Frontmatter:** Include YAML front matter with: name, description, model, tools, argumentHint, hooks (structured by event type: PreToolUse, PostToolUse, SessionStart, Stop — each containing `type: command` entries with full script paths)
     - **Agent metadata:** Include contract_id, version, pipeline_position, model_tier
     - **argumentHint:** Provide a brief description of expected arguments
     - **Role & Prime Directive:** Copy verbatim from contract
@@ -587,6 +587,17 @@ When a non-critical generation step fails, continue with reduced output:
       - PID file management must use OS-appropriate paths
     - Binary paths must use `os.path.join()` for cross-platform compatibility
     - Health check endpoints use HTTP (cross-platform by nature)
+
+    **Hook responsibility separation (MANDATORY — NO DUPLICATION):**
+    - **`observability.py`** — ONLY manages binary process lifecycle (start/stop OTel Collector + Prometheus). MUST NOT contain any telemetry collection, metric queries, cost computation, or report writing logic.
+    - **`otel_telemetry.py`** — ONLY handles telemetry metrics (session baselines, per-agent snapshots, cost computation, report generation). MUST NOT contain any process start/stop/health-check logic for binaries.
+    - The `observability` hook is attached ONLY to the Orchestrator's `SessionStart` and `Stop`.
+    - The `otel_telemetry` hook is attached to Orchestrator's `PreToolUse`/`PostToolUse` (for subagent calls) and to all agents' `SessionStart`/`Stop` (for baselines).
+    - **Model pricing:** The `otel_telemetry` hook MUST load pricing from `observability/model-pricing.json` — NEVER hardcode prices in the script. Use the pricing file resolution order from the contract (env var → file path → URL → default file).
+    - **Cost output:** Write cost estimates to a separate `cost_report.md` file (in addition to `telemetry_report.md`).
+    - **Cost visibility:** The hook MUST print a one-line cost summary to stdout after each agent completes (so cost appears in the chat/output):
+      `[TELEMETRY] Agent: <name> | Model: <model> | Tokens: <total> | Cost: $<amount> | Time: <seconds>s`
+    - **Token source priority:** Extract tokens from the hook event payload's `usage` field FIRST (primary source). Fall back to Prometheus query only if `usage` is absent. This ensures cost works even without OTel Collector running.
 
 17. **Generate `hooks.json`** registering all hooks with proper paths and timeouts
 
@@ -774,12 +785,37 @@ tools:
   - <tool1>
   - <tool2>
 hooks:
-  - <hook_id_1>
-  - <hook_id_2>
+  PreToolUse:
+    - type: command
+      command: "python3 .github/hooks/<hook_script>.py"
+  PostToolUse:
+    - type: command
+      command: "python3 .github/hooks/<hook_script>.py"
+  SessionStart:
+    - type: command
+      command: "python3 .github/hooks/<hook_script>.py"
+  Stop:
+    - type: command
+      command: "python3 .github/hooks/<hook_script>.py"
 ---
 ```
 
-The `hooks` field MUST list all hook IDs that apply to the agent (from `hooks.json`).
+**Hooks frontmatter format rules:**
+- Hooks are grouped by event type: `PreToolUse`, `PostToolUse`, `SessionStart`, `Stop`
+- Each hook entry is `type: command` with a `command` field containing the full invocation
+- The command MUST be `python3 .github/hooks/<script_name>.py` (cross-platform Python)
+- Only include event groups that have applicable hooks for this agent
+- **Hook-to-event mapping:**
+  - `guard_destructive` → `PreToolUse` (blocks dangerous commands before execution)
+  - `guard_secrets` → `PreToolUse` (blocks access to secret files before execution)
+  - `lint_on_save` → `PostToolUse` (runs linter after file writes)
+  - `observability` → `SessionStart`, `Stop` (**Orchestrator ONLY** — manages binary lifecycle)
+  - `otel_telemetry` → `PreToolUse`, `PostToolUse` (on Orchestrator for subagent calls), `SessionStart`, `Stop` (on all agents for baselines)
+  - `session_learnings` → `Stop` (captures learnings at session end)
+- **Non-orchestrator agents** get: `guard_destructive`, `guard_secrets`, `lint_on_save` under PreToolUse/PostToolUse; `otel_telemetry` under SessionStart/Stop; `session_learnings` under Stop
+- **Orchestrator** additionally gets: `observability` under SessionStart/Stop; `otel_telemetry` under PreToolUse/PostToolUse (for subagent tracking)
+
+The `hooks` field MUST NOT use the old simple ID list format (e.g., `- guard_destructive`). Always use the structured `PreToolUse`/`PostToolUse`/`SessionStart`/`Stop` format with `type: command`.
 
 ### Agent Required Sections (MANDATORY)
 

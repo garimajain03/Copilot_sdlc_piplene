@@ -19,6 +19,27 @@ Manages local telemetry infrastructure processes (OpenTelemetry Collector and Pr
 4. **[OUTCOME-IDEMPOTENT]** — Starting already-running processes is a no-op; stopping already-stopped processes is safe
 5. **[OUTCOME-PERSIST]** — PID files and logs persist across hook invocations for process tracking
 
+## Responsibility Boundary (CRITICAL — NO DUPLICATION)
+
+This hook is ONLY responsible for:
+- Starting/stopping OTel Collector and Prometheus binary processes
+- Health-checking that endpoints are accessible (HTTP probes)
+- Managing PID files and process lifecycle
+
+This hook MUST NOT:
+- Collect or compute any telemetry metrics
+- Write to telemetry_report.md or cost_report.md
+- Query Prometheus for token metrics
+- Compute costs or token deltas
+- Record session baselines for metrics
+
+All telemetry/metrics logic belongs EXCLUSIVELY in the `otel_telemetry` hook.
+
+## Hook Attachment Rules
+
+- This hook (`observability`) should ONLY be attached to the **Orchestrator** agent's `SessionStart` and `Stop` events
+- Individual non-orchestrator agents do NOT need this hook (binaries are managed centrally by orchestrator)
+
 ## Trigger Conditions
 
 | Event | When Fired | Action |

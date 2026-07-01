@@ -26,9 +26,34 @@ tools:
   - {{this}}
   {{/each}}
 hooks:
-  {{#each HOOKS}}
-  - {{this}}
-  {{/each}}
+  {{#if HOOKS_PRE_TOOL_USE}}
+  PreToolUse:
+    {{#each HOOKS_PRE_TOOL_USE}}
+    - type: command
+      command: "{{this}}"
+    {{/each}}
+  {{/if}}
+  {{#if HOOKS_POST_TOOL_USE}}
+  PostToolUse:
+    {{#each HOOKS_POST_TOOL_USE}}
+    - type: command
+      command: "{{this}}"
+    {{/each}}
+  {{/if}}
+  {{#if HOOKS_SESSION_START}}
+  SessionStart:
+    {{#each HOOKS_SESSION_START}}
+    - type: command
+      command: "{{this}}"
+    {{/each}}
+  {{/if}}
+  {{#if HOOKS_STOP}}
+  Stop:
+    {{#each HOOKS_STOP}}
+    - type: command
+      command: "{{this}}"
+    {{/each}}
+  {{/if}}
 ---
 
 # {{AGENT_DISPLAY_NAME}}
@@ -153,7 +178,10 @@ Reference: `.github/hooks/hooks.json` for full hook configuration.
 | `PIPELINE_POSITION` | Contract → pipeline_position | e.g., "0" |
 | `MODEL_TIER` | Contract → model_tier | e.g., "reasoning" |
 | `TOOLS` | Contract tool_categories → resolved to platform tools | e.g., ["execute", "read", "edit"] |
-| `HOOKS` | Hook IDs applicable to this agent (from hooks.json) | e.g., ["guard_destructive", "otel_telemetry"] |
+| `HOOKS_PRE_TOOL_USE` | Hook commands triggered before tool execution | e.g., ["python3 .github/hooks/guard_destructive.py", "python3 .github/hooks/guard_secrets.py"] |
+| `HOOKS_POST_TOOL_USE` | Hook commands triggered after tool execution | e.g., ["python3 .github/hooks/lint_on_save.py"] |
+| `HOOKS_SESSION_START` | Hook commands triggered at session start | e.g., ["python3 .github/hooks/observability.py", "python3 .github/hooks/otel_telemetry.py"] |
+| `HOOKS_STOP` | Hook commands triggered at session end | e.g., ["python3 .github/hooks/session_learnings.py", "python3 .github/hooks/otel_telemetry.py"] |
 | `ROLE_FROM_CONTRACT` | Contract → Role section (verbatim) | Full role paragraph from contract |
 | `PRIME_DIRECTIVE_FROM_CONTRACT` | Contract → Prime Directive (verbatim) | Exact quote from contract |
 | `CUSTOMER_GUARDRAILS` | Onboarding answers → Agent Behavioral Guardrails | Customer's specific guardrails list |
