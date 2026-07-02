@@ -2,3 +2,4 @@
 .sdlc-preflight/
 .env
 repos/
+data/
