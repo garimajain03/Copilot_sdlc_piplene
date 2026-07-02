@@ -599,6 +599,44 @@ When a non-critical generation step fails, continue with reduced output:
       `[TELEMETRY] Agent: <name> | Model: <model> | Tokens: <total> | Cost: $<amount> | Time: <seconds>s`
     - **Token source priority:** Extract tokens from the hook event payload's `usage` field FIRST (primary source). Fall back to Prometheus query only if `usage` is absent. This ensures cost works even without OTel Collector running.
 
+    **CRITICAL implementation patterns for generated hooks:**
+
+    **`otel_telemetry.py` MUST use this pricing access pattern:**
+    ```python
+    PRICING_FILE = WORKSPACE_ROOT / "observability" / "model-pricing.json"
+
+    def load_pricing() -> dict:
+        pricing_path = os.environ.get("MODEL_PRICING_FILE", str(PRICING_FILE))
+        with open(pricing_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def estimate_cost(model, input_tokens, output_tokens, pricing):
+        models = pricing.get("models", pricing)  # Handle nested JSON structure
+        model_pricing = models.get(model, models.get("default", {}))
+        input_price = model_pricing.get("input_per_1m_tokens", 0) / 1_000_000
+        output_price = model_pricing.get("output_per_1m_tokens", 0) / 1_000_000
+        return (input_tokens * input_price) + (output_tokens * output_price)
+    ```
+    The keys are `input_per_1m_tokens` and `output_per_1m_tokens` — NOT `input_per_1m` or `input`.
+    The pricing dict is nested under `"models"` key — MUST use `pricing.get("models", pricing)`.
+
+    **`observability.py` MUST use these patterns:**
+    ```python
+    IS_WINDOWS = platform.system() == "Windows"
+    OTEL_BINARY = "otelcol-contrib" + (".exe" if IS_WINDOWS else "")  # NOT "otelcol"
+    PROMETHEUS_BINARY = "prometheus" + (".exe" if IS_WINDOWS else "")
+    binary_path = OBSERVABILITY_DIR / ".bin" / OTEL_BINARY
+
+    # Windows process creation:
+    if IS_WINDOWS:
+        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS)
+    else:
+        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                start_new_session=True)
+    ```
+    Config flags: OTel uses `--config`, Prometheus uses `--config.file` (separate arg, NOT `=`-joined).
+
 17. **Generate `hooks.json`** registering all hooks with proper paths and timeouts
 
 18. **Save checkpoint** for Phase 6

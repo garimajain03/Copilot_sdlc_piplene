@@ -94,16 +94,42 @@ The hook MUST read pricing from this external file — NEVER hardcode pricing in
 
 ### Pricing Format
 
+The pricing file has a nested structure with `_metadata` and `models` keys:
+
 ```json
 {
-  "model-name": {
-    "input": 5.00,
-    "output": 25.00
+  "_metadata": {
+    "source": "https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing",
+    "last_updated": "2026-07-01T00:00:00Z",
+    "update_script": "scripts/update-latest-model-pricing.py"
+  },
+  "models": {
+    "gpt-4o": {
+      "provider": "OpenAI",
+      "input_per_1m_tokens": 2.50,
+      "output_per_1m_tokens": 10.00
+    }
   }
 }
 ```
 
-Values are **USD per 1 million tokens**.
+**CRITICAL pricing access pattern (MUST match this exactly):**
+```python
+def load_pricing() -> dict:
+    pricing_path = os.environ.get("MODEL_PRICING_FILE", str(PRICING_FILE))
+    with open(pricing_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def estimate_cost(model, input_tokens, output_tokens, pricing):
+    models = pricing.get("models", pricing)  # Handle nested structure
+    model_pricing = models.get(model, models.get("default", {}))
+    input_price = model_pricing.get("input_per_1m_tokens", model_pricing.get("input_per_1m", 0)) / 1_000_000
+    output_price = model_pricing.get("output_per_1m_tokens", model_pricing.get("output_per_1m", 0)) / 1_000_000
+    return (input_tokens * input_price) + (output_tokens * output_price)
+```
+
+The keys are `input_per_1m_tokens` and `output_per_1m_tokens` (NOT `input_per_1m` or just `input`).
+The pricing dict is nested under `"models"` key — MUST use `pricing.get("models", pricing)` to access.
 
 ### Default Pricing Table
 

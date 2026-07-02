@@ -140,7 +140,7 @@ Binaries are installed to `<project_root>/observability/.bin/` — no sudo requi
 - Hook scripts **MUST** be written in Python (cross-platform by nature)
 - Use `os.name` or `platform.system()` for OS detection
 - Use `subprocess.Popen()` for process management (works on all platforms)
-- Use `os.path.join()` for all file paths (never hardcode `/` or `\`)
+- Use `os.path.join()` or `pathlib.Path` for all file paths (never hardcode `/` or `\`)
 - PID files use the same format on all platforms (plain text, one PID per file)
 - Process termination:
   - macOS/Linux: `os.kill(pid, signal.SIGTERM)` → wait → `os.kill(pid, signal.SIGKILL)`
@@ -150,6 +150,45 @@ Binaries are installed to `<project_root>/observability/.bin/` — no sudo requi
   - macOS: `darwin-arm64` or `darwin-amd64`
   - Linux: `linux-arm64` or `linux-amd64`
   - Windows: `windows-amd64`
+
+### CRITICAL Implementation Patterns (MUST follow exactly)
+
+**Binary names:**
+```python
+IS_WINDOWS = platform.system() == "Windows"
+OTEL_BINARY = "otelcol-contrib" + (".exe" if IS_WINDOWS else "")  # NOT "otelcol"
+PROMETHEUS_BINARY = "prometheus" + (".exe" if IS_WINDOWS else "")
+```
+
+**Binary paths (relative to workspace root):**
+```python
+WORKSPACE_ROOT = Path(__file__).parent.parent.parent  # .github/hooks/ → workspace root
+OBSERVABILITY_DIR = WORKSPACE_ROOT / "observability"
+PID_DIR = OBSERVABILITY_DIR / ".pids"
+binary_path = OBSERVABILITY_DIR / ".bin" / OTEL_BINARY
+```
+
+**Windows process creation (MUST use these flags):**
+```python
+if IS_WINDOWS:
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS,
+    )
+else:
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+```
+
+**Config flags for starting binaries:**
+- OTel Collector: `["--config", str(config_path)]`
+- Prometheus: `["--config.file", str(config_path)]` (NOT `--config.file=...`)
 
 ### Install Script (Cross-Platform)
 
