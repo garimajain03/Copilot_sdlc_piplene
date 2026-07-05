@@ -25,6 +25,7 @@ tools:
   {{#each TOOLS}}
   - {{this}}
   {{/each}}
+{{#if INCLUDE_HOOKS_FRONTMATTER}}
 hooks:
   {{#if HOOKS_PRE_TOOL_USE}}
   PreToolUse:
@@ -54,6 +55,7 @@ hooks:
       command: "{{this}}"
     {{/each}}
   {{/if}}
+{{/if}}
 ---
 
 # {{AGENT_DISPLAY_NAME}}
@@ -75,6 +77,19 @@ hooks:
 
 ## Behavioral Guardrails
 {{CUSTOMER_GUARDRAILS}}
+
+## Client Onboarding Context
+
+| Area | Applied Context |
+|------|-----------------|
+| Industry / Domain | {{CLIENT_INDUSTRY_DOMAIN}} |
+| Business Context | {{CLIENT_BUSINESS_CONTEXT}} |
+| Intake Sources | {{CLIENT_INTAKE_SOURCES}} |
+| Customer Complaints / Pain Points | {{CLIENT_COMPLAINTS_CONTEXT}} |
+| Existing Automations / Agents | {{CLIENT_EXISTING_AGENTS_CONTEXT}} |
+| Compliance and Risk Profile | {{CLIENT_COMPLIANCE_CONTEXT}} |
+| Tooling and Integration Preferences | {{CLIENT_TOOLING_CONTEXT}} |
+| Project Constraints | {{CLIENT_CONSTRAINTS_CONTEXT}} |
 
 ## Inputs
 
@@ -178,6 +193,7 @@ Reference: `.github/hooks/hooks.json` for full hook configuration.
 | `PIPELINE_POSITION` | Contract → pipeline_position | e.g., "0" |
 | `MODEL_TIER` | Contract → model_tier | e.g., "reasoning" |
 | `TOOLS` | Contract tool_categories → resolved to platform tools | e.g., ["execute", "read", "edit"] |
+| `INCLUDE_HOOKS_FRONTMATTER` | Generated boolean: include `hooks:` only when agent has at least one hook | Prevents empty/duplicate hook blocks |
 | `HOOKS_PRE_TOOL_USE` | Hook commands triggered before tool execution | e.g., ["python3 .github/hooks/guard_destructive.py", "python3 .github/hooks/guard_secrets.py"] |
 | `HOOKS_POST_TOOL_USE` | Hook commands triggered after tool execution | e.g., ["python3 .github/hooks/lint_on_save.py"] |
 | `HOOKS_SESSION_START` | Hook commands triggered at session start | e.g., ["python3 .github/hooks/observability.py", "python3 .github/hooks/otel_telemetry.py"] |
@@ -185,6 +201,14 @@ Reference: `.github/hooks/hooks.json` for full hook configuration.
 | `ROLE_FROM_CONTRACT` | Contract → Role section (verbatim) | Full role paragraph from contract |
 | `PRIME_DIRECTIVE_FROM_CONTRACT` | Contract → Prime Directive (verbatim) | Exact quote from contract |
 | `CUSTOMER_GUARDRAILS` | Onboarding answers → Agent Behavioral Guardrails | Customer's specific guardrails list |
+| `CLIENT_INDUSTRY_DOMAIN` | Onboarding answers → organisation.industry + domain notes | Industry/domain context for prompts |
+| `CLIENT_BUSINESS_CONTEXT` | Onboarding answers → business background + objectives | Business intent and target outcomes |
+| `CLIENT_INTAKE_SOURCES` | Onboarding answers → sources + linked docs | Input channels and knowledge sources |
+| `CLIENT_COMPLAINTS_CONTEXT` | Onboarding answers → pains/complaints | Existing pain points to prioritize |
+| `CLIENT_EXISTING_AGENTS_CONTEXT` | Onboarding answers → ai_stack.existing_agents* | Existing automation footprint |
+| `CLIENT_COMPLIANCE_CONTEXT` | Onboarding answers → compliance + constraints | Security/compliance posture |
+| `CLIENT_TOOLING_CONTEXT` | Onboarding answers → approved tools/models + workflow systems | Toolchain and integration choices |
+| `CLIENT_CONSTRAINTS_CONTEXT` | Onboarding answers → explicit constraints and guardrails | Non-functional and delivery constraints |
 | `AGENT_SLUG` | Agent name in kebab-case (e.g., `agent0_ticket_analyzer`) | Used for file references |
 | `INPUTS` | Contract → Inputs table (EXACT rows, not generic) | Every artifact row from contract's Inputs table |
 | `INPUT_VALIDATION_RULES` | Contract → Input Validation section (specific rules per input) | e.g., "Ticket ID must match prefix regex" |

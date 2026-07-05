@@ -44,7 +44,8 @@ Collects OpenTelemetry metrics around each agent execution in the orchestrator p
 ### Hook Attachment Rules
 
 - **Orchestrator agent frontmatter:** Include `otel_telemetry` under `PreToolUse` and `PostToolUse` (for subagent call tracking)
-- **All agent frontmatters (including orchestrator):** Include `otel_telemetry` under `SessionStart` and `Stop` (for session baseline/finalization)
+- **Orchestrator agent frontmatter:** Include `otel_telemetry` under `SessionStart` and `Stop` (pipeline baseline/finalization)
+- **Individual agents (non-orchestrator):** Do NOT include `otel_telemetry` in any event (telemetry is orchestrator-owned)
 - **Orchestrator agent frontmatter:** Include `observability` under `SessionStart` and `Stop` (for binary lifecycle)
 - **Individual agents (non-orchestrator):** Do NOT include `observability` hook (binaries are managed by orchestrator only)
 

@@ -498,6 +498,7 @@ When a non-critical generation step fails, continue with reduced output:
     - **Custom Client Context Loading:** Add instruction to load `<agent>_custom_client_context.md` if it exists
     - **Hooks:** Add full hooks configuration table (hook ID, event, blocking, purpose) referencing `hooks.json`
     - **Skill references:** Reference generated skills (shared VCS Connector, PM Connector, or MCP — avoid duplicating connector instructions)
+    - **Onboarding context propagation (MANDATORY):** reflect onboarding values in every relevant generated section (inputs, workflow instructions, constraints, connector integration, validation, and examples). Do NOT drop fields that were collected by the onboarding wizard.
 
 11. **Generate Orchestrator** from `orchestrator.contract.md`:
 
@@ -535,6 +536,7 @@ When a non-critical generation step fails, continue with reduced output:
     - **Add output validation** (pipeline_log.md written, telemetry_report.md written)
     - Include hooks in YAML frontmatter
     - Reference hooks.json for full hook configuration
+    - **Telemetry ownership rule:** Keep telemetry collection orchestrator-owned. Do not place `otel_telemetry` on non-orchestrator agents.
 
 12. **Save checkpoint** for Phase 4
 
@@ -592,7 +594,9 @@ When a non-critical generation step fails, continue with reduced output:
     - **`observability.py`** — ONLY manages binary process lifecycle (start/stop OTel Collector + Prometheus). MUST NOT contain any telemetry collection, metric queries, cost computation, or report writing logic.
     - **`otel_telemetry.py`** — ONLY handles telemetry metrics (session baselines, per-agent snapshots, cost computation, report generation). MUST NOT contain any process start/stop/health-check logic for binaries.
     - The `observability` hook is attached ONLY to the Orchestrator's `SessionStart` and `Stop`.
-    - The `otel_telemetry` hook is attached to Orchestrator's `PreToolUse`/`PostToolUse` (for subagent calls) and to all agents' `SessionStart`/`Stop` (for baselines).
+    - The `otel_telemetry` hook is attached ONLY to the Orchestrator (`PreToolUse`, `PostToolUse`, `SessionStart`, `Stop`).
+    - Non-orchestrator agents MUST NOT include `otel_telemetry`.
+    - Reuse the existing `otel_telemetry.py` behavior and filtering (`tool_name == "runSubagent"`) instead of generating project-specific telemetry logic.
     - **Model pricing:** The `otel_telemetry` hook MUST load pricing from `observability/model-pricing.json` — NEVER hardcode prices in the script. Use the pricing file resolution order from the contract (env var → file path → URL → default file).
     - **Cost output:** Write cost estimates to a separate `cost_report.md` file (in addition to `telemetry_report.md`).
     - **Cost visibility:** The hook MUST print a one-line cost summary to stdout after each agent completes (so cost appears in the chat/output):
@@ -808,6 +812,7 @@ For each generated agent, verify:
 - [ ] Custom client context loading instruction is present
 - [ ] **Hooks section present with full configuration** (hook ID, event, blocking, purpose)
 - [ ] Connector integration uses shared skills or MCP (no duplication)
+- [ ] Onboarding inputs are fully propagated to generated content (industry/domain, business context, intake sources, complaints/pain points, constraints, compliance, existing agents, approved models/tools)
 
 ### Agent YAML Front Matter Structure (MANDATORY)
 
@@ -838,6 +843,11 @@ hooks:
 ---
 ```
 
+**Hook ownership rules (MANDATORY):**
+- Only include `hooks:` when at least one hook applies to that generated file.
+- The Orchestrator includes `SessionStart`, `Stop`, `PreToolUse`, and `PostToolUse` with telemetry + observability responsibilities per contracts.
+- Non-orchestrator agents MUST NOT include orchestrator-only telemetry hooks.
+
 **Hooks frontmatter format rules:**
 - Hooks are grouped by event type: `PreToolUse`, `PostToolUse`, `SessionStart`, `Stop`
 - Each hook entry is `type: command` with a `command` field containing the full invocation
@@ -848,12 +858,32 @@ hooks:
   - `guard_secrets` → `PreToolUse` (blocks access to secret files before execution)
   - `lint_on_save` → `PostToolUse` (runs linter after file writes)
   - `observability` → `SessionStart`, `Stop` (**Orchestrator ONLY** — manages binary lifecycle)
-  - `otel_telemetry` → `PreToolUse`, `PostToolUse` (on Orchestrator for subagent calls), `SessionStart`, `Stop` (on all agents for baselines)
+  - `otel_telemetry` → `PreToolUse`, `PostToolUse`, `SessionStart`, `Stop` (**Orchestrator ONLY**)
   - `session_learnings` → `Stop` (captures learnings at session end)
-- **Non-orchestrator agents** get: `guard_destructive`, `guard_secrets`, `lint_on_save` under PreToolUse/PostToolUse; `otel_telemetry` under SessionStart/Stop; `session_learnings` under Stop
-- **Orchestrator** additionally gets: `observability` under SessionStart/Stop; `otel_telemetry` under PreToolUse/PostToolUse (for subagent tracking)
+- **Non-orchestrator agents** get only role-appropriate non-orchestrator hooks (for example guard/lint/session learning) and MUST NOT include orchestrator telemetry hooks
+- **Orchestrator** gets: `observability` under SessionStart/Stop; `otel_telemetry` under PreToolUse/PostToolUse (for subagent tracking) and SessionStart/Stop
 
 The `hooks` field MUST NOT use the old simple ID list format (e.g., `- guard_destructive`). Always use the structured `PreToolUse`/`PostToolUse`/`SessionStart`/`Stop` format with `type: command`.
+
+### Onboarding Context Coverage Matrix (MANDATORY)
+
+Every generated artifact must consume onboarding context from the normalized onboarding JSON/root in addition to any markdown narrative.
+
+| Onboarding Input | Required Usage in Generated Output |
+|------------------|------------------------------------|
+| Organisation.Company | Naming, branding, and generated report headers |
+| Organisation.Industry (+ industry_other) | Domain defaults, compliance posture, and domain terminology in prompts/instructions |
+| Organisation.approved_ai_tools + approved_models | Model mapping and tool-specific instructions |
+| Workflow.Dev/BA/QA sections | Agent workflow assumptions, connector integration, and testing strategy references |
+| Sources (Confluence/docs/uploads/design refs) | Retrieval instructions, connector references, and prompt examples |
+| Constraints (PII + guardrails + quality/security/risk rules) | Behavioral guardrails, validation logic, and safety constraints |
+| AI Stack (existing_agents, files, CMS) | Reuse/deconflict logic and generation decisions |
+| Business context fields (problem framing, goals, complaints/pain points, intake context) | Problem decomposition and design guidance sections |
+
+Propagation rules:
+- Do not leave onboarding-rich fields unused when a generated section can reasonably consume them.
+- Prefer generic placeholders/variables over hardcoded customer values in templates/contracts.
+- Keep outputs reusable across customers: context is injected from onboarding data, not baked into static template text.
 
 ### Agent Required Sections (MANDATORY)
 
@@ -887,8 +917,15 @@ Every generated agent MUST include ALL of these sections in this order:
 |---------|-------|----------|---------|
 | guard_destructive | pre_tool_use | Yes | Block dangerous commands |
 | guard_secrets | pre_tool_use | Yes | Prevent credential exposure |
-| otel_telemetry | all | No | Track metrics and cost |
 | lint_on_save | post_tool_use | No | Auto-lint after writes |
+| session_learnings | stop | No | Capture session learnings |
+
+Orchestrator-specific rows (in orchestrator.md only):
+
+| Hook ID | Event | Blocking | Purpose |
+|---------|-------|----------|---------|
+| observability | session_start, stop | No | Manage OTel/Prometheus lifecycle |
+| otel_telemetry | pre_tool_use, post_tool_use, session_start, stop | No | Track subagent telemetry and cost |
 ```
 
 Reference: `.github/hooks/hooks.json` for full configuration.
