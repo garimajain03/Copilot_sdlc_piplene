@@ -1297,18 +1297,75 @@ function buildMarkdown() {
   const none = v => v || '_(not provided)_';
   const list = arr => arr?.length ? arr.map(v => `  - ${v}`).join('\n') : '  - None specified';
   const personas = o.personas || [];
-  let wfSection = '';
-  if (personas.includes('Dev')) wfSection += `\n### Developer\n- ALM System: ${none(wf.dev?.pm_system)}\n- ALM URL: ${none(wf.dev?.pm_tool_url)}\n- ALM Integration: ${none(wf.dev?.pm_integration_mode)}\n`;
-  if (personas.includes('BA'))  wfSection += `\n### Business Analyst\n- Req Format: ${none(wf.ba?.req_format)}\n- DoR: ${none(wf.ba?.dor)}\n- Sign-off: ${none(wf.ba?.signoff)}\n`;
-  if (personas.includes('QA'))  wfSection += `\n### QA\n- Test Mgmt: ${none(wf.qa?.test_mgmt_system)}\n- Automation: ${none(wf.qa?.qa_automation)}\n- Coverage: ${wf.qa?.coverage_threshold || '_(not set)_'}%\n- Frameworks:\n${list(wf.qa?.frameworks)}\n`;
 
+  // Industry with "Other" text
+  const industryDisplay = o.industry === 'Other' && o.industry_other ? `Other - ${o.industry_other}` : (o.industry || '_(not provided)_');
+
+  // SCM details
+  const scm = wf.dev?.scm || {};
+  let scmSection = `- SCM System: ${none(scm.system)}\n`;
+  if (scm.system === 'github') {
+    scmSection += `- GitHub URL: ${none(scm.github?.url)}\n`;
+    scmSection += `- GitHub Org/Namespace: ${none(scm.github?.group)}\n`;
+    scmSection += `- Repositories:\n${scm.github?.repos ? scm.github.repos.split('\n').filter(Boolean).map(r => `  - ${r.trim()}`).join('\n') : '  - _(not provided)_'}\n`;
+    scmSection += `- SCM Integration Mode: ${none(scm.github?.integration_mode)}\n`;
+  } else if (scm.system === 'gitlab') {
+    scmSection += `- GitLab URL: ${none(scm.gitlab?.url)}\n`;
+    scmSection += `- GitLab Group/Namespace: ${none(scm.gitlab?.group)}\n`;
+    scmSection += `- Repositories:\n${scm.gitlab?.repos ? scm.gitlab.repos.split('\n').filter(Boolean).map(r => `  - ${r.trim()}`).join('\n') : '  - _(not provided)_'}\n`;
+    scmSection += `- SCM Integration Mode: ${none(scm.gitlab?.integration_mode)}\n`;
+  } else if (scm.system === 'bitbucket') {
+    scmSection += `- Bitbucket URL: ${none(scm.bitbucket?.url)}\n`;
+    scmSection += `- Workspace: ${none(scm.bitbucket?.workspace)}\n`;
+    scmSection += `- Repositories:\n${scm.bitbucket?.repos ? scm.bitbucket.repos.split('\n').filter(Boolean).map(r => `  - ${r.trim()}`).join('\n') : '  - _(not provided)_'}\n`;
+    scmSection += `- SCM Integration Mode: ${none(scm.bitbucket?.integration_mode)}\n`;
+  } else if (scm.system === 'azure-repos') {
+    scmSection += `- Organisation: ${none(scm.azure_repos?.org)}\n`;
+    scmSection += `- Project: ${none(scm.azure_repos?.project)}\n`;
+    scmSection += `- Repositories:\n${scm.azure_repos?.repos ? scm.azure_repos.repos.split('\n').filter(Boolean).map(r => `  - ${r.trim()}`).join('\n') : '  - _(not provided)_'}\n`;
+    scmSection += `- SCM Integration Mode: ${none(scm.azure_repos?.integration_mode)}\n`;
+  } else if (scm.system === 'other') {
+    scmSection += `- Tool Name: ${none(scm.other?.name)}\n`;
+    scmSection += `- URL: ${none(scm.other?.url)}\n`;
+    scmSection += `- SCM Integration Mode: ${none(scm.other?.integration_mode)}\n`;
+  }
+
+  // Developer workflow section (always shown)
+  let wfSection = `\n### Developer Tools\n- PM/Requirements System: ${none(wf.dev?.pm_system)}\n- PM Tool URL: ${none(wf.dev?.pm_tool_url)}\n- PM Integration Mode: ${none(wf.dev?.pm_integration_mode)}\n${scmSection}`;
+
+  // QA workflow section (always shown)
+  const qa = wf.qa || {};
+  wfSection += `\n### QA / Testing Tools\n- Test Management: ${none(qa.test_mgmt_system)}${qa.test_mgmt_other ? ` (${qa.test_mgmt_other})` : ''}\n- Sample Test Case Format: ${none(qa.sample_test_case_format)}\n- Automation Exists: ${none(qa.automation_exists)}\n`;
+  if (qa.automation_exists === 'yes') {
+    wfSection += `- Automation Scope: ${qa.automation_scope?.length ? qa.automation_scope.join(', ') : '_(not provided)_'}\n`;
+    wfSection += `- Languages: ${qa.prog_languages?.length ? qa.prog_languages.join(', ') + (qa.prog_lang_other ? `, ${qa.prog_lang_other}` : '') : '_(not provided)_'}\n`;
+    wfSection += `- UI Frameworks: ${qa.ui_frameworks?.length ? qa.ui_frameworks.join(', ') + (qa.ui_framework_other ? `, ${qa.ui_framework_other}` : '') : '_(not provided)_'}\n`;
+    wfSection += `- API Frameworks: ${qa.api_frameworks?.length ? qa.api_frameworks.join(', ') + (qa.api_framework_other ? `, ${qa.api_framework_other}` : '') : '_(not provided)_'}\n`;
+    wfSection += `- Reporting Tools: ${qa.reporting_tools?.length ? qa.reporting_tools.join(', ') + (qa.reporting_other ? `, ${qa.reporting_other}` : '') : '_(not provided)_'}\n`;
+  }
+
+  // Approved models
   const modelRows = [];
   Object.entries(o.approved_models || {}).forEach(([tool, models]) => {
     if (!models?.length) return;
     modelRows.push(`| ${tool} | ${models.join(', ')} |`);
   });
 
-  return `# Client Intake — SDLC Onboarding Context\n_Generated: ${ts}_\n\n---\n\n## Organisation\n| Field | Value |\n|---|---|\n| Company | ${none(o.company)} |\n| Industry | ${none(o.industry)} |\n| Approved AI tools | ${(o.approved_ai_tools||[]).join(', ') || '_(none)_'}${(o.other_ai_tools||[]).length ? `, ${o.other_ai_tools.join(', ')}` : ''} |\n| Personas engaged | ${personas.join(', ') || '_(none)_'} |\n| Compliance | ${(o.compliance||[]).join(', ') || '_(none)_'} |${modelRows.length ? `\n\n## Approved Models\n| Tool | Models |\n|---|---|\n${modelRows.join('\n')}` : ''}\n\n---\n\n## Workflow${wfSection || '\n_(no personas selected)_\n'}\n---\n\n## Sources\n- **Confluence:** ${none(s.confluence?.base_url)} — spaces: ${none(s.confluence?.space_keys)}\n- **SCM:** ${none(wf.dev?.scm?.system)} — org/workspace: ${none(wf.dev?.scm?.github?.org || wf.dev?.scm?.gitlab?.group || wf.dev?.scm?.bitbucket?.workspace || wf.dev?.scm?.azure_repos?.org)}\n- **Docs strategy:** ${s.has_documents === 'yes' ? 'Specific links/files provided' : s.has_documents === 'no' ? 'Confluence crawl' : '_(not specified)_'}\n\n---\n\n## Constraints\n- **PII handled:**\n${list(c.pii_types)}\n- **Forbidden actions:**\n${c.forbidden ? c.forbidden.split('\n').filter(Boolean).map(l=>`  - ${l.replace(/^[-•]\s*/,'')}`).join('\n') : '  - _(to be confirmed)_'}\n\n---\n\n## AI Stack\n- **Existing agents:** ${none(a.existing_agents)}\n\n---\n_Generated by SDLC Pipeline Client Intake Wizard · Save to \`docs/onboarding/intake-sources.md\`_\n`;
+  // Document links
+  const docLinks = (s.other_links || '').split('\n').map(v => v.trim()).filter(Boolean);
+
+  // Sources section
+  let sourcesSection = `## Knowledge Sources\n- **Confluence URL:** ${none(s.confluence?.base_url)}\n- **Confluence Spaces:** ${none(s.confluence?.space_keys)}\n- **Specific Confluence pages:**\n${s.confluence?.specific_pages ? s.confluence.specific_pages.split('\n').filter(Boolean).map(p => `  - ${p.trim()}`).join('\n') : '  - _(not provided)_'}\n`;
+  sourcesSection += `- **Docs strategy:** ${s.has_documents === 'yes' ? 'Specific links/files provided' : s.has_documents === 'no' ? 'Confluence crawl' : s.has_documents === 'both' ? 'Both specific docs and Confluence' : '_(not specified)_'}\n`;
+  sourcesSection += `- **Document links:**\n${docLinks.length ? list(docLinks) : '  - _(not provided)_'}\n`;
+
+  // AI Stack section
+  let aiSection = `## Integrations & Context\n- **Existing agents/automations:** ${none(a.existing_agents)}\n`;
+  if (a.existing_agents === 'yes') {
+    aiSection += `- **Agents/Automations:**\n${a.existing_agents_desc ? a.existing_agents_desc.split('\n').filter(Boolean).map(l => `  - ${l.trim()}`).join('\n') : '  - _(not provided)_'}\n`;
+  }
+
+  return `# Client Intake — SDLC Onboarding Context\n_Generated: ${ts}_\n\n---\n\n## Organisation\n| Field | Value |\n|---|---|\n| Company | ${none(o.company)} |\n| Industry | ${industryDisplay} |\n| Approved AI tools | ${(o.approved_ai_tools||[]).join(', ') || '_(none)_'}${(o.other_ai_tools||[]).length ? `, ${o.other_ai_tools.join(', ')}` : ''} |\n| Personas engaged | ${personas.join(', ') || '_(none)_'} |\n| Compliance | ${(o.compliance||[]).join(', ') || '_(none)_'} |\n| PII types | ${(c.pii_types||[]).join(', ') || '_(none)_'} |${modelRows.length ? `\n\n## Approved Models\n| Tool | Models |\n|---|---|\n${modelRows.join('\n')}` : ''}\n\n---\n\n## SDLC Tools${wfSection}\n---\n\n${sourcesSection}\n---\n\n## Agent Behavioral Guardrails\n${c.forbidden ? c.forbidden.split('\n').filter(Boolean).map(l=>`${l}`).join('\n') : '_(to be confirmed)_'}\n\n---\n\n${aiSection}\n---\n_Generated by SDLC Pipeline Client Intake Wizard · Save to \`docs/onboarding/intake-sources.md\`_\n`;
 }
 
 // ── Download / share ──────────────────────────────────────────────────────
