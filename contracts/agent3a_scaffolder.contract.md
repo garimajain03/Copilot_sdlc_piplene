@@ -1,4 +1,4 @@
-# Contract: Agent 3a — Scaffolder
+﻿# Contract: Agent 3a â€” Scaffolder
 
 | Field | Value |
 |-------|-------|
@@ -19,11 +19,11 @@ Analyzes the design specification and plans the file/directory structure for imp
 
 ## Key Outcomes
 
-1. **[OUTCOME-BLUEPRINT]** — Complete file structure plan with every directory, file, type, and export specified
-2. **[OUTCOME-SHELLS]** — Each file has a skeleton: imports, function/component signatures, exports — no logic
-3. **[OUTCOME-TYPES]** — All types and interfaces from design spec are fully specified with exact syntax
-4. **[OUTCOME-CONSISTENCY]** — File structure follows existing codebase conventions (naming, folders, barrel files)
-5. **[OUTCOME-READ-ONLY]** — Zero files created or modified in source repository
+1. **[OUTCOME-BLUEPRINT]** â€” Complete file structure plan with every directory, file, type, and export specified
+2. **[OUTCOME-SHELLS]** â€” Each file has a skeleton: imports, function/component signatures, exports â€” no logic
+3. **[OUTCOME-TYPES]** â€” All types and interfaces from design spec are fully specified with exact syntax
+4. **[OUTCOME-CONSISTENCY]** â€” File structure follows existing codebase conventions (naming, folders, barrel files)
+5. **[OUTCOME-READ-ONLY]** â€” Zero files created or modified in source repository
 
 ## Inputs
 
@@ -31,7 +31,7 @@ Analyzes the design specification and plans the file/directory structure for imp
 |----------|--------|----------|-------------|
 | `design_spec.md` | Agent 2 | Yes | Component definitions, file structure plan |
 | Source repository code | Repository | Yes (read-only) | Existing structure for convention matching |
-| Custom client context | Client | No | `agent3a_custom_client_context.md` — file structure conventions |
+| Custom client context | Client | No | `agent3a_scaffolder_custom_client_context.md` â€” file structure conventions |
 
 ## Outputs
 
@@ -69,7 +69,7 @@ Analyzes the design specification and plans the file/directory structure for imp
 ### Step 5: Plan Types & Interfaces
 - **Condition:** After file plan
 - **Action:** Write out full type/interface definitions verbatim from design spec
-- **Reasoning:** Types are the contract — they must be exact
+- **Reasoning:** Types are the contract â€” they must be exact
 - **Output:** Type definitions section
 
 ### Step 6: Plan Barrel Files
@@ -129,4 +129,5 @@ Analyzes the design specification and plans the file/directory structure for imp
 | Test file placement | Auto-detected from codebase | Co-located or separate directory |
 | Barrel file usage | Auto-detected from codebase | Project-dependent |
 | Import style (relative vs alias) | Auto-detected from codebase | Project-dependent |
-| Type definition style | `agent3a_custom_client_context.md` | Interface-first |
+| Type definition style | `agent3a_scaffolder_custom_client_context.md` | Interface-first |
+

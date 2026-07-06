@@ -324,13 +324,26 @@ When a non-critical generation step fails, continue with reduced output:
    - `intake-sources.md`
   - `.github/sdlc-pipeline/codebase_scan_results.md` (from Preflight)
   - `.github/sdlc-pipeline/preflight_report.md` (from Preflight)
+  - `.github/sdlc-pipeline/onboarding_context.json` (from Preflight; normalized onboarding values)
    - `.github/instructions/*.instructions.md` (from Preflight)
    - `.github/sdlc-pipeline/connector_config.md` (from Preflight — PM endpoints, SCM org, MCP configs)
    - `.mcp.json` (from Preflight — MCP server definitions, if generated)
    - `.env.template` (from Preflight — required env var names for runtime auth)
   - `index.md` (from Preflight — repository catalog and Service Catalogue)
 
-4. **Check `intake-sources.md` for existing customer-defined agents:**
+4. **Build a normalized onboarding context map** from `onboarding_context.json` (preferred) or `intake-sources.md` (fallback):
+   - `industry_domain`
+   - `business_context`
+   - `intake_sources`
+   - `customer_complaints`
+   - `existing_agents`
+   - `compliance_risk_profile`
+   - `tooling_integration_preferences`
+   - `project_constraints`
+   - `behavioral_guardrails`
+   - This map is mandatory input for every generated agent section that requires onboarding propagation.
+
+5. **Check `intake-sources.md` for existing customer-defined agents:**
    - Look for an `Existing Agents` or `AI Stack` section listing pre-existing agents
    - If existing agents are found:
      - Catalog their capabilities, triggers, and integration points
@@ -342,12 +355,12 @@ When a non-critical generation step fails, continue with reduced output:
      - Generate new Agents and corresponding Agent Contracts
      - Integrate them into the pipeline alongside existing agents
 
-5. **Determine connector integration mode** per platform from Preflight outputs:
+6. **Determine connector integration mode** per platform from Preflight outputs:
    - Check `.mcp.json` — platforms configured via MCP
    - Check `connector_config.md` — platforms configured via API-based Connector Skills
    - Generated agents should reference the appropriate integration (MCP or Skill) per platform
 
-6. **Save checkpoint** for Phase 1
+7. **Save checkpoint** for Phase 1
 
 ### Phase 2: Ask Clarification Questions
 
@@ -458,6 +471,7 @@ When a non-critical generation step fails, continue with reduced output:
     - **argumentHint:** Provide a brief description of expected arguments
     - **Role & Prime Directive:** Copy verbatim from contract
     - **Inputs:** Copy the EXACT Inputs table from the contract — every row must appear with artifact name, source, required flag, and description. Do NOT use generic placeholders like "Contract-required upstream artifacts". Example: if the contract lists `ticket_analysis.md | Orchestrator | Yes | Classification and routing info`, that exact row must appear.
+    - **Client Onboarding Context (MANDATORY):** Include a dedicated `## Client Onboarding Context` section in every generated agent file with the full 8-row table from the template populated from normalized onboarding context values (Industry/Domain, Business Context, Intake Sources, Customer Complaints, Existing Automations/Agents, Compliance/Risk Profile, Tooling/Integration Preferences, Project Constraints).
     - **Input Validation:** Copy or adapt the Input Validation rules from the contract. Each input must have a specific validation rule (e.g., "Ticket ID must match prefix regex", "Repository index must list at least one repository"). Do NOT use generic rules like "artifacts must be non-empty".
     - **Outputs:** Copy the EXACT Outputs table from the contract — every row must appear with artifact name, consumed-by, format, and description. Do NOT use generic placeholders like "Stage outputs". Example: if the contract lists `ticket_analysis.md | Orchestrator, Agent 1 | Markdown | Classification, repo candidates, pipeline recommendation`, that exact row must appear.
     - **Output Handling:** Define specific write paths per artifact (e.g., "Write `ticket_analysis.md` to `outputs/<TICKET_ID>/ticket_analysis.md`"), specific validation checks per output, and explicit handoff instructions to the next agent.
@@ -494,8 +508,10 @@ When a non-critical generation step fails, continue with reduced output:
       - List each required output artifact and its validation (e.g., "`ticket_analysis.md` exists, contains Classification section, contains Repo Candidates section")
       - List quality conditions (e.g., "Classification confidence ≥ 70%")
       - List handoff conditions (e.g., "Orchestrator can read `ticket_analysis.md` and route to next agent")
+    - **No duplicate sections (MANDATORY):** A generated file must not contain repeated top-level headings for the same section (for example duplicate `## Input Validation` or duplicate `### Output Validation`). If duplicates are produced, merge into a single canonical section.
     - **Access Restrictions:** Copy from contract, adapt paths to customer's project structure
-    - **Custom Client Context Loading:** Add instruction to load `<agent>_custom_client_context.md` if it exists
+    - **Custom Client Context Loading:** Add instruction to load `<agent_slug>_custom_client_context.md` if it exists (where `<agent_slug>` matches the generated filename stem, e.g., `agent0_ticket_analyzer`).
+    - **Custom context filename normalization (MANDATORY):** If contract examples use short aliases (for example `agent0_custom_client_context.md`), normalize all generated references to slug-based filenames used in `.github/sdlc-pipeline/client-context/`.
     - **Hooks:** Add full hooks configuration table (hook ID, event, blocking, purpose) referencing `hooks.json`
     - **Skill references:** Reference generated skills (shared VCS Connector, PM Connector, or MCP — avoid duplicating connector instructions)
     - **Onboarding context propagation (MANDATORY):** reflect onboarding values in every relevant generated section (inputs, workflow instructions, constraints, connector integration, validation, and examples). Do NOT drop fields that were collected by the onboarding wizard.
@@ -596,6 +612,7 @@ When a non-critical generation step fails, continue with reduced output:
     - The `observability` hook is attached ONLY to the Orchestrator's `SessionStart` and `Stop`.
     - The `otel_telemetry` hook is attached ONLY to the Orchestrator (`PreToolUse`, `PostToolUse`, `SessionStart`, `Stop`).
     - Non-orchestrator agents MUST NOT include `otel_telemetry`.
+    - Use exactly one hook script naming family in a run (canonical: `hook_<name>.py`). Do NOT generate duplicate alias scripts (for example both `otel_telemetry.py` and `hook_otel_telemetry.py`).
     - Reuse the existing `otel_telemetry.py` behavior and filtering (`tool_name == "runSubagent"`) instead of generating project-specific telemetry logic.
     - **Model pricing:** The `otel_telemetry` hook MUST load pricing from `observability/model-pricing.json` — NEVER hardcode prices in the script. Use the pricing file resolution order from the contract (env var → file path → URL → default file).
     - **Cost output:** Write cost estimates to a separate `cost_report.md` file (in addition to `telemetry_report.md`).
@@ -642,6 +659,9 @@ When a non-critical generation step fails, continue with reduced output:
     Config flags: OTel uses `--config`, Prometheus uses `--config.file` (separate arg, NOT `=`-joined).
 
 17. **Generate `hooks.json`** registering all hooks with proper paths and timeouts
+
+  - Use the same canonical filename family as generated scripts (`hook_<name>.py`).
+  - Ensure `hooks.json` references only existing files and no duplicate aliases.
 
 18. **Save checkpoint** for Phase 6
 
@@ -700,6 +720,7 @@ When a non-critical generation step fails, continue with reduced output:
 23. **Self-validate** generated agents against contracts:
     - Verify every generated agent has a corresponding contract
     - Verify every contract Key Outcome is addressable in the generated agent
+    - Verify `## Client Onboarding Context` is present in every generated agent and populated from normalized onboarding values (including Industry/Domain from onboarding wizard input)
     - Verify every agent includes ALL mandatory sections (see "Agent Required Sections" in Generation Rules):
       - YAML frontmatter with: name, description, model, argumentHint, tools, hooks
       - Metadata, Role, Prime Directive, Behavioral Guardrails
@@ -713,6 +734,7 @@ When a non-critical generation step fails, continue with reduced output:
       - Access Restrictions
       - Custom Client Context loading instruction
       - Hooks table with full configuration
+    - Verify no duplicate top-level section headings exist in any generated file
     - **Verify NO generic/boilerplate content exists in any agent:**
       - Instructions section MUST NOT contain "Execute contract workflow logic" or similar generic text
       - Inputs table MUST NOT contain "Contract-required upstream artifacts" — must list specific artifacts
@@ -727,6 +749,7 @@ When a non-critical generation step fails, continue with reduced output:
       - Re-run Boundaries table
       - Checkpoint Format JSON schema
     - Verify hooks.json references valid script paths
+    - Verify hook script naming is canonical and non-duplicated (no parallel alias family)
     - Verify skill SKILL.md files reference correct CLI tools (only for API-based platforms)
     - Verify `.mcp.json` references correct server definitions (only for MCP platforms)
     - Verify custom client context templates exist for all agents

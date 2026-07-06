@@ -1,4 +1,4 @@
-# Contract: Agent 0 — Ticket Analyzer
+﻿# Contract: Agent 0 â€” Ticket Analyzer
 
 | Field | Value |
 |-------|-------|
@@ -19,11 +19,11 @@ Fetches ticket/requirement context from the customer's project management system
 
 ## Key Outcomes
 
-1. **[OUTCOME-FETCH]** — All relevant ticket context (description, acceptance criteria, links, attachments) is retrieved and materialized as local Markdown artifacts
-2. **[OUTCOME-CLASSIFY]** — Ticket is classified by Implementation Type and Complexity with confidence ratings
-3. **[OUTCOME-ROUTE]** — Affected domains and repository candidates are identified for downstream agents
-4. **[OUTCOME-RECOMMEND]** — A pipeline recommendation (which agents to run, which to skip) is produced
-5. **[OUTCOME-COST]** — Retrieval is cost-optimized through staged access — only fetch what's needed
+1. **[OUTCOME-FETCH]** â€” All relevant ticket context (description, acceptance criteria, links, attachments) is retrieved and materialized as local Markdown artifacts
+2. **[OUTCOME-CLASSIFY]** â€” Ticket is classified by Implementation Type and Complexity with confidence ratings
+3. **[OUTCOME-ROUTE]** â€” Affected domains and repository candidates are identified for downstream agents
+4. **[OUTCOME-RECOMMEND]** â€” A pipeline recommendation (which agents to run, which to skip) is produced
+5. **[OUTCOME-COST]** â€” Retrieval is cost-optimized through staged access â€” only fetch what's needed
 
 ## Inputs
 
@@ -31,7 +31,7 @@ Fetches ticket/requirement context from the customer's project management system
 |----------|--------|----------|-------------|
 | Ticket ID or requirement file | User / Orchestrator | Yes | The ticket reference (e.g., PROJECT-1234) or path to a requirements document |
 | Repository index | Repository | Yes | Routing table mapping repos to domains/keywords |
-| Custom client context | Client | No | `agent0_custom_client_context.md` — additional classification rules, domain mappings |
+| Custom client context | Client | No | `agent0_ticket_analyzer_custom_client_context.md` â€” additional classification rules, domain mappings |
 
 ## Outputs
 
@@ -50,7 +50,7 @@ Fetches ticket/requirement context from the customer's project management system
 - **Reasoning:** Establish working directory and ticket identity before any retrieval
 - **Output:** Ticket ID, output folder path
 
-### Step 2: Stage 1 — Core Ticket Retrieval
+### Step 2: Stage 1 â€” Core Ticket Retrieval
 - **Condition:** Always (default stage)
 - **Action:** Fetch ticket summary, description, status, priority, assignee, reporter, sprint, epic
 - **Reasoning:** Core context is always needed and low-cost
@@ -62,13 +62,13 @@ Fetches ticket/requirement context from the customer's project management system
 - **Reasoning:** Identify all potential enrichment sources before asking user
 - **Output:** Source detection table (type, detected, URL)
 
-### Step 4: Stage 2 — Enrichment (User-Approved)
+### Step 4: Stage 2 â€” Enrichment (User-Approved)
 - **Condition:** Sources detected AND user approves retrieval
 - **Action:** Ask user which sources to fetch. For each approved source: retrieve comments, linked tickets, wiki pages, PR context
-- **Reasoning:** Cost control — only fetch what the user deems relevant
+- **Reasoning:** Cost control â€” only fetch what the user deems relevant
 - **Output:** Enriched ticket context
 
-### Step 5: Stage 3 — Artifact Materialization
+### Step 5: Stage 3 â€” Artifact Materialization
 - **Condition:** Attachments exist AND user approves download
 - **Action:** Download images, documents. Analyze images for UI mockups, architecture diagrams, error screenshots
 - **Reasoning:** Visual context is expensive to process but critical for UI/design tickets
@@ -80,7 +80,7 @@ Fetches ticket/requirement context from the customer's project management system
   - **Implementation Type:** New Feature, Bug Fix, Incident Fix, Tech Debt, Config Change, Enhancement
   - **Complexity:** Low, Medium, High, Critical
   - Include confidence rating and reasoning for each
-- **Reasoning:** Classification drives pipeline routing — which agents run, which are skipped
+- **Reasoning:** Classification drives pipeline routing â€” which agents run, which are skipped
 - **Output:** Classification table with breakdown factors
 
 ### Step 7: Domain & Repository Mapping
@@ -92,7 +92,7 @@ Fetches ticket/requirement context from the customer's project management system
 ### Step 8: Pipeline Recommendation
 - **Condition:** After classification and repo mapping
 - **Action:** Recommend agent sequence based on complexity and type. Identify agents that can be skipped
-- **Reasoning:** Not all tickets need all agents — simple bug fixes may skip Design Critic
+- **Reasoning:** Not all tickets need all agents â€” simple bug fixes may skip Design Critic
 - **Output:** Recommended pipeline with rationale
 
 ### Step 9: Write Analysis Artifact
@@ -159,10 +159,11 @@ Fetches ticket/requirement context from the customer's project management system
 
 | Point | How Customized | Default |
 |-------|---------------|---------|
-| Ticket ID regex pattern | Onboarding answers → PM system | `[A-Z]+-\d+` (Jira style) |
+| Ticket ID regex pattern | Onboarding answers â†’ PM system | `[A-Z]+-\d+` (Jira style) |
 | PM connector CLI command | Generated by Preflight Agent | Atlassian connector |
-| Complexity factors & weights | `agent0_custom_client_context.md` | Equal weight |
-| Implementation type categories | `agent0_custom_client_context.md` | 6 standard types |
+| Complexity factors & weights | `agent0_ticket_analyzer_custom_client_context.md` | Equal weight |
+| Implementation type categories | `agent0_ticket_analyzer_custom_client_context.md` | 6 standard types |
 | Repository index file path | Onboarding answers | `index.md` |
-| Stage retrieval cost thresholds | `agent0_custom_client_context.md` | Default staged policy |
-| Domain group definitions | `agent0_custom_client_context.md` | From repository index |
+| Stage retrieval cost thresholds | `agent0_ticket_analyzer_custom_client_context.md` | Default staged policy |
+| Domain group definitions | `agent0_ticket_analyzer_custom_client_context.md` | From repository index |
+

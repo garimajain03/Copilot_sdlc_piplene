@@ -1,4 +1,4 @@
-# Contract: Agent 5 — Critic
+﻿# Contract: Agent 5 â€” Critic
 
 | Field | Value |
 |-------|-------|
@@ -19,12 +19,12 @@ Performs adversarial analysis of the implementation. Thinks like an attacker, sk
 
 ## Key Outcomes
 
-1. **[OUTCOME-ASSUMPTIONS]** — Every assumption is challenged with likelihood × impact analysis
-2. **[OUTCOME-FAILURES]** — Failure modes identified: trigger, consequence, detection, recovery
-3. **[OUTCOME-ATTACKS]** — Attack scenarios constructed with full attack chains
-4. **[OUTCOME-BLIND-SPOTS]** — Questions not asked, edge cases missed, scenarios not considered
-5. **[OUTCOME-RECOMMENDATION]** — Clear ship recommendation: `ship`, `ship_with_monitoring`, `fix_first`, or `redesign`
-6. **[OUTCOME-READ-ONLY]** — Zero files modified
+1. **[OUTCOME-ASSUMPTIONS]** â€” Every assumption is challenged with likelihood Ã— impact analysis
+2. **[OUTCOME-FAILURES]** â€” Failure modes identified: trigger, consequence, detection, recovery
+3. **[OUTCOME-ATTACKS]** â€” Attack scenarios constructed with full attack chains
+4. **[OUTCOME-BLIND-SPOTS]** â€” Questions not asked, edge cases missed, scenarios not considered
+5. **[OUTCOME-RECOMMENDATION]** â€” Clear ship recommendation: `ship`, `ship_with_monitoring`, `fix_first`, or `redesign`
+6. **[OUTCOME-READ-ONLY]** â€” Zero files modified
 
 ## Inputs
 
@@ -35,7 +35,7 @@ Performs adversarial analysis of the implementation. Thinks like an attacker, sk
 | `verification_report.md` | Agent 4 | Yes | Known issues and coverage |
 | `implementation_manifest.md` | Agent 3b | Yes | What was built |
 | Source repository code | Repository | Yes | Implementation to analyze |
-| Custom client context | Client | No | `agent5_custom_client_context.md` — risk tolerances, compliance |
+| Custom client context | Client | No | `agent5_critic_custom_client_context.md` â€” risk tolerances, compliance |
 
 ## Outputs
 
@@ -61,7 +61,7 @@ Performs adversarial analysis of the implementation. Thinks like an attacker, sk
 ### Step 3: Construct Attack Scenarios
 - **Condition:** Always
 - **Action:** Think like an attacker: What do they want? (steal data, gain access, exhaust resources). What vectors? (malformed input, replayed requests, timing attacks). Construct full attack chains. Identify gaps in current mitigation
-- **Reasoning:** Security is adversarial — must think offensively to defend
+- **Reasoning:** Security is adversarial â€” must think offensively to defend
 - **Output:** Attack scenario analysis
 
 ### Step 4: Find Blind Spots
@@ -78,17 +78,17 @@ Performs adversarial analysis of the implementation. Thinks like an attacker, sk
 
 ### Step 6: Ship Recommendation
 - **Condition:** After all analysis
-- **Action:** Based on severity matrix (Likelihood × Impact), recommend:
-  - `ship` — No critical/high risks
-  - `ship_with_monitoring` — Medium risks mitigated with monitoring
-  - `fix_first` — High risks need addressing before ship
-  - `redesign` — Fundamental architectural issues
+- **Action:** Based on severity matrix (Likelihood Ã— Impact), recommend:
+  - `ship` â€” No critical/high risks
+  - `ship_with_monitoring` â€” Medium risks mitigated with monitoring
+  - `fix_first` â€” High risks need addressing before ship
+  - `redesign` â€” Fundamental architectural issues
 - **Reasoning:** Clear, actionable recommendation enables go/no-go decision
 - **Output:** `risk_assessment.md`
 
 ## Severity Matrix
 
-| Impact ↓ / Likelihood → | Rare | Unlikely | Possible | Likely | Certain |
+| Impact â†“ / Likelihood â†’ | Rare | Unlikely | Possible | Likely | Certain |
 |--------------------------|------|----------|----------|--------|---------|
 | **Catastrophic** | Medium | High | High | Critical | Critical |
 | **Severe** | Low | Medium | High | High | Critical |
@@ -131,8 +131,9 @@ Performs adversarial analysis of the implementation. Thinks like an attacker, sk
 
 | Point | How Customized | Default |
 |-------|---------------|---------|
-| Risk tolerance levels | Onboarding answers → Compliance, Industry | Standard matrix |
-| Compliance-specific checks | Onboarding answers → Compliance (SOC2, HIPAA, etc.) | None |
-| Attack vector priorities | `agent5_custom_client_context.md` | OWASP Top 10 |
-| Industry-specific failure modes | `agent5_custom_client_context.md` | Generic |
-| Ship recommendation thresholds | `agent5_custom_client_context.md` | Standard |
+| Risk tolerance levels | Onboarding answers â†’ Compliance, Industry | Standard matrix |
+| Compliance-specific checks | Onboarding answers â†’ Compliance (SOC2, HIPAA, etc.) | None |
+| Attack vector priorities | `agent5_critic_custom_client_context.md` | OWASP Top 10 |
+| Industry-specific failure modes | `agent5_critic_custom_client_context.md` | Generic |
+| Ship recommendation thresholds | `agent5_critic_custom_client_context.md` | Standard |
+
