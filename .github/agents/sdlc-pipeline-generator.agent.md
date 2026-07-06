@@ -466,7 +466,11 @@ When a non-critical generation step fails, continue with reduced output:
 
     **Generation rules (MANDATORY — follow exactly):**
 
-    - **Frontmatter:** Include YAML front matter with: name, description, model, tools, argumentHint, hooks (structured by event type: PreToolUse, PostToolUse, SessionStart, Stop — each containing `type: command` entries with full script paths)
+    - **Frontmatter (AC-000 through AC-008 worker agents):** MUST include YAML keys in this shape: `name`, `version`, `description`, `argument-hint`, `tools`, `model`, `hooks`.
+      - Worker-agent hooks MUST contain **only** `PreToolUse` with these two commands (no duplicates, no additional events):
+        - `python3 .github/hooks/guard-destructive-commands.py`
+        - `python3 .github/hooks/guard-env-files.py`
+      - Worker agents MUST NOT include `PostToolUse`, `SessionStart`, or `Stop` blocks in frontmatter.
     - **Agent metadata:** Include contract_id, version, pipeline_position, model_tier
     - **argumentHint:** Provide a brief description of expected arguments
     - **Role & Prime Directive:** Copy verbatim from contract
@@ -512,7 +516,7 @@ When a non-critical generation step fails, continue with reduced output:
     - **Access Restrictions:** Copy from contract, adapt paths to customer's project structure
     - **Custom Client Context Loading:** Add instruction to load `<agent_slug>_custom_client_context.md` if it exists (where `<agent_slug>` matches the generated filename stem, e.g., `agent0_ticket_analyzer`).
     - **Custom context filename normalization (MANDATORY):** If contract examples use short aliases (for example `agent0_custom_client_context.md`), normalize all generated references to slug-based filenames used in `.github/sdlc-pipeline/client-context/`.
-    - **Hooks:** Add full hooks configuration table (hook ID, event, blocking, purpose) referencing `hooks.json`
+    - **Hooks:** Add full hooks configuration table (hook ID, event, blocking, purpose) referencing `hooks.json`, while keeping worker-agent frontmatter limited to `PreToolUse` only.
     - **Skill references:** Reference generated skills (shared VCS Connector, PM Connector, or MCP — avoid duplicating connector instructions)
     - **Onboarding context propagation (MANDATORY):** reflect onboarding values in every relevant generated section (inputs, workflow instructions, constraints, connector integration, validation, and examples). Do NOT drop fields that were collected by the onboarding wizard.
 
@@ -547,6 +551,18 @@ When a non-critical generation step fails, continue with reduced output:
     - Configure skip rules based on customer's answers
     - Include customer's guardrails
     - **Include full telemetry hooks configuration** (hook IDs, events, blocking, script paths)
+    - **Orchestrator frontmatter (MANDATORY shape):**
+      - Include exactly these top-level YAML keys: `name`, `description`, `tools`, `agents`, `model`, `hooks`.
+      - `name` must be `Agentic Flow Orchestrator`.
+      - `tools` must include: `agent`, `read`, `search`, `execute`, `edit`, `todo`, `vscode/askQuestions`.
+      - `agents` must include all configured worker/utility agents (for example Agentic Flow 0-6, CI/CD Analyzer, Orchestrator Debug Logs Analyst, PR Review Fixer) without duplicates.
+      - `model` must be `GPT-5.3-Codex`.
+      - `hooks` must include the full set below without duplication:
+        - `SessionStart`: `python3 .github/hooks/observability-hook.py` (timeout 30), `python3 .github/hooks/otel-hook.py` (timeout 15)
+        - `PreToolUse`: `python3 .github/hooks/otel-hook.py` (timeout 15)
+        - `PostToolUse`: `python3 .github/hooks/otel-hook.py` (timeout 30)
+        - `Stop`: `python3 .github/hooks/otel-hook.py` (timeout 15), `python3 .github/hooks/observability-hook.py` (timeout 30)
+      - Orchestrator frontmatter must not contain duplicate hook events or duplicate command entries.
     - **Define orchestrator inputs and outputs clearly** with validation rules (from contract)
     - **Add input validation** (ticket reference format, index.md exists, pipeline config exists)
     - **Add output validation** (pipeline_log.md written, telemetry_report.md written)
@@ -607,13 +623,13 @@ When a non-critical generation step fails, continue with reduced output:
     - Health check endpoints use HTTP (cross-platform by nature)
 
     **Hook responsibility separation (MANDATORY — NO DUPLICATION):**
-    - **`observability.py`** — ONLY manages binary process lifecycle (start/stop OTel Collector + Prometheus). MUST NOT contain any telemetry collection, metric queries, cost computation, or report writing logic.
-    - **`otel_telemetry.py`** — ONLY handles telemetry metrics (session baselines, per-agent snapshots, cost computation, report generation). MUST NOT contain any process start/stop/health-check logic for binaries.
-    - The `observability` hook is attached ONLY to the Orchestrator's `SessionStart` and `Stop`.
-    - The `otel_telemetry` hook is attached ONLY to the Orchestrator (`PreToolUse`, `PostToolUse`, `SessionStart`, `Stop`).
-    - Non-orchestrator agents MUST NOT include `otel_telemetry`.
-    - Use exactly one hook script naming family in a run (canonical: `hook_<name>.py`). Do NOT generate duplicate alias scripts (for example both `otel_telemetry.py` and `hook_otel_telemetry.py`).
-    - Reuse the existing `otel_telemetry.py` behavior and filtering (`tool_name == "runSubagent"`) instead of generating project-specific telemetry logic.
+    - **`observability-hook.py`** — ONLY manages binary process lifecycle (start/stop OTel Collector + Prometheus). MUST NOT contain any telemetry collection, metric queries, cost computation, or report writing logic.
+    - **`otel-hook.py`** — ONLY handles telemetry metrics (session baselines, per-agent snapshots, cost computation, report generation). MUST NOT contain any process start/stop/health-check logic for binaries.
+    - The `observability-hook.py` command is attached ONLY to the Orchestrator's `SessionStart` and `Stop`.
+    - The `otel-hook.py` command is attached ONLY to the Orchestrator (`PreToolUse`, `PostToolUse`, `SessionStart`, `Stop`).
+    - Non-orchestrator agents MUST NOT include `otel-hook.py` in frontmatter.
+    - Use exactly one hook script naming family in a run. Do NOT generate duplicate alias scripts for the same responsibility.
+    - Reuse the existing `otel-hook.py` behavior and filtering (`tool_name == "runSubagent"`) instead of generating project-specific telemetry logic.
     - **Model pricing:** The `otel_telemetry` hook MUST load pricing from `observability/model-pricing.json` — NEVER hardcode prices in the script. Use the pricing file resolution order from the contract (env var → file path → URL → default file).
     - **Cost output:** Write cost estimates to a separate `cost_report.md` file (in addition to `telemetry_report.md`).
     - **Cost visibility:** The hook MUST print a one-line cost summary to stdout after each agent completes (so cost appears in the chat/output):
@@ -622,7 +638,7 @@ When a non-critical generation step fails, continue with reduced output:
 
     **CRITICAL implementation patterns for generated hooks:**
 
-    **`otel_telemetry.py` MUST use this pricing access pattern:**
+    **`otel-hook.py` MUST use this pricing access pattern:**
     ```python
     PRICING_FILE = WORKSPACE_ROOT / "observability" / "model-pricing.json"
 
@@ -641,7 +657,7 @@ When a non-critical generation step fails, continue with reduced output:
     The keys are `input_per_1m_tokens` and `output_per_1m_tokens` — NOT `input_per_1m` or `input`.
     The pricing dict is nested under `"models"` key — MUST use `pricing.get("models", pricing)`.
 
-    **`observability.py` MUST use these patterns:**
+    **`observability-hook.py` MUST use these patterns:**
     ```python
     IS_WINDOWS = platform.system() == "Windows"
     OTEL_BINARY = "otelcol-contrib" + (".exe" if IS_WINDOWS else "")  # NOT "otelcol"
@@ -660,8 +676,9 @@ When a non-critical generation step fails, continue with reduced output:
 
 17. **Generate `hooks.json`** registering all hooks with proper paths and timeouts
 
-  - Use the same canonical filename family as generated scripts (`hook_<name>.py`).
   - Ensure `hooks.json` references only existing files and no duplicate aliases.
+  - Ensure worker-agent guard entries reference `guard-destructive-commands.py` and `guard-env-files.py`.
+  - Ensure orchestrator telemetry/lifecycle entries reference `otel-hook.py` and `observability-hook.py`.
 
 18. **Save checkpoint** for Phase 6
 
@@ -722,7 +739,9 @@ When a non-critical generation step fails, continue with reduced output:
     - Verify every contract Key Outcome is addressable in the generated agent
     - Verify `## Client Onboarding Context` is present in every generated agent and populated from normalized onboarding values (including Industry/Domain from onboarding wizard input)
     - Verify every agent includes ALL mandatory sections (see "Agent Required Sections" in Generation Rules):
-      - YAML frontmatter with: name, description, model, argumentHint, tools, hooks
+      - YAML frontmatter with required keys and shape:
+        - Worker agents: `name`, `version`, `description`, `argument-hint`, `tools`, `model`, `hooks` (PreToolUse only)
+        - Orchestrator: `name`, `description`, `tools`, `agents`, `model`, `hooks` (SessionStart/PreToolUse/PostToolUse/Stop)
       - Metadata, Role, Prime Directive, Behavioral Guardrails
       - Inputs with Input Validation
       - Outputs with Output Handling
@@ -749,6 +768,8 @@ When a non-critical generation step fails, continue with reduced output:
       - Re-run Boundaries table
       - Checkpoint Format JSON schema
     - Verify hooks.json references valid script paths
+    - Verify worker-agent frontmatter contains only `PreToolUse` hooks and no duplicate hook events/commands
+    - Verify orchestrator frontmatter contains `agents` list and full hook block exactly once (no duplicate events)
     - Verify hook script naming is canonical and non-duplicated (no parallel alias family)
     - Verify skill SKILL.md files reference correct CLI tools (only for API-based platforms)
     - Verify `.mcp.json` references correct server definitions (only for MCP platforms)

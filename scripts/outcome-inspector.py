@@ -238,6 +238,26 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
         if dups:
             inspector.error("consistency", f"Duplicate top-level sections: {', '.join(sorted(dups))}", agent_file)
 
+        # Frontmatter hook shape checks: worker agents vs orchestrator.
+        parts = content.split("---", 2)
+        fm = parts[1] if len(parts) >= 3 else ""
+        if agent_file == "orchestrator.md":
+            if "agents:" not in fm:
+                inspector.error("frontmatter", "Orchestrator missing 'agents' list in frontmatter", agent_file)
+            required_hook_events = ["SessionStart:", "PreToolUse:", "PostToolUse:", "Stop:"]
+            for ev in required_hook_events:
+                if ev not in fm:
+                    inspector.error("frontmatter", f"Orchestrator missing hook event: {ev.rstrip(':')}", agent_file)
+            if fm.count("SessionStart:") > 1 or fm.count("PreToolUse:") > 1 or fm.count("PostToolUse:") > 1 or fm.count("Stop:") > 1:
+                inspector.error("frontmatter", "Orchestrator has duplicate hook event blocks", agent_file)
+        else:
+            if "PreToolUse:" not in fm:
+                inspector.error("frontmatter", "Worker agent missing PreToolUse hook block", agent_file)
+            if "PostToolUse:" in fm or "SessionStart:" in fm or "Stop:" in fm:
+                inspector.error("frontmatter", "Worker agent frontmatter must only contain PreToolUse hooks", agent_file)
+            if "argument-hint:" not in fm:
+                inspector.warning("frontmatter", "Worker agent missing 'argument-hint' key", agent_file)
+
     # Check custom client context templates
     context_dir = os.path.join(output_dir, ".github", "sdlc-pipeline", "client-context")
     if os.path.isdir(context_dir):
