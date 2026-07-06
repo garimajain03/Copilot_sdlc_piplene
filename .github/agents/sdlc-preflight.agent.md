@@ -274,6 +274,16 @@ When a non-critical step fails, continue with reduced capability:
 
   **Do NOT ask these questions again** if all required platform selections are already present and unambiguous in intake.
 
+  **Required extraction behavior:**
+  - Parse connector mode directly from `intake-sources.md` sections/rows that mention integration mode for each platform.
+  - Treat any explicit value matching MCP (for example: `MCP`, `mcp`, `Model Context Protocol`) as MCP.
+  - Treat any explicit value matching API-based (for example: `API`, `API-based`, `Connector Skill`) as API-based.
+  - Build a resolved map in memory before asking anything:
+    - `jira_mode`: `mcp|api`
+    - `confluence_mode`: `mcp|api`
+    - `scm_mode`: `mcp|api`
+  - If all three are resolved, proceed without asking connector-mode questions in chat.
+
 8. **Ask follow-up questions only for missing or ambiguous selections**. Use `vscode/askQuestions` only for unresolved platforms:
 
    ```
@@ -283,6 +293,10 @@ When a non-critical step fails, continue with reduced capability:
    2. Confluence (Knowledge Management):  [MCP] [API-based Connector Skill]
    3. GitHub / GitLab (Version Control):  [MCP] [API-based Connector Skill]
    ```
+
+  **Question suppression rule (mandatory):**
+  - Never ask a platform connector question if that platform already has a resolved mode in `intake-sources.md`.
+  - Ask only for platforms that are unresolved after parsing.
 
 9. **Based on resolved selections, generate the appropriate integration configuration:**
 

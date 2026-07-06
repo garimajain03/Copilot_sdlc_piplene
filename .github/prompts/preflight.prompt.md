@@ -17,7 +17,7 @@ Run the **SDLC Preflight Agent** to prepare a customer's project for the SDLC Pi
 ## What This Does
 
 1. Validates `intake-sources.md` against the schema
-2. Reads integration mechanism per platform from `intake-sources.md` (MCP vs API-based Connector Skills) and asks only if missing/ambiguous
+2. Reads integration mechanism per platform from `intake-sources.md` (MCP vs API-based Connector Skills) and MUST NOT ask again in chat unless a platform value is missing/ambiguous
 3. Generates `.mcp.json` for MCP-selected platforms
 4. Configures workspace structure (default with submodules or custom layout)
 5. Collects the customer's repository list
