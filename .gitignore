@@ -1,5 +1,5 @@
 .DS_Store
-.sdlc-preflight/
 .env
-repos/
 data/
+onboarding-utilities/repos/App-Repos/
+onboarding-utilities/repos/Agents-Repo/

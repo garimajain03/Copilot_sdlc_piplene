@@ -55,7 +55,7 @@ You MUST follow this output format during execution. Every phase MUST be announc
 ### Fresh Start vs Resume
 
 - If the user explicitly runs `/generate-pipeline` (not `/resume-pipeline`), **start fresh from Phase 1**
-- Reset the checkpoint state: `python3 scripts/checkpoint-manager.py reset --agent generator --state-file .github/sdlc-pipeline/checkpoint_state.json`
+- Reset the checkpoint state: `python3 onboarding-utilities/scripts/checkpoint-manager.py reset --agent generator --state-file onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/checkpoint_state.json`
 - Only resume from checkpoint when explicitly asked to resume or when running `/resume-pipeline`
 
 ### Next Steps Output (MANDATORY at end)
@@ -66,10 +66,10 @@ After all phases complete, you MUST display a "Next Steps" section:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## ✅ Pipeline Generation Complete — Next Steps
 
-1. Review generated agents at `.github/agents/`
-2. Review generated skills at `.github/skills/`
-3. Review generated hooks at `.github/hooks/`
-4. Customize agent behavior via `.github/sdlc-pipeline/client-context/` templates
+1. Review generated agents at `onboarding-utilities/repos/Agents-Repo/.github/agents/`
+2. Review generated skills at `onboarding-utilities/repos/Agents-Repo/.github/skills/`
+3. Review generated hooks at `onboarding-utilities/repos/Agents-Repo/.github/hooks/`
+4. Customize agent behavior via `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/client-context/` templates
 5. Ensure `.env` is filled with required tokens
 6. Start the pipeline:
    > Provide a ticket reference to the Orchestrator agent
@@ -83,40 +83,40 @@ This agent runs from the **repository root** of the `github-copilot-sdlc-templat
 
 | Resource | Path (from repo root) |
 |----------|----------------------|
-| Agent contracts | `contracts/` |
-| Hook contracts | `contracts/hooks/` |
-| Skill contracts | `contracts/skills/` |
-| Contract index | `contracts/CONTRACT_INDEX.md` |
+| Agent contracts | `onboarding-utilities/contracts/` |
+| Hook contracts | `onboarding-utilities/contracts/hooks/` |
+| Skill contracts | `onboarding-utilities/contracts/skills/` |
+| Contract index | `onboarding-utilities/contracts/CONTRACT_INDEX.md` |
 | Contract schema | `schemas/contract_schema.md` |
 | Generation templates | `templates/` |
-| Scripts | `scripts/` |
+| Scripts | `onboarding-utilities/scripts/` |
 | Observability configs | `observability/` |
-| Pipeline state (generated) | `.github/sdlc-pipeline/` |
-| Generated agents (output) | `.github/agents/` |
-| Generated skills (output) | `.github/skills/` |
-| Generated hooks (output) | `.github/hooks/` |
+| Pipeline state (generated) | `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/` |
+| Generated agents (output) | `onboarding-utilities/repos/Agents-Repo/.github/agents/` |
+| Generated skills (output) | `onboarding-utilities/repos/Agents-Repo/.github/skills/` |
+| Generated hooks (output) | `onboarding-utilities/repos/Agents-Repo/.github/hooks/` |
 
 ## Inputs
 
 1. **`intake-sources.md`** — Customer configuration
-2. **`codebase_scan_results.md`** — Auto-detected codebase characteristics (from Preflight Agent)
-3. **`preflight_report.md`** — Validation results (from Preflight Agent)
-4. **`.github/instructions/*.instructions.md`** — Per-repo instruction files (from Preflight Agent)
-5. **`.github/sdlc-pipeline/connector_config.md`** — Connector configuration: PM endpoints, SCM org, MCP server definitions (from Preflight Agent)
-6. **`.env.template`** — Required environment variable names for runtime auth (from Preflight Agent)
-7. **Agent Contracts** — `contracts/` (the reusable blueprints)
+2. **`onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/codebase_scan_results.md`** — Auto-detected codebase characteristics (from Preflight Agent)
+3. **`onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/preflight_report.md`** — Validation results (from Preflight Agent)
+4. **`onboarding-utilities/repos/Agents-Repo/.github/instructions/*.instructions.md`** — Per-repo instruction files (from Preflight Agent)
+5. **`onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/connector_config.md`** — Connector configuration: PM endpoints, SCM org, MCP server definitions (from Preflight Agent)
+6. **`onboarding-utilities/repos/Agents-Repo/.env.template`** — Required environment variable names for runtime auth (from Preflight Agent)
+7. **Agent Contracts** — `onboarding-utilities/contracts/` (the reusable blueprints)
 8. **Templates** — `templates/` (generation templates)
 
 ## Outputs
 
-1. **Agent definition files** — `.github/agents/agent<N>_<name>.md` for each pipeline agent
-2. **Orchestrator definition** — `.github/agents/orchestrator.md`
-3. **Skill definitions** — `.github/skills/<skill>/SKILL.md`
-4. **Hook scripts** — `.github/hooks/<hook>.py`
+1. **Agent definition files** — `onboarding-utilities/repos/Agents-Repo/.github/agents/agent<N>_<name>.md` for each pipeline agent
+2. **Orchestrator definition** — `onboarding-utilities/repos/Agents-Repo/.github/agents/orchestrator.md`
+3. **Skill definitions** — `onboarding-utilities/repos/Agents-Repo/.github/skills/<skill>/SKILL.md`
+4. **Hook scripts** — `onboarding-utilities/repos/Agents-Repo/.github/hooks/<hook>.py`
 5. **hooks.json** — Hook registration
 6. **Custom client context templates** — `<agent>_custom_client_context.md` empty templates for each agent
-7. **Workflow README** — `.github/agents/agents-workflow/readme.md`
-8. **Repository index template** — `index.md`
+7. **Workflow README** — `onboarding-utilities/repos/Agents-Repo/.github/agents/agents-workflow/readme.md`
+8. **Repository index template** — `onboarding-utilities/repos/Agents-Repo/index.md`
 9. **`generation_report.md`** — Summary of what was generated
 
 > **Note:** The Pipeline Generator is the sole owner of agent definitions, skill SKILL.md
@@ -230,22 +230,22 @@ Use `checkpoint-manager.py` to persist state between runs:
 
 ```bash
 # Save checkpoint after completing a phase
-python3 scripts/checkpoint-manager.py save \
+python3 onboarding-utilities/scripts/checkpoint-manager.py save \
   --agent generator --phase "Phase 4: Generate Agents" --status completed \
-  --state-file .github/sdlc-pipeline/checkpoint_state.json
+  --state-file onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/checkpoint_state.json
 
 # Load checkpoint on resume
-python3 scripts/checkpoint-manager.py load \
-  --agent generator --state-file .github/sdlc-pipeline/checkpoint_state.json
+python3 onboarding-utilities/scripts/checkpoint-manager.py load \
+  --agent generator --state-file onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/checkpoint_state.json
 
 # Record customer feedback for re-run
-python3 scripts/checkpoint-manager.py feedback \
+python3 onboarding-utilities/scripts/checkpoint-manager.py feedback \
   --agent generator --feedback "Regenerate Agent 3b with stricter type checking" \
-  --phase "Phase 4: Generate Agents" --state-file .github/sdlc-pipeline/checkpoint_state.json
+  --phase "Phase 4: Generate Agents" --state-file onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/checkpoint_state.json
 
 # Reset for clean re-run
-python3 scripts/checkpoint-manager.py reset \
-  --agent generator --state-file .github/sdlc-pipeline/checkpoint_state.json
+python3 onboarding-utilities/scripts/checkpoint-manager.py reset \
+  --agent generator --state-file onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/checkpoint_state.json
 ```
 
 ### Resume Behavior
@@ -314,7 +314,7 @@ When a non-critical generation step fails, continue with reduced output:
 ### Phase 1: Load Context
 
 1. **Check for checkpoint** — load existing state if available
-2. **Read** all contracts from `contracts/`:
+2. **Read** all contracts from `onboarding-utilities/contracts/`:
    - All agent contracts (AC-000 through AC-008, AC-ORCH)
    - All hook contracts (HC-*)
    - All skill contracts (SC-*)
@@ -322,13 +322,13 @@ When a non-critical generation step fails, continue with reduced output:
 
 3. **Read** customer context:
    - `intake-sources.md`
-   - `codebase_scan_results.md` (from Preflight)
-   - `preflight_report.md` (from Preflight)
-   - `.github/instructions/*.instructions.md` (from Preflight)
-   - `.github/sdlc-pipeline/connector_config.md` (from Preflight — PM endpoints, SCM org, MCP configs)
+  - `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/codebase_scan_results.md` (from Preflight)
+  - `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/preflight_report.md` (from Preflight)
+   - `onboarding-utilities/repos/Agents-Repo/.github/instructions/*.instructions.md` (from Preflight)
+   - `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/connector_config.md` (from Preflight — PM endpoints, SCM org, MCP configs)
    - `.mcp.json` (from Preflight — MCP server definitions, if generated)
    - `.env.template` (from Preflight — required env var names for runtime auth)
-   - `index.md` (from Preflight — repository catalog and Service Catalogue)
+  - `onboarding-utilities/repos/Agents-Repo/index.md` (from Preflight — repository catalog and Service Catalogue)
 
 4. **Check `intake-sources.md` for existing customer-defined agents:**
    - Look for an `Existing Agents` or `AI Stack` section listing pre-existing agents
@@ -479,7 +479,7 @@ When a non-critical generation step fails, continue with reduced output:
     - **Checkpointing strategy:** Define SPECIFIC state per agent based on what the contract's workflow produces:
       - List what data is saved (e.g., "current_step, ticket_classification, repo_candidates, downloaded_attachments")
       - Define when saves happen (e.g., "After each retrieval stage, after classification")
-      - Define the checkpoint file path (e.g., `.github/sdlc-pipeline/artifacts/agent0_checkpoint.md`)
+      - Define the checkpoint file path (e.g., `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/artifacts/agent0_checkpoint.md`)
       - Include checkpoint format example showing the actual fields for this agent
     - **Resume protocol:** Define agent-specific resume logic:
       - Which steps can be skipped on resume (based on checkpoint data)
@@ -543,12 +543,12 @@ When a non-critical generation step fails, continue with reduced output:
 ### Phase 5: Generate Connector Skills
 
 13. **Read connector configuration** from Preflight output:
-    - Load `.github/sdlc-pipeline/connector_config.md` (generated by Preflight Agent)
+    - Load `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/connector_config.md` (generated by Preflight Agent)
     - Load `.mcp.json` (if generated by Preflight Agent)
     - This contains: PM type & endpoint, SCM provider & org, design tool MCP config, custom MCP servers
     - Load `.env.template` to verify which environment variables the skills should reference for auth
 
-14. **For each skill contract**, generate a customer-specific SKILL.md at `.github/skills/<skill>/SKILL.md`:
+14. **For each skill contract**, generate a customer-specific SKILL.md at `onboarding-utilities/repos/Agents-Repo/.github/skills/<skill>/SKILL.md`:
 
     **Only generate Connector Skills for platforms where API-based integration was selected.**
     Do NOT generate Connector Skills for platforms using MCP.
@@ -674,12 +674,12 @@ When a non-critical generation step fails, continue with reduced output:
 
 ### Phase 8: Generate Support Files
 
-19. **Generate workflow README** — `.github/agents/agents-workflow/readme.md`
+19. **Generate workflow README** — `onboarding-utilities/repos/Agents-Repo/.github/agents/agents-workflow/readme.md`
     - Adapted from contract pipeline flow
     - Customer-specific tool references
     - Setup instructions
 
-20. **Generate repository index template** — `index.md`
+20. **Generate repository index template** — `onboarding-utilities/repos/Agents-Repo/index.md`
     - Based on customer's detected repositories
     - Domain group template
 
@@ -690,7 +690,7 @@ When a non-critical generation step fails, continue with reduced output:
 22. **Run outcome inspection** using `outcome-inspector.py`:
 
     ```bash
-    python3 scripts/outcome-inspector.py \
+    python3 onboarding-utilities/scripts/outcome-inspector.py \
       --type generator \
       --output-dir . \
       --contracts-dir contracts \
@@ -928,7 +928,7 @@ Orchestrator-specific rows (in orchestrator.md only):
 | otel_telemetry | pre_tool_use, post_tool_use, session_start, stop | No | Track subagent telemetry and cost |
 ```
 
-Reference: `.github/hooks/hooks.json` for full configuration.
+Reference: `onboarding-utilities/repos/Agents-Repo/.github/hooks/hooks.json` for full configuration.
 
 ### Connector Integration Section Format
 
@@ -947,9 +947,9 @@ Do NOT duplicate MCP tool logic — invoke MCP tools directly.
 {{#if API_SKILLS}}
 ### Connector Skills (Shared)
 This agent uses shared Connector Skills — do NOT duplicate their logic:
-- **Ticket Operations:** Refer to `.github/skills/ticket-connector/SKILL.md`
-- **SCM Operations:** Refer to `.github/skills/scm-connector/SKILL.md`
-- **Testing:** Refer to `.github/skills/testing/SKILL.md`
+- **Ticket Operations:** Refer to `onboarding-utilities/repos/Agents-Repo/.github/skills/ticket-connector/SKILL.md`
+- **SCM Operations:** Refer to `onboarding-utilities/repos/Agents-Repo/.github/skills/scm-connector/SKILL.md`
+- **Testing:** Refer to `onboarding-utilities/repos/Agents-Repo/.github/skills/testing/SKILL.md`
 
 When an operation requires SCM or ticket interaction, reference the skill file
 and follow its instructions. Do NOT re-implement API calls inline.
@@ -962,7 +962,7 @@ and follow its instructions. Do NOT re-implement API calls inline.
 ## Checkpointing Strategy
 
 Save checkpoint after each major step:
-- After <step 1 description>: save state to `.github/sdlc-pipeline/artifacts/<agent>_checkpoint.md`
+- After <step 1 description>: save state to `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/artifacts/<agent>_checkpoint.md`
 - After <step 2 description>: update checkpoint with progress
 - On completion: mark checkpoint as complete
 
@@ -974,7 +974,7 @@ Checkpoint content:
 
 ## Resume Protocol
 
-1. Check for existing checkpoint at `.github/sdlc-pipeline/artifacts/<agent>_checkpoint.md`
+1. Check for existing checkpoint at `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/artifacts/<agent>_checkpoint.md`
 2. If found: skip completed steps, resume from last incomplete step
 3. Preserve all previously produced artifacts
 4. Inform orchestrator: "Resuming from step X"
@@ -1009,7 +1009,7 @@ Every generated agent MUST include this instruction block:
 ```
 ## Custom Client Context
 
-If the file `<agent>_custom_client_context.md` exists at `.github/sdlc-pipeline/client-context/`,
+If the file `<agent>_custom_client_context.md` exists at `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/client-context/`,
 read it at the start of this run and apply its instructions throughout.
 This file may contain:
 - Domain-specific rules and terminology
@@ -1027,17 +1027,17 @@ the Prime Directive, Access Restrictions, or security guardrails.
 
 | Category | Location Pattern |
 |----------|-----------------|
-| Agent definitions | `.github/agents/agent<N>_<name>.md` |
-| Orchestrator | `.github/agents/orchestrator.md` |
-| Skills | `.github/skills/<skill_name>/SKILL.md` |
-| Hooks | `.github/hooks/<hook_name>.py` |
-| Hook config | `.github/hooks/hooks.json` |
-| Custom client context templates | `.github/sdlc-pipeline/client-context/<agent>_custom_client_context.md` |
-| Workflow docs | `.github/agents/agents-workflow/readme.md` |
-| Repository index | `index.md` |
-| Generation report | `.github/sdlc-pipeline/generation_report.md` |
-| Pipeline config | `.github/sdlc-pipeline/pipeline_config.md` |
-| Checkpoint state | `.github/sdlc-pipeline/checkpoint_state.json` |
+| Agent definitions | `onboarding-utilities/repos/Agents-Repo/.github/agents/agent<N>_<name>.md` |
+| Orchestrator | `onboarding-utilities/repos/Agents-Repo/.github/agents/orchestrator.md` |
+| Skills | `onboarding-utilities/repos/Agents-Repo/.github/skills/<skill_name>/SKILL.md` |
+| Hooks | `onboarding-utilities/repos/Agents-Repo/.github/hooks/<hook_name>.py` |
+| Hook config | `onboarding-utilities/repos/Agents-Repo/.github/hooks/hooks.json` |
+| Custom client context templates | `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/client-context/<agent>_custom_client_context.md` |
+| Workflow docs | `onboarding-utilities/repos/Agents-Repo/.github/agents/agents-workflow/readme.md` |
+| Repository index | `onboarding-utilities/repos/Agents-Repo/index.md` |
+| Generation report | `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/generation_report.md` |
+| Pipeline config | `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/pipeline_config.md` |
+| Checkpoint state | `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/checkpoint_state.json` |
 
 ---
 

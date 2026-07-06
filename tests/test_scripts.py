@@ -16,7 +16,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 # Add scripts directory to path
-SCRIPTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts")
+SCRIPTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "onboarding-utilities", "scripts")
 sys.path.insert(0, SCRIPTS_DIR)
 
 

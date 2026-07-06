@@ -16,30 +16,30 @@ Run the **SDLC Pipeline Generator** to create customer-specific SDLC agents from
 
 ## What This Does
 
-1. Loads all contracts from `contracts/` and customer context from preflight outputs
+1. Loads all contracts from `onboarding-utilities/contracts/` and customer context from preflight outputs
 2. Checks `intake-sources.md` for existing customer-defined agents — reuses and enhances where applicable
 3. Determines connector integration mode per platform (MCP vs API-based from `.mcp.json` and `connector_config.md`)
 4. Asks clarification questions about tools, ways of working, and standards
 5. Maps contract model tiers (reasoning/coding/fast) to customer's approved models
-6. Generates agent definitions (`.github/agents/agent<N>_<name>.md`) with full metadata, inputs/outputs, validation, checkpointing, hooks, connector integration, and completion criteria
-7. Generates connector skill definitions only for API-based platforms (`.github/skills/<skill>/SKILL.md`)
-8. Generates cross-platform hook scripts (`.github/hooks/<hook>.py`) and `hooks.json`
+6. Generates agent definitions (`onboarding-utilities/repos/Agents-Repo/.github/agents/agent<N>_<name>.md`) with full metadata, inputs/outputs, validation, checkpointing, hooks, connector integration, and completion criteria
+7. Generates connector skill definitions only for API-based platforms (`onboarding-utilities/repos/Agents-Repo/.github/skills/<skill>/SKILL.md`)
+8. Generates cross-platform hook scripts (`onboarding-utilities/repos/Agents-Repo/.github/hooks/<hook>.py`) and `hooks.json`
 9. Creates custom client context templates for each agent
 10. Generates workflow README and repository index
-11. Self-validates all outputs against contracts via `scripts/outcome-inspector.py`
+11. Self-validates all outputs against contracts via `onboarding-utilities/scripts/outcome-inspector.py`
 
 ## Prerequisites
 
 The `/preflight` command must have completed successfully first. Required outputs:
 
-- `.github/sdlc-pipeline/preflight_report.md`
-- `.github/sdlc-pipeline/codebase_scan_results.md`
-- `.github/instructions/*.instructions.md`
+- `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/preflight_report.md`
+- `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/codebase_scan_results.md`
+- `onboarding-utilities/repos/Agents-Repo/.github/instructions/*.instructions.md`
 - `index.md` (repository catalog with Service Catalogue)
 
 ## Instructions
 
-Read and follow the full agent instructions at `.github/agents/sdlc-pipeline-generator.agent.md`.
+Read and follow the full agent instructions at `onboarding-utilities/.github/agents/sdlc-pipeline-generator.agent.md`.
 
 **IMPORTANT — Execution Format:**
 - You MUST announce each phase with a visible heading before starting it (single separator line above the heading only, no line below)
