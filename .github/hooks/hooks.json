@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "name": "guard-destructive",
+        "script": ".github/hooks/hook_guard_destructive.py",
+        "blocking": true,
+        "timeoutMs": 5000
+      },
+      {
+        "name": "guard-secrets",
+        "script": ".github/hooks/hook_guard_secrets.py",
+        "blocking": true,
+        "timeoutMs": 5000
+      }
+    ],
+    "PostToolUse": [
+      {
+        "name": "session-learnings",
+        "script": ".github/hooks/hook_session_learnings.py",
+        "blocking": false,
+        "timeoutMs": 5000
+      },
+      {
+        "name": "otel-telemetry",
+        "script": ".github/hooks/hook_otel_telemetry.py",
+        "blocking": false,
+        "timeoutMs": 5000
+      },
+      {
+        "name": "observability",
+        "script": ".github/hooks/hook_observability.py",
+        "blocking": false,
+        "timeoutMs": 5000
+      },
+      {
+        "name": "lint-on-save",
+        "script": ".github/hooks/hook_lint_on_save.py",
+        "blocking": false,
+        "timeoutMs": 5000
+      }
+    ]
+  }
+}

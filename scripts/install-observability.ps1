@@ -1,8 +1,8 @@
 #Requires -Version 5.1
-###############################################################################
-# install-observability.ps1 — Download OTel Collector & Prometheus binaries (Windows)
+# -----------------------------------------------------------------------------
+# install-observability.ps1 - Download OTel Collector and Prometheus binaries (Windows)
 #
-# Downloads official release binaries to observability/.bin/ — no admin required.
+# Downloads official release binaries to observability/.bin/ - no admin required.
 #
 # Usage:
 #   .\scripts\install-observability.ps1            # Install both
@@ -10,7 +10,7 @@
 #   .\scripts\install-observability.ps1 -Json      # Output status as JSON
 #
 # Supports: Windows (amd64)
-###############################################################################
+# -----------------------------------------------------------------------------
 
 [CmdletBinding()]
 param(
@@ -20,29 +20,29 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# ─── Configuration ────────────────────────────────────────────────────────────
+# --- Configuration ------------------------------------------------------------
 
 $OtelcolVersion = if ($env:OTELCOL_VERSION) { $env:OTELCOL_VERSION } else { "0.151.0" }
 $PrometheusVersion = if ($env:PROMETHEUS_VERSION) { $env:PROMETHEUS_VERSION } else { "3.4.1" }
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent $ScriptDir
-$BinDir = Join-Path $RepoRoot "observability" ".bin"
+$BinDir = Join-Path (Join-Path $RepoRoot "observability") ".bin"
 $ObsDir = Join-Path $RepoRoot "observability"
 
-# ─── Helpers ──────────────────────────────────────────────────────────────────
+# --- Helpers -----------------------------------------------------------------
 
 function Write-Info { param($Message) Write-Host "i  $Message" -ForegroundColor Blue }
 function Write-Success { param($Message) Write-Host "v  $Message" -ForegroundColor Green }
 function Write-Warn { param($Message) Write-Host "!  $Message" -ForegroundColor Yellow }
 function Write-Err { param($Message) Write-Host "x  $Message" -ForegroundColor Red }
 
-# ─── Platform Detection ──────────────────────────────────────────────────────
+# --- Platform Detection ------------------------------------------------------
 
 $Arch = if ([Environment]::Is64BitOperatingSystem) { "amd64" } else { "386" }
 $OS = "windows"
 
-# ─── Download Helper ─────────────────────────────────────────────────────────
+# --- Download Helper ---------------------------------------------------------
 
 function Download-File {
     param(
@@ -59,7 +59,7 @@ function Download-File {
     }
 }
 
-# ─── Check Mode ──────────────────────────────────────────────────────────────
+# --- Check Mode --------------------------------------------------------------
 
 $otelcolPath = Join-Path $BinDir "otelcol-contrib.exe"
 $prometheusPath = Join-Path $BinDir "prometheus.exe"
@@ -94,7 +94,7 @@ if ($Check -or $Json) {
     else { exit 1 }
 }
 
-# ─── Install ─────────────────────────────────────────────────────────────────
+# --- Install -----------------------------------------------------------------
 
 Write-Info "Installing observability binaries for Windows ($Arch)..."
 
@@ -105,7 +105,7 @@ New-Item -ItemType Directory -Force -Path (Join-Path $ObsDir ".logs") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $ObsDir ".prom-data") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $ObsDir ".hook-state") | Out-Null
 
-# ─── Install OTel Collector ──────────────────────────────────────────────────
+# --- Install OTel Collector --------------------------------------------------
 
 if (-not (Test-Path $otelcolPath)) {
     $otelcolUrl = "https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v${OtelcolVersion}/otelcol-contrib_${OtelcolVersion}_${OS}_${Arch}.tar.gz"
@@ -125,7 +125,7 @@ if (-not (Test-Path $otelcolPath)) {
     Write-Success "otelcol-contrib already installed"
 }
 
-# ─── Install Prometheus ──────────────────────────────────────────────────────
+# --- Install Prometheus ------------------------------------------------------
 
 if (-not (Test-Path $prometheusPath)) {
     $promUrl = "https://github.com/prometheus/prometheus/releases/download/v${PrometheusVersion}/prometheus-${PrometheusVersion}.${OS}-${Arch}.zip"
@@ -146,17 +146,17 @@ if (-not (Test-Path $prometheusPath)) {
     Write-Success "prometheus already installed"
 }
 
-# ─── Verification ────────────────────────────────────────────────────────────
+# --- Verification ------------------------------------------------------------
 
 Write-Info "Verifying installation..."
 if ((Test-Path $otelcolPath) -and (Test-Path $prometheusPath)) {
     Write-Success "All observability binaries installed successfully"
 } else {
-    Write-Err "Installation verification failed — binaries missing"
+    Write-Err "Installation verification failed - binaries missing"
     exit 1
 }
 
-# ─── Start & Health-Check ────────────────────────────────────────────────────
+# --- Start and Health-Check --------------------------------------------------
 
 Write-Info "Starting observability stack for verification..."
 
@@ -164,7 +164,7 @@ $PidDir = Join-Path $ObsDir ".pids"
 $LogDir = Join-Path $ObsDir ".logs"
 $PromDataDir = Join-Path $ObsDir ".prom-data"
 $OtelConfig = Join-Path $ObsDir "otel-collector-config.yml"
-$PromConfig = Join-Path $ObsDir "prometheus" "prometheus.yml"
+$PromConfig = Join-Path (Join-Path $ObsDir "prometheus") "prometheus.yml"
 
 # Start OTel Collector
 $otelcolPidFile = Join-Path $PidDir "otelcol.pid"
@@ -226,7 +226,7 @@ if (-not $promRunning) {
 Write-Info "Waiting for services to initialize (5s)..."
 Start-Sleep -Seconds 5
 
-# ─── Endpoint Health Checks ──────────────────────────────────────────────────
+# --- Endpoint Health Checks --------------------------------------------------
 
 $healthOk = $true
 
@@ -273,7 +273,7 @@ try {
     Write-Warn "Prometheus API check failed (non-critical): $_"
 }
 
-# ─── Summary ─────────────────────────────────────────────────────────────────
+# --- Summary -----------------------------------------------------------------
 
 Write-Host ""
 if ($healthOk) {

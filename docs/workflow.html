@@ -836,12 +836,12 @@
             <h4>What It Does</h4>
             <ul>
               <li>Generates SCM connector SKILL.md from <code>SC-SCM</code> contract</li>
-              <li>Clones repos to <code>onboarding-utilities/repos/App-Repos/</code></li>
+              <li>Clones repos to <code>repos/</code></li>
               <li>Handles failures per-repo: retry, skip, or alternative URL</li>
               <li>All repos failing = blocking error, pauses workflow</li>
             </ul>
             <h4>Scripts</h4>
-            <ul><li><code>python3 onboarding-utilities/scripts/scm-bootstrap.py --repos '[...]' --scm github --org &lt;org&gt; --target-dir onboarding-utilities/repos/App-Repos</code></li></ul>
+            <ul><li><code>python3 scripts/scm-bootstrap.py --repos '[...]' --scm github --org &lt;org&gt; --target-dir repos</code></li></ul>
           </div>
         </div>
 
@@ -859,7 +859,7 @@
               <li>Parallel scanning via sub-agents for 3+ repos</li>
             </ul>
             <h4>Scripts</h4>
-            <ul><li><code>python3 onboarding-utilities/scripts/repo-scanner.py --repo-path onboarding-utilities/repos/App-Repos/&lt;repo&gt; --output-dir onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/scans --format both --max-depth 6</code></li></ul>
+            <ul><li><code>python3 scripts/repo-scanner.py --repo-path repos/&lt;repo&gt; --output-dir .github/sdlc-pipeline/scans --format both --max-depth 6</code></li></ul>
           </div>
         </div>
 
@@ -875,7 +875,7 @@
               <li>Includes custom instructions placeholder for customer</li>
             </ul>
             <h4>Scripts</h4>
-            <ul><li><code>python3 onboarding-utilities/scripts/instructions-generator.py --scan-dir onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/scans --output-dir onboarding-utilities/repos/Agents-Repo/.github/instructions</code></li></ul>
+            <ul><li><code>python3 scripts/instructions-generator.py --scan-dir .github/sdlc-pipeline/scans --output-dir .github/instructions</code></li></ul>
           </div>
         </div>
 
@@ -927,8 +927,8 @@
             </ul>
             <h4>Scripts</h4>
             <ul>
-              <li><code>python3 onboarding-utilities/scripts/outcome-inspector.py --type preflight --output-dir . --format markdown</code></li>
-              <li><code>python3 onboarding-utilities/scripts/outcome-inspector.py --type instructions --instructions-dir .github/instructions --format markdown</code></li>
+              <li><code>python3 scripts/outcome-inspector.py --type preflight --output-dir . --format markdown</code></li>
+              <li><code>python3 scripts/outcome-inspector.py --type instructions --instructions-dir .github/instructions --format markdown</code></li>
             </ul>
           </div>
         </div>
@@ -955,9 +955,9 @@
               <li>All hook contracts: <code>contracts/hooks/hook_*.contract.md</code></li>
               <li>All skill contracts: <code>contracts/skills/skill_*.contract.md</code></li>
               <li><code>intake-sources.md</code></li>
-              <li><code>onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/codebase_scan_results.md</code> (from Preflight)</li>
-              <li><code>onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/preflight_report.md</code> (from Preflight)</li>
-              <li><code>onboarding-utilities/repos/Agents-Repo/.github/instructions/*.instructions.md</code> (from Preflight)</li>
+              <li><code>.github/sdlc-pipeline/codebase_scan_results.md</code> (from Preflight)</li>
+              <li><code>.github/sdlc-pipeline/preflight_report.md</code> (from Preflight)</li>
+              <li><code>.github/instructions/*.instructions.md</code> (from Preflight)</li>
             </ul>
           </div>
         </div>
@@ -1071,7 +1071,7 @@
           <div class="detail-panel">
             <h4>Outputs</h4>
             <ul>
-              <li><code>onboarding-utilities/repos/Agents-Repo/.github/agents/agents-workflow/readme.md</code></li>
+              <li><code>.github/agents/agents-workflow/readme.md</code></li>
               <li><code>index.md</code> — repo routing table</li>
             </ul>
           </div>
@@ -1092,7 +1092,7 @@
               <li>Prime Directives match contracts verbatim</li>
             </ul>
             <h4>Scripts</h4>
-            <ul><li><code>python3 onboarding-utilities/scripts/outcome-inspector.py --type generator --output-dir . --contracts-dir contracts --format markdown</code></li></ul>
+            <ul><li><code>python3 scripts/outcome-inspector.py --type generator --output-dir . --contracts-dir contracts --format markdown</code></li></ul>
           </div>
         </div>
 
@@ -1109,35 +1109,35 @@
       <div class="script-card">
         <h3><span class="agent-badge badge-script">Python</span> repo-scanner.py</h3>
         <p>Smart repository scanner — analyzes structure, dependencies, build tools, linters, test frameworks, patterns, and conventions.</p>
-        <div class="usage">python3 onboarding-utilities/scripts/repo-scanner.py \<br>  --repo-path onboarding-utilities/repos/App-Repos/&lt;repo&gt; \<br>  --output-dir onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/scans \<br>  --format both --max-depth 6</div>
+        <div class="usage">python3 scripts/repo-scanner.py \<br>  --repo-path repos/&lt;repo&gt; \<br>  --output-dir .github/sdlc-pipeline/scans \<br>  --format both --max-depth 6</div>
         <div class="used-by">Used by: <span>Preflight Phase 4</span></div>
       </div>
 
       <div class="script-card">
         <h3><span class="agent-badge badge-script">Python</span> scm-bootstrap.py</h3>
         <p>Clones customer repositories. Supports GitHub, GitLab, Bitbucket, Azure DevOps. Shallow clone, retry logic, branch targeting.</p>
-        <div class="usage">python3 onboarding-utilities/scripts/scm-bootstrap.py \<br>  --repos '["repo1","repo2"]' \<br>  --scm github --org &lt;org&gt; \<br>  --target-dir onboarding-utilities/repos/App-Repos</div>
+        <div class="usage">python3 scripts/scm-bootstrap.py \<br>  --repos '["repo1","repo2"]' \<br>  --scm github --org &lt;org&gt; \<br>  --target-dir repos</div>
         <div class="used-by">Used by: <span>Preflight Phase 3</span></div>
       </div>
 
       <div class="script-card">
         <h3><span class="agent-badge badge-script">Python</span> instructions-generator.py</h3>
         <p>Generates <code>.github/instructions/&lt;repo&gt;.instructions.md</code> files from scan JSON. Includes YAML frontmatter, structure, deps, tools, patterns.</p>
-        <div class="usage">python3 onboarding-utilities/scripts/instructions-generator.py \<br>  --scan-dir onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/scans \<br>  --output-dir onboarding-utilities/repos/Agents-Repo/.github/instructions</div>
+        <div class="usage">python3 scripts/instructions-generator.py \<br>  --scan-dir .github/sdlc-pipeline/scans \<br>  --output-dir .github/instructions</div>
         <div class="used-by">Used by: <span>Preflight Phase 5</span></div>
       </div>
 
       <div class="script-card">
         <h3><span class="agent-badge badge-script">Python</span> checkpoint-manager.py</h3>
         <p>Manages pipeline state — save, load, reset, feedback, error tracking. Enables pause/resume/re-run workflows.</p>
-        <div class="usage">python3 onboarding-utilities/scripts/checkpoint-manager.py save \<br>  --agent preflight \<br>  --phase "Phase 4: Code Scan" \<br>  --status completed \<br>  --state-file onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/checkpoint_state.json</div>
+        <div class="usage">python3 scripts/checkpoint-manager.py save \<br>  --agent preflight \<br>  --phase "Phase 4: Code Scan" \<br>  --status completed \<br>  --state-file .github/sdlc-pipeline/checkpoint_state.json</div>
         <div class="used-by">Used by: <span>All Phases</span><span>Both Agents</span></div>
       </div>
 
       <div class="script-card">
         <h3><span class="agent-badge badge-script">Python</span> outcome-inspector.py</h3>
         <p>Self-validates agent outputs — structural completeness, content quality, consistency, security, functionality.</p>
-        <div class="usage">python3 onboarding-utilities/scripts/outcome-inspector.py \<br>  --type preflight \<br>  --output-dir . \<br>  --format markdown</div>
+        <div class="usage">python3 scripts/outcome-inspector.py \<br>  --type preflight \<br>  --output-dir . \<br>  --format markdown</div>
         <div class="used-by">Used by: <span>Preflight Phase 8</span><span>Generator Phase 9</span></div>
       </div>
 

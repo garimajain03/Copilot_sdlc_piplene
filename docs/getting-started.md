@@ -204,25 +204,25 @@ The Preflight Agent validates your onboarding answers, clones your repositories,
 |-------|------|-------------|--------------|
 | 1 | Validate Onboarding | Reads `intake-sources.md`, validates against `schemas/onboarding_answers_schema.md`, asks clarifying questions for missing fields | — |
 | 2 | Collect Repos | Asks for repository list, validates names, confirms with user | — |
-| 3 | Clone Repos | Clones repos using SCM connector, handles failures per-repo | `onboarding-utilities/scripts/scm-bootstrap.py` |
-| 4 | Smart Code Scan | Scans each repo for structure, dependencies, patterns, conventions. Parallel scanning for 3+ repos via sub-agents | `onboarding-utilities/scripts/repo-scanner.py` |
-| 5 | Generate Instructions | Creates `onboarding-utilities/repos/Agents-Repo/.github/instructions/<repo>.instructions.md` for each scanned repo | `onboarding-utilities/scripts/instructions-generator.py` |
-| 6 | Setup & Connectors | Generates `setup.sh`, connector SKILL.md files, observability setup | `onboarding-utilities/scripts/install-observability.sh` |
+| 3 | Clone Repos | Clones repos using SCM connector, handles failures per-repo | `scripts/scm-bootstrap.py` |
+| 4 | Smart Code Scan | Scans each repo for structure, dependencies, patterns, conventions. Parallel scanning for 3+ repos via sub-agents | `scripts/repo-scanner.py` |
+| 5 | Generate Instructions | Creates `.github/instructions/<repo>.instructions.md` for each scanned repo | `scripts/instructions-generator.py` |
+| 6 | Setup & Connectors | Generates `setup.sh`, connector SKILL.md files, observability setup | `scripts/install-observability.sh` |
 | 7 | Generate hooks.json | Registers all hooks (guard, secrets, lint, observability, telemetry, learnings) | — |
-| 8 | Outcome Inspection | Self-validates all outputs for completeness, quality, security, consistency | `onboarding-utilities/scripts/outcome-inspector.py` |
+| 8 | Outcome Inspection | Self-validates all outputs for completeness, quality, security, consistency | `scripts/outcome-inspector.py` |
 
 ### Outputs
 
 | File | Location |
 |------|----------|
 | `setup.sh` | `setup.sh` |
-| `hooks.json` | `onboarding-utilities/repos/Agents-Repo/.github/hooks/hooks.json` |
+| `hooks.json` | `.github/hooks/hooks.json` |
 | Connector skills | `.github/skills/<connector>/SKILL.md` |
-| Hook scripts | `onboarding-utilities/repos/Agents-Repo/.github/hooks/<hook_name>.py` |
-| Instruction files | `onboarding-utilities/repos/Agents-Repo/.github/instructions/<repo>.instructions.md` |
-| Codebase scan results | `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/codebase_scan_results.md` |
-| Preflight report | `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/preflight_report.md` |
-| Checkpoint state | `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/checkpoint_state.json` |
+| Hook scripts | `.github/hooks/<hook_name>.py` |
+| Instruction files | `.github/instructions/<repo>.instructions.md` |
+| Codebase scan results | `.github/sdlc-pipeline/codebase_scan_results.md` |
+| Preflight report | `.github/sdlc-pipeline/preflight_report.md` |
+| Checkpoint state | `.github/sdlc-pipeline/checkpoint_state.json` |
 
 ---
 
@@ -235,9 +235,9 @@ The Pipeline Generator reads your contracts and onboarding context, then generat
 ### Prerequisites
 
 The Preflight Agent must have completed successfully. Required outputs:
-- `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/preflight_report.md`
-- `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/codebase_scan_results.md`
-- `onboarding-utilities/repos/Agents-Repo/.github/instructions/*.instructions.md`
+- `.github/sdlc-pipeline/preflight_report.md`
+- `.github/sdlc-pipeline/codebase_scan_results.md`
+- `.github/instructions/*.instructions.md`
 
 ### Phases
 
@@ -251,21 +251,21 @@ The Preflight Agent must have completed successfully. Required outputs:
 | 6 | Generate Hooks | Creates hook scripts from hook contracts (guard, secrets, lint, observability, telemetry, learnings) | — |
 | 7 | Custom Context Templates | Creates `<agent>_custom_client_context.md` template for each agent | — |
 | 8 | Support Files | Generates workflow README and repository index | — |
-| 9 | Outcome Inspection | Validates all generated agents against their contracts | `onboarding-utilities/scripts/outcome-inspector.py` |
+| 9 | Outcome Inspection | Validates all generated agents against their contracts | `scripts/outcome-inspector.py` |
 
 ### Outputs
 
 | Category | Location |
 |----------|----------|
-| Agent definitions | `onboarding-utilities/repos/Agents-Repo/.github/agents/agent<N>_<name>.md` |
-| Orchestrator | `onboarding-utilities/repos/Agents-Repo/.github/agents/orchestrator.md` |
-| Skills | `onboarding-utilities/repos/Agents-Repo/.github/skills/<skill_name>/SKILL.md` |
-| Hooks | `onboarding-utilities/repos/Agents-Repo/.github/hooks/<hook_name>.py` |
-| Hook config | `onboarding-utilities/repos/Agents-Repo/.github/hooks/hooks.json` |
-| Custom context templates | `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/client-context/<agent>_custom_client_context.md` |
-| Workflow docs | `onboarding-utilities/repos/Agents-Repo/.github/agents/agents-workflow/readme.md` |
+| Agent definitions | `.github/agents/agent<N>_<name>.md` |
+| Orchestrator | `.github/agents/orchestrator.md` |
+| Skills | `.github/skills/<skill_name>/SKILL.md` |
+| Hooks | `.github/hooks/<hook_name>.py` |
+| Hook config | `.github/hooks/hooks.json` |
+| Custom context templates | `.github/sdlc-pipeline/client-context/<agent>_custom_client_context.md` |
+| Workflow docs | `.github/agents/agents-workflow/readme.md` |
 | Repository index | `index.md` |
-| Generation report | `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/generation_report.md` |
+| Generation report | `.github/sdlc-pipeline/generation_report.md` |
 
 ---
 
@@ -273,12 +273,12 @@ The Preflight Agent must have completed successfully. Required outputs:
 
 | Script | Purpose | Used By |
 |--------|---------|---------|
-| `onboarding-utilities/scripts/repo-scanner.py` | Scans a repository for structure, dependencies, patterns, conventions. Smart filtering ignores `node_modules`, `dist`, binary files, etc. Tags files as `source`, `test`, `config`, `docs`, `ci_cd`, etc. | Preflight Phase 4 |
-| `onboarding-utilities/scripts/scm-bootstrap.py` | Clones customer repositories via GitHub/GitLab/Bitbucket/Azure DevOps. Shallow clone, retry logic, branch targeting. | Preflight Phase 3 |
-| `onboarding-utilities/scripts/instructions-generator.py` | Generates `onboarding-utilities/repos/Agents-Repo/.github/instructions/<repo>.instructions.md` files from scan JSON. Includes YAML frontmatter, structure, deps, tools, patterns. | Preflight Phase 5 |
-| `onboarding-utilities/scripts/checkpoint-manager.py` | Manages pipeline state — save, load, reset, feedback, error tracking. Enables pause/resume/re-run workflows. | All phases |
-| `onboarding-utilities/scripts/outcome-inspector.py` | Self-validates agent outputs for structural completeness, content quality, consistency, security, and functionality. | Preflight Phase 8, Generator Phase 9 |
-| `onboarding-utilities/scripts/install-observability.sh` | Downloads OTel Collector + Prometheus binaries. No sudo/Docker required. Supports `--check` and `--json` modes. | Preflight Phase 6 |
+| `scripts/repo-scanner.py` | Scans a repository for structure, dependencies, patterns, conventions. Smart filtering ignores `node_modules`, `dist`, binary files, etc. Tags files as `source`, `test`, `config`, `docs`, `ci_cd`, etc. | Preflight Phase 4 |
+| `scripts/scm-bootstrap.py` | Clones customer repositories via GitHub/GitLab/Bitbucket/Azure DevOps. Shallow clone, retry logic, branch targeting. | Preflight Phase 3 |
+| `scripts/instructions-generator.py` | Generates `.github/instructions/<repo>.instructions.md` files from scan JSON. Includes YAML frontmatter, structure, deps, tools, patterns. | Preflight Phase 5 |
+| `scripts/checkpoint-manager.py` | Manages pipeline state — save, load, reset, feedback, error tracking. Enables pause/resume/re-run workflows. | All phases |
+| `scripts/outcome-inspector.py` | Self-validates agent outputs for structural completeness, content quality, consistency, security, and functionality. | Preflight Phase 8, Generator Phase 9 |
+| `scripts/install-observability.sh` | Downloads OTel Collector + Prometheus binaries. No sudo/Docker required. Supports `--check` and `--json` modes. | Preflight Phase 6 |
 
 ---
 
@@ -373,4 +373,4 @@ Run `/preflight` first and ensure it completes successfully.
 Use `/rerun-phase` with feedback describing what went wrong. The agent will adapt.
 
 ### Need to start completely fresh
-Delete `onboarding-utilities/repos/Agents-Repo/.github/sdlc-pipeline/checkpoint_state.json` and run `/preflight` again.
+Delete `.github/sdlc-pipeline/checkpoint_state.json` and run `/preflight` again.

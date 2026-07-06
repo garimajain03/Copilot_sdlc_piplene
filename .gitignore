@@ -1,5 +1,7 @@
 .DS_Store
 .env
 data/
-onboarding-utilities/repos/App-Repos/
-onboarding-utilities/repos/Agents-Repo/
+repos/
+.sdlc-preflight/
+__pycache__/
+*.pyc
