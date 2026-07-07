@@ -8,6 +8,7 @@ files with structured context: repo structure, dependencies, patterns, tools, co
 Usage:
   python3 instructions-generator.py --scan-file /path/to/repo_scan.json --output-dir /path/to/.github/instructions
   python3 instructions-generator.py --scan-dir /path/to/scans/ --output-dir /path/to/.github/instructions
+    python3 instructions-generator.py --scan-dir /path/to/scans/ --output-dir /path/to/.github/instructions --repos-root /path/to/cloned/repos
 
 Exit codes:
   0 — Success
@@ -193,11 +194,70 @@ def generate_instructions(scan: dict) -> str:
     return "\n".join(lines)
 
 
+def generate_repo_copilot_instructions(scan: dict) -> str:
+    """Generate per-repo .github/copilot-instructions.md content from scan data."""
+    repo = scan.get("repo_name", "unknown")
+    pkg = scan.get("package_info", {})
+    ts = scan.get("typescript", {})
+    patterns = scan.get("patterns", [])
+    linters = scan.get("linters", {})
+    formatters = scan.get("formatters", {})
+    test_runners = scan.get("test_runners", {})
+    lock_files = scan.get("lock_files", {})
+
+    lines = []
+    lines.append(f"# Copilot Instructions — {repo}")
+    lines.append("")
+    lines.append("> Auto-generated from repository scan results.")
+    lines.append("")
+
+    lines.append("## Project Overview")
+    lines.append("")
+    if pkg.get("name"):
+        lines.append(f"- Package: `{pkg['name']}`")
+    if pkg.get("detected_frameworks"):
+        lines.append(f"- Frameworks: {', '.join(pkg['detected_frameworks'])}")
+    if lock_files:
+        lines.append(f"- Package manager: {', '.join(sorted(set(lock_files.values())))}")
+    if ts and not ts.get("error"):
+        lines.append(f"- TypeScript strict mode: `{ts.get('strict', False)}`")
+    lines.append("")
+
+    lines.append("## Coding Expectations")
+    lines.append("")
+    lines.append("- Follow existing file and naming conventions in this repository.")
+    lines.append("- Prefer reusing existing patterns before introducing new abstractions.")
+    if linters:
+        lines.append(f"- Lint tooling detected: {', '.join(sorted(linters.keys()))}.")
+    if formatters:
+        lines.append(f"- Formatter tooling detected: {', '.join(sorted(formatters.keys()))}.")
+    if test_runners:
+        lines.append(f"- Test runners detected: {', '.join(sorted(test_runners.keys()))}.")
+    lines.append("")
+
+    if patterns:
+        lines.append("## Detected Patterns")
+        lines.append("")
+        for p in patterns[:10]:
+            lines.append(f"- {p.get('pattern', 'Unknown pattern')}: {p.get('evidence', 'no evidence')}.")
+        lines.append("")
+
+    lines.append("## Agent Guidance")
+    lines.append("")
+    lines.append("- Keep edits minimal and scoped to the requested task.")
+    lines.append("- Run available tests/lint checks for touched areas when feasible.")
+    lines.append("- Update related docs when behavior or developer workflow changes.")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate .github/instructions from repo scans")
     parser.add_argument("--scan-file", help="Path to a single repo scan JSON file")
     parser.add_argument("--scan-dir", help="Path to directory containing multiple scan JSON files")
     parser.add_argument("--output-dir", required=True, help="Output directory for instructions files")
+    parser.add_argument("--repos-root", help="Root directory containing cloned repositories")
     args = parser.parse_args()
 
     if not args.scan_file and not args.scan_dir:
@@ -215,6 +275,7 @@ def main():
                 scan_files.append(os.path.join(args.scan_dir, f))
 
     generated = []
+    generated_repo_copilot = []
     errors = []
 
     for scan_file in scan_files:
@@ -232,12 +293,38 @@ def main():
             generated.append({"repo": repo_name, "path": out_path})
             print(f"✓ Generated: {out_path}", file=sys.stderr)
 
+            if args.repos_root:
+                repo_root = Path(args.repos_root) / repo_name
+                if repo_root.exists() and repo_root.is_dir():
+                    copilot_dir = repo_root / ".github"
+                    copilot_dir.mkdir(parents=True, exist_ok=True)
+                    copilot_path = copilot_dir / "copilot-instructions.md"
+                    with open(copilot_path, "w", encoding="utf-8") as f:
+                        f.write(generate_repo_copilot_instructions(scan))
+                    generated_repo_copilot.append({"repo": repo_name, "path": str(copilot_path)})
+                    print(f"✓ Generated: {copilot_path}", file=sys.stderr)
+                else:
+                    errors.append(
+                        {
+                            "file": scan_file,
+                            "error": f"Repo path not found for copilot-instructions generation: {repo_root}",
+                        }
+                    )
+                    print(
+                        f"✗ Repo path not found for copilot-instructions generation: {repo_root}",
+                        file=sys.stderr,
+                    )
+
         except Exception as e:
             errors.append({"file": scan_file, "error": str(e)})
             print(f"✗ Error processing {scan_file}: {e}", file=sys.stderr)
 
     # Summary
-    summary = {"generated": generated, "errors": errors}
+    summary = {
+        "generated": generated,
+        "generated_repo_copilot_instructions": generated_repo_copilot,
+        "errors": errors,
+    }
     print(json.dumps(summary, indent=2))
     sys.exit(0 if not errors else 1)
 

@@ -1,4 +1,4 @@
-# SDLC Pipeline Bundle — Copilot Instructions
+﻿# SDLC Pipeline Bundle â€” Copilot Instructions
 
 ## Overview
 
@@ -18,24 +18,24 @@ This repository is a **standalone SDLC Pipeline Bundle** (`github-copilot-sdlc-t
 | Observability configs & binaries | `observability/` |
 | Onboarding wizard | `client-onboarding-wizard.html` |
 | Prompt commands | `.github/prompts/` |
-| Pipeline state (generated) | `onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/` |
-| Instruction files (generated) | `onboarding-utilities/output_repos/agents-repo/.github/instructions/` |
+| Pipeline state (generated) | `outputs/agents-repo/.github/sdlc-pipeline/` |
+| Instruction files (generated) | `outputs/agents-repo/.github/instructions/` |
 
 ## Key Concepts
 
 ### Connector Integration Modes
 
 Each external platform (Jira, Confluence, GitHub/GitLab) can be integrated via:
-- **MCP (Model Context Protocol)** — generates `.mcp.json` with server definitions
-- **API-based Connector Skills** — generates SKILL.md files with CLI commands
+- **MCP (Model Context Protocol)** â€” generates `.mcp.json` with server definitions
+- **API-based Connector Skills** â€” generates SKILL.md files with CLI commands
 
 The Preflight Agent asks which mode to use per platform. The Pipeline Generator only generates Connector Skills for platforms where API-based integration was selected.
 
 ### Workspace Structure
 
 Two modes supported:
-- **Default** — Single Agents repository with Git submodules for development repos
-- **Custom** — Customer-defined repository layout
+- **Default** â€” Single Agents repository with Git submodules for development repos
+- **Custom** â€” Customer-defined repository layout
 
 ### Cross-Platform Support
 
@@ -62,7 +62,7 @@ All generated artifacts support both macOS and Windows:
 - PowerShell scripts: `.\onboarding-utilities\scripts\<script>.ps1` (e.g., `.\onboarding-utilities\scripts\install-observability.ps1`)
 - Contracts: `onboarding-utilities/contracts/` (e.g., `onboarding-utilities/contracts/agent0_ticket_analyzer.contract.md`)
 - Schemas: `schemas/` (e.g., `schemas/onboarding_answers_schema.md`)
-- Generated outputs: `onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/`, `onboarding-utilities/output_repos/agents-repo/.github/instructions/`, `onboarding-utilities/output_repos/agents-repo/.github/hooks/`, `onboarding-utilities/output_repos/agents-repo/.github/skills/`
+- Generated outputs: `outputs/agents-repo/.github/sdlc-pipeline/`, `outputs/agents-repo/.github/instructions/`, `outputs/agents-repo/.github/hooks/`, `outputs/agents-repo/.github/skills/`
 
 ## Available Agents
 
@@ -70,3 +70,4 @@ All generated artifacts support both macOS and Windows:
 |-------|------|---------|
 | SDLC Preflight Agent | `.github/agents/sdlc-preflight.agent.md` | Validates onboarding, configures connectors (MCP/API), sets up workspace, scans repos, generates cross-platform setup |
 | SDLC Pipeline Generator | `.github/agents/sdlc-pipeline-generator.agent.md` | Generates customer-specific agents from contracts, reuses existing agents, generates cross-platform hooks |
+

@@ -3,18 +3,18 @@
 workspace-bootstrap.py — Create workspace layout and materialize application repositories.
 
 Supports two mutually exclusive layouts:
-- default: output_repos/agents-repo with app repos as git submodules in agents-repo/repos
-- custom: output_repos/agents-repo and output_repos/app-repos with app repos cloned normally
+- default: outputs/agents-repo with app repos as git submodules in agents-repo/repos
+- custom: outputs/agents-repo and outputs/app-repos with app repos cloned normally
 
 Usage examples:
   python3 onboarding-utilities/scripts/workspace-bootstrap.py \
     --workspace-mode default \
-    --output-root onboarding-utilities/output_repos \
+        --output-root outputs \
     --app-repos '["https://github.com/acme/api.git", "https://github.com/acme/web.git"]'
 
   python3 onboarding-utilities/scripts/workspace-bootstrap.py \
     --workspace-mode custom \
-    --output-root onboarding-utilities/output_repos \
+        --output-root outputs \
     --app-repos '["api", "web"]' --scm github --org acme
 """
 
@@ -177,7 +177,7 @@ def clone_normal_repos(app_repos_dir: Path, repos: List[Dict[str, str]], branch:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Bootstrap SDLC workspace layouts")
     parser.add_argument("--workspace-mode", required=True, choices=["default", "custom"])
-    parser.add_argument("--output-root", default="onboarding-utilities/output_repos")
+    parser.add_argument("--output-root", default="outputs")
     parser.add_argument("--agents-repo-url", default="")
     parser.add_argument("--agents-repo-branch", default="main")
     parser.add_argument("--app-repos", required=True, help="JSON list of repo URLs or repo names")
