@@ -24,15 +24,15 @@ Provide the phase to re-run and your feedback. Examples:
 
 ## Instructions
 
-1. Read the checkpoint at `.github/sdlc-pipeline/checkpoint_state.json`
+1. Read the checkpoint at `onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/checkpoint_state.json`
 2. Identify the target phase from the user's message
 3. Record the feedback:
    ```bash
-   python3 scripts/checkpoint-manager.py feedback \
+  python3 onboarding-utilities/scripts/checkpoint-manager.py feedback \
      --agent <preflight|generator> \
      --feedback "<user's feedback>" \
      --phase "<target phase>" \
-     --state-file .github/sdlc-pipeline/checkpoint_state.json
+    --state-file onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/checkpoint_state.json
    ```
 4. Reset that phase and re-execute it following the corresponding agent instructions:
    - If preflight phase: follow `.github/agents/sdlc-preflight.agent.md`

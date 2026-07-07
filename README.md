@@ -55,62 +55,63 @@ sdlc-pipeline-bundle/                  ← This standalone repository
 │   │   ├── pipeline-status.prompt.md        ← /pipeline-status slash command
 │   │   └── rerun-phase.prompt.md            ← /rerun-phase slash command
 │   └── copilot-instructions.md               ← Repo-level Copilot instructions
-├── contracts/                         ← Reusable Agent Contracts
-│   ├── CONTRACT_INDEX.md              ← Master index of all contracts
-│   ├── agent0_ticket_analyzer.contract.md
-│   ├── agent1_problem_decomposer.contract.md
-│   ├── agent2_design_architect.contract.md
-│   ├── agent2a_design_critic.contract.md
-│   ├── agent3a_scaffolder.contract.md
-│   ├── agent3b_builder.contract.md
-│   ├── agent3c_fixer.contract.md
-│   ├── agent4_verifier.contract.md
-│   ├── agent5_critic.contract.md
-│   ├── agent6_tester.contract.md
-│   ├── agent7_documentation.contract.md   ← Documentation Generator
-│   ├── agent8_iac_devops.contract.md      ← IaC/DevOps Specialist
-│   ├── orchestrator.contract.md
-│   ├── hooks/
-│   │   ├── hook_guard_destructive.contract.md
-│   │   ├── hook_guard_secrets.contract.md
-│   │   ├── hook_lint_on_save.contract.md
-│   │   ├── hook_session_learnings.contract.md
-│   │   ├── hook_observability.contract.md
-│   │   └── hook_otel_telemetry.contract.md
-│   └── skills/
-│       ├── skill_ticket_connector.contract.md
-│       ├── skill_scm_connector.contract.md
-│       ├── skill_design_connector.contract.md
-│       └── skill_testing.contract.md
-├── templates/                         ← Generation Templates
-│   ├── agent_template.md.hbs
-│   ├── hook_template.py.hbs
-│   ├── skill_template.md.hbs
-│   ├── setup_template.sh.hbs
-│   ├── setup_template.ps1.hbs         ← Windows PowerShell setup template
-│   └── custom_client_context_template.md
-├── schemas/                           ← Validation Schemas
-│   ├── contract_schema.md
-│   └── onboarding_answers_schema.md
-├── scripts/                           ← Automation scripts
-│   ├── repo-scanner.py
-│   ├── instructions-generator.py
-│   ├── scm-bootstrap.py
-│   ├── checkpoint-manager.py
-│   ├── outcome-inspector.py
-│   ├── pipeline-migrator.py               ← Version & migration manager
-│   ├── install-observability.sh           ← macOS/Linux binary installer
-│   └── install-observability.ps1          ← Windows binary installer
-└── observability/                     ← Telemetry stack templates
-    ├── otel-collector-config.yml
-    ├── prometheus/
-    │   └── prometheus.yml
-    └── .gitignore
+├── onboarding-utilities/
+│   ├── contracts/                     ← Reusable Agent Contracts
+│   │   ├── CONTRACT_INDEX.md          ← Master index of all contracts
+│   │   ├── agent0_ticket_analyzer.contract.md
+│   │   ├── agent1_problem_decomposer.contract.md
+│   │   ├── agent2_design_architect.contract.md
+│   │   ├── agent2a_design_critic.contract.md
+│   │   ├── agent3a_scaffolder.contract.md
+│   │   ├── agent3b_builder.contract.md
+│   │   ├── agent3c_fixer.contract.md
+│   │   ├── agent4_verifier.contract.md
+│   │   ├── agent5_critic.contract.md
+│   │   ├── agent6_tester.contract.md
+│   │   ├── agent7_documentation.contract.md   ← Documentation Generator
+│   │   ├── agent8_iac_devops.contract.md      ← IaC/DevOps Specialist
+│   │   ├── orchestrator.contract.md
+│   │   ├── hooks/
+│   │   │   ├── hook_guard_destructive.contract.md
+│   │   │   ├── hook_guard_secrets.contract.md
+│   │   │   ├── hook_lint_on_save.contract.md
+│   │   │   ├── hook_session_learnings.contract.md
+│   │   │   ├── hook_observability.contract.md
+│   │   │   └── hook_otel_telemetry.contract.md
+│   │   └── skills/
+│   │       ├── skill_ticket_connector.contract.md
+│   │       ├── skill_scm_connector.contract.md
+│   │       ├── skill_design_connector.contract.md
+│   │       └── skill_testing.contract.md
+│   ├── templates/                     ← Generation Templates
+│   │   ├── agent_template.md.hbs
+│   │   ├── hook_template.py.hbs
+│   │   ├── skill_template.md.hbs
+│   │   ├── setup_template.sh.hbs
+│   │   ├── setup_template.ps1.hbs     ← Windows PowerShell setup template
+│   │   └── custom_client_context_template.md
+│   ├── schemas/                       ← Validation Schemas
+│   │   ├── contract_schema.md
+│   │   └── onboarding_answers_schema.md
+│   ├── scripts/                       ← Automation scripts
+│   │   ├── repo-scanner.py
+│   │   ├── instructions-generator.py
+│   │   ├── scm-bootstrap.py
+│   │   ├── checkpoint-manager.py
+│   │   ├── outcome-inspector.py
+│   │   ├── pipeline-migrator.py           ← Version & migration manager
+│   │   ├── install-observability.sh       ← macOS/Linux binary installer
+│   │   └── install-observability.ps1      ← Windows binary installer
+│   ├── observability/                 ← Telemetry stack templates
+│   │   ├── otel-collector-config.yml
+│   │   ├── prometheus/
+│   │   │   └── prometheus.yml
+│   │   └── .gitignore
+│   └── docs/                          ← Documentation
+│       ├── getting-started.md         ← How to run guide
+│       └── workflow.html              ← Interactive workflow visualization
 ├── tests/                             ← Test suite
-│   └── test_scripts.py                ← Unit tests for all scripts
-├── docs/                              ← Documentation
-│   ├── getting-started.md             ← How to run guide
-│   └── workflow.html                  ← Interactive workflow visualization
+│   └── test_scripts.py                ← Unit tests for automation scripts
 ```
 
 ## Contracts vs Specs
@@ -126,9 +127,9 @@ sdlc-pipeline-bundle/                  ← This standalone repository
 
 ## Quick Start
 
-> **Detailed guide:** See [docs/getting-started.md](docs/getting-started.md) for full setup instructions, phase-by-phase walkthroughs, scripts reference, and troubleshooting.
+> **Detailed guide:** See [onboarding-utilities/docs/getting-started.md](onboarding-utilities/docs/getting-started.md) for full setup instructions, phase-by-phase walkthroughs, scripts reference, and troubleshooting.
 >
-> **Interactive workflow:** Open [docs/workflow.html](docs/workflow.html) in a browser to explore the pipeline visually.
+> **Interactive workflow:** Open [onboarding-utilities/docs/workflow.html](onboarding-utilities/docs/workflow.html) in a browser to explore the pipeline visually.
 
 ### VS Code GitHub Copilot
 

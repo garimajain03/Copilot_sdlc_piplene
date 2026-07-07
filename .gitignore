@@ -2,6 +2,7 @@
 .env
 data/
 repos/
+onboarding-utilities/output_repos/
 .sdlc-preflight/
 __pycache__/
 *.pyc

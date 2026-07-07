@@ -68,7 +68,7 @@ Do NOT print a phase completion line after starting the next phase.
 ### Fresh Start vs Resume
 
 - If the user explicitly runs `/preflight` (not `/resume-pipeline`), **start fresh from Phase 1**
-- Reset the checkpoint state: `python3 scripts/checkpoint-manager.py reset --agent preflight --state-file .github/sdlc-pipeline/checkpoint_state.json`
+- Reset the checkpoint state: `python3 onboarding-utilities/scripts/checkpoint-manager.py reset --agent preflight --state-file onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/checkpoint_state.json`
 - Only resume from checkpoint when explicitly asked to resume or when running `/resume-pipeline`
 
 ### Next Steps Output (MANDATORY at end)
@@ -80,10 +80,10 @@ After all phases complete, you MUST display a "Next Steps" section:
 ## ✅ Preflight Complete — Next Steps
 
 1. Review the generated files:
-  - `index.md` — Repository Service Catalogue
-  - `.github/instructions/` — Per-repo instruction files
-  - `setup.sh` / `setup.ps1` — Setup scripts
-  - `.env.template` — Environment variables template
+  - `onboarding-utilities/output_repos/agents-repo/index.md` — Repository Service Catalogue
+  - `onboarding-utilities/output_repos/agents-repo/.github/instructions/` — Per-repo instruction files
+  - `onboarding-utilities/output_repos/agents-repo/setup.sh` / `onboarding-utilities/output_repos/agents-repo/setup.ps1` — Setup scripts
+  - `onboarding-utilities/output_repos/agents-repo/.env.template` — Environment variables template
 
 2. Copy `.env.template` to `.env` and fill in your tokens/credentials
 
@@ -98,17 +98,25 @@ After all phases complete, you MUST display a "Next Steps" section:
 
 This agent runs from the **repository root** of the `github-copilot-sdlc-template` repo. All paths in this document are relative to the workspace/repo root.
 
+This repository supports two workspace layouts selected during Phase 3 and stored in onboarding context:
+
+- `default` = Agents monorepo with app repositories as git submodules
+- `custom` = Agents repo and app repos in parallel sibling folders
+
 | Resource | Path (from repo root) |
 |----------|----------------------|
-| Scripts | `scripts/` |
+| Scripts | `onboarding-utilities/scripts/` |
 | Schemas | `schemas/` |
-| Contracts | `contracts/` |
+| Contracts | `onboarding-utilities/contracts/` |
 | Templates | `templates/` |
 | Observability configs | `observability/` |
-| Pipeline state (generated) | `.github/sdlc-pipeline/` |
-| Instruction files (generated) | `.github/instructions/` |
-| Cloned repos (temp) | `repos/` |
-| Scan results (temp) | `.github/sdlc-pipeline/scans/` |
+| Workspace output root (generated) | `onboarding-utilities/output_repos/` |
+| Agents repo (generated) | `onboarding-utilities/output_repos/agents-repo/` |
+| Pipeline state (generated) | `onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/` |
+| Instruction files (generated) | `onboarding-utilities/output_repos/agents-repo/.github/instructions/` |
+| App repos (default mode) | `onboarding-utilities/output_repos/agents-repo/repos/` |
+| App repos (custom mode) | `onboarding-utilities/output_repos/app-repos/` |
+| Scan results (generated) | `onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/scans/` |
 
 ## Inputs
 
@@ -117,16 +125,16 @@ This agent runs from the **repository root** of the `github-copilot-sdlc-templat
 
 ## Outputs
 
-1. **`setup.sh`** — Generated setup script for macOS at `setup.sh` (tool installation, workspace config, submodule init, validation)
-2. **`setup.ps1`** — Generated setup script for Windows at `setup.ps1` (same capabilities as `setup.sh`)
-3. **`connector_config.md`** — Connector configuration (PM type, SCM type, endpoints, MCP server configs) — **no auth tokens**
-4. **`.mcp.json`** — MCP server configuration (generated when user selects MCP integration for any platform)
-5. **`.env.template`** — Template listing required environment variables for runtime auth (e.g., `JIRA_TOKEN=`, `GITHUB_TOKEN=`)
-6. **`codebase_scan_results.md`** — Auto-detected codebase characteristics
-7. **`.github/instructions/<repo>.instructions.md`** — Per-repository instruction files (structure, deps, patterns, conventions)
-8. **`index.md`** — Central repository catalog with Service Catalogue (incrementally maintained)
-9. **`preflight_report.md`** — Validation results, warnings, and recommendations
-10. **`.github/sdlc-pipeline/onboarding_context.json`** — Normalized onboarding context extracted from intake answers (including values from `client-onboarding-wizard-new.html` that are present in `intake-sources.md`)
+1. **`onboarding-utilities/output_repos/agents-repo/setup.sh`** — Generated setup script for macOS (tool installation, workspace config, submodule init, validation)
+2. **`onboarding-utilities/output_repos/agents-repo/setup.ps1`** — Generated setup script for Windows (same capabilities as `setup.sh`)
+3. **`onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/connector_config.md`** — Connector configuration (PM type, SCM type, endpoints, MCP server configs) — **no auth tokens**
+4. **`onboarding-utilities/output_repos/agents-repo/.mcp.json`** — MCP server configuration (generated when user selects MCP integration for any platform)
+5. **`onboarding-utilities/output_repos/agents-repo/.env.template`** — Template listing required environment variables for runtime auth (e.g., `JIRA_TOKEN=`, `GITHUB_TOKEN=`)
+6. **`onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/codebase_scan_results.md`** — Auto-detected codebase characteristics
+7. **`onboarding-utilities/output_repos/agents-repo/.github/instructions/<repo>.instructions.md`** — Per-repository instruction files (structure, deps, patterns, conventions)
+8. **`onboarding-utilities/output_repos/agents-repo/index.md`** — Central repository catalog with Service Catalogue (incrementally maintained)
+9. **`onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/preflight_report.md`** — Validation results, warnings, and recommendations
+10. **`onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/onboarding_context.json`** — Normalized onboarding context extracted from intake answers (including `workspace_mode` and resolved repository paths)
 11. **Clarification questions** (if information is missing or unclear)
 
 > **Note:** Connector SKILL.md files, hook scripts, hooks.json, and agent definitions are
@@ -180,22 +188,22 @@ Use `checkpoint-manager.py` to persist state between runs:
 
 ```bash
 # Save checkpoint after completing a phase
-python3 scripts/checkpoint-manager.py save \
+python3 onboarding-utilities/scripts/checkpoint-manager.py save \
   --agent preflight --phase "Phase 2: Codebase Scan" --status completed \
-  --state-file .github/sdlc-pipeline/checkpoint_state.json
+  --state-file onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/checkpoint_state.json
 
 # Load checkpoint on resume
-python3 scripts/checkpoint-manager.py load \
-  --agent preflight --state-file .github/sdlc-pipeline/checkpoint_state.json
+python3 onboarding-utilities/scripts/checkpoint-manager.py load \
+  --agent preflight --state-file onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/checkpoint_state.json
 
 # Record customer feedback for re-run
-python3 scripts/checkpoint-manager.py feedback \
+python3 onboarding-utilities/scripts/checkpoint-manager.py feedback \
   --agent preflight --feedback "Re-scan repo X with deeper analysis" \
-  --phase "Phase 3: Smart Code Scan" --state-file .github/sdlc-pipeline/checkpoint_state.json
+  --phase "Phase 3: Smart Code Scan" --state-file onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/checkpoint_state.json
 
 # Reset for clean re-run
-python3 scripts/checkpoint-manager.py reset \
-  --agent preflight --state-file .github/sdlc-pipeline/checkpoint_state.json
+python3 onboarding-utilities/scripts/checkpoint-manager.py reset \
+  --agent preflight --state-file onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/checkpoint_state.json
 ```
 
 ### Resume Behavior
@@ -271,7 +279,7 @@ When a non-critical step fails, continue with reduced capability:
    - SCM provider is valid
    - Agent Behavioral Guardrails are non-empty
 4. **Identify gaps** — fields marked "not provided", "not set", or empty
-5. **Build normalized onboarding context** and write `.github/sdlc-pipeline/onboarding_context.json` with:
+5. **Build normalized onboarding context** and write `onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/onboarding_context.json` with:
   - `industry_domain`
   - `business_context`
   - `intake_sources`
@@ -369,9 +377,12 @@ When a non-critical step fails, continue with reduced capability:
     ```
     "How would you like to structure your workspace?"
     Options:
-    [Default] — Single Agents repository with Git submodules for development repos (recommended)
-    [Custom] — Custom repository layout (you define the structure)
+    [Default] — Agents Monorepo and Submodules
+    [Custom] — Agents and Repositories in Parallel Workspace
     ```
+
+    Store the selected value as `workspace_mode` in `onboarding_context.json`.
+    These two modes are mutually exclusive and MUST NEVER be generated together.
 
 #### Default Workspace Flow
 
@@ -402,7 +413,24 @@ When a non-critical step fails, continue with reduced capability:
        - https://github.com/myorg/shared-libraries
        ```
 
-    d. **Generate `.gitmodules` configuration:**
+    d. **Create default folder layout and bootstrap repositories:**
+       - Create `onboarding-utilities/output_repos/`
+       - Create `onboarding-utilities/output_repos/agents-repo/`
+       - Create `onboarding-utilities/output_repos/agents-repo/repos/`
+       - Clone all selected app repositories into `onboarding-utilities/output_repos/agents-repo/repos/` as Git submodules
+       - Initialize submodules recursively
+       - Do NOT create `onboarding-utilities/output_repos/app-repos/` in this mode
+
+       Example command:
+       ```bash
+       python3 onboarding-utilities/scripts/workspace-bootstrap.py \
+         --workspace-mode default \
+         --output-root onboarding-utilities/output_repos \
+         --agents-repo-url <agents_repo_url_if_available> \
+         --app-repos '["https://github.com/myorg/backend-service.git","https://github.com/myorg/frontend-app.git"]'
+       ```
+
+    e. **Generate `.gitmodules` configuration in the agents repo:**
        ```ini
        [submodule "backend-service"]
            path = repos/backend-service
@@ -414,7 +442,7 @@ When a non-critical step fails, continue with reduced capability:
            branch = main
        ```
 
-    e. **Include submodule commands in setup scripts** (`setup.sh` and `setup.ps1`):
+    f. **Include submodule commands in setup scripts** (`setup.sh` and `setup.ps1`):
        - `git submodule add <url> repos/<name>` for each repository
        - `git submodule init`
        - `git submodule update --init --recursive`
@@ -424,18 +452,31 @@ When a non-critical step fails, continue with reduced capability:
 
 13. If **Custom** workspace selected:
 
-    a. **Ask clarification questions** to understand the layout:
+    a. Use the fixed parallel layout and ask only for missing repository details:
        ```
-       "Please describe your repository layout:
-       1. Where is the Agents repository located relative to development repos?
-       2. Are development repos alongside the Agents repo, nested inside it, or elsewhere?
-       3. How should repositories reference each other?
-       4. Please list all repositories with their paths/URLs."
+       "Custom mode uses this fixed layout:
+       - onboarding-utilities/output_repos/agents-repo
+       - onboarding-utilities/output_repos/app-repos
+       Please provide the complete list of application repository URLs or names to clone into app-repos."
        ```
 
-    b. **Collect complete workspace information** before continuing
-    c. **Ask follow-up clarification questions** whenever additional information is required
-    d. **Validate** the described structure is achievable
+     b. **Create custom folder layout and bootstrap repositories:**
+       - Create `onboarding-utilities/output_repos/`
+       - Create `onboarding-utilities/output_repos/agents-repo/`
+       - Create `onboarding-utilities/output_repos/app-repos/`
+       - Clone all selected app repositories into `onboarding-utilities/output_repos/app-repos/` as normal Git repos (NOT submodules)
+       - Do NOT create `onboarding-utilities/output_repos/agents-repo/repos/` in this mode
+
+       Example command:
+       ```bash
+       python3 onboarding-utilities/scripts/workspace-bootstrap.py \
+        --workspace-mode custom \
+        --output-root onboarding-utilities/output_repos \
+        --agents-repo-url <agents_repo_url_if_available> \
+        --app-repos '["https://github.com/myorg/backend-service.git","https://github.com/myorg/frontend-app.git"]'
+       ```
+
+     c. **Validate** the custom structure exists before continuing
 
 14. **Save checkpoint** for Phase 3
 
@@ -478,11 +519,11 @@ When a non-critical step fails, continue with reduced capability:
 19. **Clone repositories** using `scm-bootstrap.py`:
 
     ```bash
-    python3 scripts/scm-bootstrap.py \
+    python3 onboarding-utilities/scripts/scm-bootstrap.py \
       --repos '["repo1","repo2","repo3"]' \
       --scm github \
       --org <customer_org> \
-      --target-dir repos \
+      --target-dir <resolved_app_repo_path_from_workspace_mode> \
       --branch <default_branch>
     ```
 
@@ -502,11 +543,11 @@ When a non-critical step fails, continue with reduced capability:
     ```
     Sub-agent per repo:
     Task: Scan repository <repo_name> for structure, dependencies, patterns, and conventions
-    Input: repo path at repos/<repo_name>
+    Input: repo path at <resolved_app_repo_path_from_workspace_mode>/<repo_name>
     Output: JSON scan results
-    Run: python3 scripts/repo-scanner.py \
-           --repo-path repos/<repo_name> \
-           --output-dir .github/sdlc-pipeline/scans \
+        Run: python3 onboarding-utilities/scripts/repo-scanner.py \
+          --repo-path <resolved_app_repo_path_from_workspace_mode>/<repo_name> \
+          --output-dir onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/scans \
            --format both --max-depth 6
     ```
 
@@ -529,7 +570,7 @@ When a non-critical step fails, continue with reduced capability:
     - "Found both REST endpoints and GraphQL schemas — is one being migrated away?"
     ```
 
-25. **Incrementally maintain `index.md`** in the Agents repository after each repository scan:
+25. **Incrementally maintain `index.md`** at `onboarding-utilities/output_repos/agents-repo/index.md` after each repository scan:
 
     The `index.md` acts as the central repository catalog. After scanning each repo, update it with:
 
@@ -543,8 +584,8 @@ When a non-critical step fails, continue with reduced capability:
 
     | # | Repository | Path | Languages | Framework | Last Scanned |
     |---|-----------|------|-----------|-----------|--------------|
-    | 1 | backend-service | repos/backend-service | TypeScript, Python | Express, FastAPI | <timestamp> |
-    | 2 | frontend-app | repos/frontend-app | TypeScript | Next.js | <timestamp> |
+    | 1 | backend-service | <resolved_app_repo_path>/backend-service | TypeScript, Python | Express, FastAPI | <timestamp> |
+    | 2 | frontend-app | <resolved_app_repo_path>/frontend-app | TypeScript | Next.js | <timestamp> |
 
     ## Service Catalogue
 
@@ -568,12 +609,12 @@ When a non-critical step fails, continue with reduced capability:
 
 ### Phase 7: Generate Instruction Files
 
-28. **Generate `.github/instructions/<repo>.instructions.md`** for each scanned repo using `instructions-generator.py`:
+28. **Generate `onboarding-utilities/output_repos/agents-repo/.github/instructions/<repo>.instructions.md`** for each scanned repo using `instructions-generator.py`:
 
     ```bash
-    python3 scripts/instructions-generator.py \
-      --scan-dir .github/sdlc-pipeline/scans \
-      --output-dir .github/instructions
+    python3 onboarding-utilities/scripts/instructions-generator.py \
+      --scan-dir onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/scans \
+      --output-dir onboarding-utilities/output_repos/agents-repo/.github/instructions
     ```
 
     Each instruction file includes:
@@ -591,8 +632,8 @@ When a non-critical step fails, continue with reduced capability:
     - Use the scanned repository context to produce relevant Copilot instructions
     - Include detected tech stack, conventions, patterns, and project-specific guidance
     - **Generate TWO locations per repo:**
-      1. **Per-repo file:** Place at `repos/<repo-name>/.github/copilot-instructions.md` within each scanned repo submodule directory
-      2. **Agents repo file:** Place a MERGED version at `.github/copilot-instructions.md` within the Agents repository (combining all repos)
+      1. **Per-repo file:** Place at `<resolved_app_repo_path>/<repo-name>/.github/copilot-instructions.md`
+      2. **Agents repo file:** Place a MERGED version at `onboarding-utilities/output_repos/agents-repo/.github/copilot-instructions.md` within the Agents repository (combining all repos)
     - The merged Agents-repo file MUST:
       - Have a clear `## <Repo Name>` section heading for each repo
       - Include repo-specific context under each heading
@@ -646,9 +687,9 @@ When a non-critical step fails, continue with reduced capability:
     - **Git submodule initialization** — add, init, and update all development repositories as submodules
     - **Tooling configuration** — configure git hooks, pre-commit, etc.
     - **Observability setup** (optional — if customer wants telemetry):
-      - Run `scripts/install-observability.sh` to download OTel Collector + Prometheus binaries
+      - Run `onboarding-utilities/scripts/install-observability.sh` to download OTel Collector + Prometheus binaries
       - Copy `observability/otel-collector-config.yml` and `observability/prometheus/prometheus.yml` to project
-      - Verify installation with `scripts/install-observability.sh --check`
+      - Verify installation with `onboarding-utilities/scripts/install-observability.sh --check`
     - **Copy `.env.template`** to `.env` if `.env` doesn't exist
     - Add `.env` to `.gitignore`
     - **Validation checks** — verify workspace setup, submodule status, tool availability
@@ -660,7 +701,7 @@ When a non-critical step fails, continue with reduced capability:
     - **Git submodule initialization** — add, init, and update all development repositories as submodules
     - **Tooling configuration** — configure git hooks, pre-commit, etc.
     - **Observability setup** (optional — if customer wants telemetry):
-      - Run `scripts/install-observability.ps1` for Windows-compatible binary download
+      - Run `onboarding-utilities/scripts/install-observability.ps1` for Windows-compatible binary download
       - Verify installation
     - **Copy `.env.template`** to `.env` if `.env` doesn't exist
     - Add `.env` to `.gitignore`
@@ -677,17 +718,17 @@ When a non-critical step fails, continue with reduced capability:
 36. **Execute the generated setup script** to install all prerequisites on the current machine:
 
     - **Detect current OS:**
-      - Windows → run `setup.ps1`
-      - macOS/Linux → run `setup.sh`
+      - Windows → run `onboarding-utilities/output_repos/agents-repo/setup.ps1`
+      - macOS/Linux → run `onboarding-utilities/output_repos/agents-repo/setup.sh`
 
     - **On Windows:**
       ```powershell
-      .\setup.ps1
+      .\onboarding-utilities\output_repos\agents-repo\setup.ps1
       ```
 
     - **On macOS/Linux:**
       ```bash
-      chmod +x setup.sh && ./setup.sh
+      chmod +x onboarding-utilities/output_repos/agents-repo/setup.sh && ./onboarding-utilities/output_repos/agents-repo/setup.sh
       ```
 
 37. **Validate installation results:**
@@ -708,11 +749,11 @@ When a non-critical step fails, continue with reduced capability:
 40. **Run outcome inspection** using `outcome-inspector.py` to self-validate all outputs:
 
     ```bash
-    python3 scripts/outcome-inspector.py \
-      --type preflight --output-dir . --format markdown
+    python3 onboarding-utilities/scripts/outcome-inspector.py \
+      --type preflight --output-dir onboarding-utilities/output_repos/agents-repo --format markdown
 
-    python3 scripts/outcome-inspector.py \
-      --type instructions --instructions-dir .github/instructions --format markdown
+    python3 onboarding-utilities/scripts/outcome-inspector.py \
+      --type instructions --instructions-dir onboarding-utilities/output_repos/agents-repo/.github/instructions --format markdown
     ```
 
 41. **Inspect and fix** any issues found:
@@ -721,7 +762,7 @@ When a non-critical step fails, continue with reduced capability:
     - Re-run inspection after fixes to confirm resolution
     - Maximum 2 fix-and-recheck cycles — after that, report remaining issues
 
-42. **Write** `preflight_report.md` summarizing:
+42. **Write** `onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/preflight_report.md` summarizing:
     - Validation status (all required fields ✅ or ❌)
     - Connector configuration (MCP vs API-based per platform)
     - Workspace structure (default with submodules or custom)
@@ -782,21 +823,22 @@ All paths are relative to the repository/workspace root.
 
 | File | Location |
 |------|----------|
-| `setup.sh` | `setup.sh` |
-| `setup.ps1` | `setup.ps1` |
-| `.mcp.json` | `.mcp.json` (if MCP selected) |
-| `connector_config.md` | `.github/sdlc-pipeline/connector_config.md` |
-| `.env.template` | `.env.template` |
-| `index.md` | `index.md` |
-| `copilot-instructions.md` | `.github/copilot-instructions.md` (merged, all repos) |
-| Per-repo copilot-instructions | `repos/<repo-name>/.github/copilot-instructions.md` (per scanned repo) |
-| Instruction files | `.github/instructions/<repo>.instructions.md` |
-| `codebase_scan_results.md` | `.github/sdlc-pipeline/codebase_scan_results.md` |
-| `preflight_report.md` | `.github/sdlc-pipeline/preflight_report.md` |
-| `.gitmodules` | `.gitmodules` (if default workspace) |
-| Checkpoint state | `.github/sdlc-pipeline/checkpoint_state.json` |
-| Cloned repos (temp) | `repos/` |
-| Scan results (temp) | `.github/sdlc-pipeline/scans/` |
+| `setup.sh` | `onboarding-utilities/output_repos/agents-repo/setup.sh` |
+| `setup.ps1` | `onboarding-utilities/output_repos/agents-repo/setup.ps1` |
+| `.mcp.json` | `onboarding-utilities/output_repos/agents-repo/.mcp.json` (if MCP selected) |
+| `connector_config.md` | `onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/connector_config.md` |
+| `.env.template` | `onboarding-utilities/output_repos/agents-repo/.env.template` |
+| `index.md` | `onboarding-utilities/output_repos/agents-repo/index.md` |
+| `copilot-instructions.md` | `onboarding-utilities/output_repos/agents-repo/.github/copilot-instructions.md` (merged, all repos) |
+| Per-repo copilot-instructions | `<resolved_app_repo_path>/<repo-name>/.github/copilot-instructions.md` (per scanned repo) |
+| Instruction files | `onboarding-utilities/output_repos/agents-repo/.github/instructions/<repo>.instructions.md` |
+| `codebase_scan_results.md` | `onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/codebase_scan_results.md` |
+| `preflight_report.md` | `onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/preflight_report.md` |
+| `.gitmodules` | `onboarding-utilities/output_repos/agents-repo/.gitmodules` (default mode only) |
+| Checkpoint state | `onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/checkpoint_state.json` |
+| Cloned repos (default mode) | `onboarding-utilities/output_repos/agents-repo/repos/` |
+| Cloned repos (custom mode) | `onboarding-utilities/output_repos/app-repos/` |
+| Scan results (temp) | `onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/scans/` |
 
 ---
 
@@ -808,13 +850,13 @@ All paths are relative to the repository/workspace root.
 - All generated `.env` files must be added to `.gitignore`
 - Generated setup scripts must NOT prompt for secrets — only check tool installation
 - NEVER echo tokens/secrets to terminal output
-- Cloned repos in `repos/` should be added to `.gitignore`
+- Cloned repos in `onboarding-utilities/output_repos/` should be added to `.gitignore`
 
 ---
 
 ## Custom Client Context
 
-If `preflight_custom_client_context.md` exists at `.github/sdlc-pipeline/`, load and apply its instructions:
+If `preflight_custom_client_context.md` exists at `onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/`, load and apply its instructions:
 - Additional setup steps
 - Custom connector configurations
 - Organization-specific security policies

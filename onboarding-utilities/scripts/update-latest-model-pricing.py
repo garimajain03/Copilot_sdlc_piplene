@@ -93,7 +93,7 @@ def merge_pricing(existing: dict, fetched: dict) -> dict:
     result["_metadata"] = {
         "source": PRICING_URL,
         "last_updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "update_script": "scripts/update-latest-model-pricing.py",
+        "update_script": "onboarding-utilities/scripts/update-latest-model-pricing.py",
     }
 
     if "models" not in result:

@@ -16,7 +16,7 @@ Resume a previously paused SDLC Pipeline workflow from its last checkpoint.
 
 ## Instructions
 
-1. Read the checkpoint state at `.github/sdlc-pipeline/checkpoint_state.json`
+1. Read the checkpoint state at `onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/checkpoint_state.json`
 2. Determine which agent was last active (`preflight` or `generator`)
 3. Load the corresponding agent instructions:
    - If `preflight`: follow `.github/agents/sdlc-preflight.agent.md`

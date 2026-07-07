@@ -9,17 +9,17 @@ This repository is a **standalone SDLC Pipeline Bundle** (`github-copilot-sdlc-t
 | What | Where |
 |------|-------|
 | Agent definitions (full instructions) | `.github/agents/` |
-| Reusable agent contracts | `contracts/` |
-| Hook contracts | `contracts/hooks/` |
-| Skill contracts | `contracts/skills/` |
+| Reusable agent contracts | `onboarding-utilities/contracts/` |
+| Hook contracts | `onboarding-utilities/contracts/hooks/` |
+| Skill contracts | `onboarding-utilities/contracts/skills/` |
 | Generation templates | `templates/` |
 | Validation schemas | `schemas/` |
-| Automation scripts | `scripts/` |
+| Automation scripts | `onboarding-utilities/scripts/` |
 | Observability configs & binaries | `observability/` |
 | Onboarding wizard | `client-onboarding-wizard.html` |
 | Prompt commands | `.github/prompts/` |
-| Pipeline state (generated) | `.github/sdlc-pipeline/` |
-| Instruction files (generated) | `.github/instructions/` |
+| Pipeline state (generated) | `onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/` |
+| Instruction files (generated) | `onboarding-utilities/output_repos/agents-repo/.github/instructions/` |
 
 ## Key Concepts
 
@@ -58,11 +58,11 @@ All generated artifacts support both macOS and Windows:
 
 - All paths in agent instructions and scripts are **relative to this repo root** (workspace root)
 - When running from VS Code or CLI, CWD = this repo root
-- Scripts: `python3 scripts/<script>.py` (e.g., `python3 scripts/repo-scanner.py`)
+- Scripts: `python3 onboarding-utilities/scripts/<script>.py` (e.g., `python3 onboarding-utilities/scripts/repo-scanner.py`)
 - PowerShell scripts: `.\onboarding-utilities\scripts\<script>.ps1` (e.g., `.\onboarding-utilities\scripts\install-observability.ps1`)
-- Contracts: `contracts/` (e.g., `contracts/agent0_ticket_analyzer.contract.md`)
+- Contracts: `onboarding-utilities/contracts/` (e.g., `onboarding-utilities/contracts/agent0_ticket_analyzer.contract.md`)
 - Schemas: `schemas/` (e.g., `schemas/onboarding_answers_schema.md`)
-- Generated outputs: `.github/sdlc-pipeline/`, `.github/instructions/`, `.github/hooks/`, `.github/skills/`
+- Generated outputs: `onboarding-utilities/output_repos/agents-repo/.github/sdlc-pipeline/`, `onboarding-utilities/output_repos/agents-repo/.github/instructions/`, `onboarding-utilities/output_repos/agents-repo/.github/hooks/`, `onboarding-utilities/output_repos/agents-repo/.github/skills/`
 
 ## Available Agents
 
