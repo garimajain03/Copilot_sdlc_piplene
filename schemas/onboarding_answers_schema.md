@@ -109,6 +109,39 @@
 | `batch` | Design review, ship recommendation | Most teams |
 | `auto` | None (all auto-approved) | Prototyping, hackathons, trusted pipelines |
 
+## Wizard v2 Coverage (MANDATORY)
+
+The generator MUST consume onboarding data from a normalized JSON root in addition to markdown sections.
+
+### Required Normalized Root
+
+`onboarding_context.json` MUST include these top-level keys:
+
+- `organisation`
+- `workflow`
+- `sources`
+- `constraints`
+- `ai_stack`
+- `business_context` (if collected)
+- `pipeline` (if collected)
+
+### Field Coverage Matrix
+
+| Wizard/Input Field | Normalized Key | Generator Must Use For |
+|--------------------|----------------|-------------------------|
+| Company | `organisation.company` | naming/branding in generated artifacts |
+| Industry + Other | `organisation.industry`, `organisation.industry_other` | domain defaults and compliance posture |
+| Approved AI tools/models | `organisation.approved_ai_tools`, `organisation.approved_models` | model mapping + tool-specific instructions |
+| Personas + workflow details | `organisation.personas`, `workflow.*` | role-specific routing and workflow assumptions |
+| Confluence/docs/uploads/design refs | `sources.*` | connector and retrieval instructions |
+| Guardrails + PII + quality/security/risk | `constraints.*` | safety constraints and validation logic |
+| Existing agents and files | `ai_stack.existing_agents*` | reuse/deconflict decisions |
+| Business context, goals, complaints/pain points | `business_context.*` | prompt emphasis and requirements framing |
+
+### Propagation Rule
+
+Any onboarding value collected by the wizard that can affect generated prompts, agent definitions, skills, contracts, hooks, validations, or workflow behavior MUST be propagated into generated outputs (directly or through derived variables). It MUST NOT be silently ignored.
+
 ## Validation Rules
 
 1. **Organisation.Company** — Must be non-empty

@@ -1,4 +1,4 @@
-# Contract: Agent 2 — Design Architect
+﻿# Contract: Agent 2 â€” Design Architect
 
 | Field | Value |
 |-------|-------|
@@ -7,10 +7,11 @@
 | pipeline_position | 2 |
 | version | 1.0.0 |
 | model_tier | reasoning |
+| argument_hint | Path to problem_spec.md and output folder |
 
 ## Role
 
-Transforms problem specifications into complete technical designs. Defines components, data models, API contracts, and architectural decisions. Writes ZERO executable code — only design artifacts.
+Transforms problem specifications into complete technical designs. Defines components, data models, API contracts, and architectural decisions. Writes ZERO executable code â€” only design artifacts.
 
 ## Prime Directive
 
@@ -18,12 +19,12 @@ Transforms problem specifications into complete technical designs. Defines compo
 
 ## Key Outcomes
 
-1. **[OUTCOME-COMPONENTS]** — Every component is identified (COMP-XXX), typed as `new` or `modification`, with interfaces defined
-2. **[OUTCOME-DATA-MODELS]** — Data types, interfaces, and data flow between components are explicit
-3. **[OUTCOME-API-CONTRACTS]** — All API boundaries (queries, mutations, endpoints) are specified with contracts
-4. **[OUTCOME-DECISIONS]** — Every significant decision has an ADR (Architecture Decision Record) with alternatives considered
-5. **[OUTCOME-TRACEABILITY]** — Requirements Traceability Matrix maps every REQ-XXX to at least one COMP-XXX
-6. **[OUTCOME-NO-CODE]** — Design spec contains type definitions and interfaces but zero executable logic
+1. **[OUTCOME-COMPONENTS]** â€” Every component is identified (COMP-XXX), typed as `new` or `modification`, with interfaces defined
+2. **[OUTCOME-DATA-MODELS]** â€” Data types, interfaces, and data flow between components are explicit
+3. **[OUTCOME-API-CONTRACTS]** â€” All API boundaries (queries, mutations, endpoints) are specified with contracts
+4. **[OUTCOME-DECISIONS]** â€” Every significant decision has an ADR (Architecture Decision Record) with alternatives considered
+5. **[OUTCOME-TRACEABILITY]** â€” Requirements Traceability Matrix maps every REQ-XXX to at least one COMP-XXX
+6. **[OUTCOME-NO-CODE]** â€” Design spec contains type definitions and interfaces but zero executable logic
 
 ## Inputs
 
@@ -33,7 +34,7 @@ Transforms problem specifications into complete technical designs. Defines compo
 | `clarification_questions.md` | Agent 1 | No | Resolved clarifications |
 | Source repository code | Repository | Yes | Existing patterns, conventions |
 | `design_review.md` | Agent 2a | No | Review findings for refinement |
-| Custom client context | Client | No | `agent2_custom_client_context.md` — architecture patterns, tech stack constraints |
+| Custom client context | Client | No | `agent2_design_architect_custom_client_context.md` â€” architecture patterns, tech stack constraints |
 
 ## Outputs
 
@@ -46,14 +47,14 @@ Transforms problem specifications into complete technical designs. Defines compo
 
 ### Step 1: Review Problem Specification
 - **Condition:** Always
-- **Action:** Extract requirements inventory (REQ-XXX list). Identify constraints, non-goals, assumptions. Check for `design_review.md` (refinement mode — address review findings)
+- **Action:** Extract requirements inventory (REQ-XXX list). Identify constraints, non-goals, assumptions. Check for `design_review.md` (refinement mode â€” address review findings)
 - **Reasoning:** Design must be grounded in requirements
 - **Output:** Requirements list, constraints, refinement context
 
 ### Step 2: Analyze Codebase
 - **Condition:** Always
 - **Action:** Read repository conventions file, build configuration, existing patterns. Identify: naming conventions, folder structure, existing components/services, shared utilities, type patterns
-- **Reasoning:** Design must follow existing codebase conventions — not invent new patterns
+- **Reasoning:** Design must follow existing codebase conventions â€” not invent new patterns
 - **Output:** Codebase analysis notes
 
 ### Step 3: Design Components
@@ -82,7 +83,7 @@ Transforms problem specifications into complete technical designs. Defines compo
 
 ### Step 7: Build Requirements Traceability Matrix
 - **Condition:** After all design sections complete
-- **Action:** Create matrix mapping every REQ-XXX to COMP-XXX. Verify: every REQ has ≥1 component. Every COMP traces to ≥1 REQ. Mark status (✅ Addressed / ❌ Not Addressed)
+- **Action:** Create matrix mapping every REQ-XXX to COMP-XXX. Verify: every REQ has â‰¥1 component. Every COMP traces to â‰¥1 REQ. Mark status (âœ… Addressed / âŒ Not Addressed)
 - **Reasoning:** Ensures no requirement is dropped during design
 - **Output:** RTM section
 
@@ -139,13 +140,13 @@ Transforms problem specifications into complete technical designs. Defines compo
 ## Quality Checklist
 
 - [ ] All repository conventions files read
-- [ ] Every REQ-XXX has ≥1 component in RTM
-- [ ] Every COMP-XXX traces to ≥1 REQ-XXX
+- [ ] Every REQ-XXX has â‰¥1 component in RTM
+- [ ] Every COMP-XXX traces to â‰¥1 REQ-XXX
 - [ ] No component contradicts non-goals
 - [ ] Every significant decision has ADR with alternatives
 - [ ] Data flow is explicit (no implicit state)
 - [ ] No executable code in design_spec.md (type defs OK)
-- [ ] RTM complete — all REQs marked ✅ or ❌ with reason
+- [ ] RTM complete â€” all REQs marked âœ… or âŒ with reason
 - [ ] Naming matches codebase conventions
 - [ ] For frontend: design context loaded if URLs available
 - [ ] File structure plan included
@@ -154,9 +155,10 @@ Transforms problem specifications into complete technical designs. Defines compo
 
 | Point | How Customized | Default |
 |-------|---------------|---------|
-| Architecture patterns | `agent2_custom_client_context.md` | Detected from codebase |
-| ADR template | `agent2_custom_client_context.md` | Standard ADR format |
-| Design tool connector | Onboarding answers → AI Stack MCPs | Figma connector |
+| Architecture patterns | `agent2_design_architect_custom_client_context.md` | Detected from codebase |
+| ADR template | `agent2_design_architect_custom_client_context.md` | Standard ADR format |
+| Design tool connector | Onboarding answers â†’ AI Stack MCPs | Figma connector |
 | Component naming conventions | Auto-detected from codebase | PascalCase components, camelCase functions |
-| API contract format | `agent2_custom_client_context.md` | REST/GraphQL auto-detected |
+| API contract format | `agent2_design_architect_custom_client_context.md` | REST/GraphQL auto-detected |
 | File structure convention | Auto-detected from codebase | Standard project structure |
+
