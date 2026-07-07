@@ -28,6 +28,31 @@ Collects OpenTelemetry metrics around each agent execution in the orchestrator p
 | `PostToolUse` | `tool_name == "runSubagent"` | Query post-agent metrics, compute delta, append report |
 | `Stop` | Pipeline ends | Finalize telemetry report, session cleanup |
 
+### Trigger Ownership (CRITICAL — NO DUPLICATION)
+
+- **This hook (`otel_telemetry`)** handles ALL telemetry/metrics logic:
+  - SessionStart: record baseline metrics from Prometheus
+  - PreToolUse/PostToolUse: per-agent metric snapshots and cost computation
+  - Stop: finalize telemetry report, write cost summary
+- **The `observability` hook** handles ONLY process lifecycle:
+  - SessionStart: start OTel Collector + Prometheus binaries if not running
+  - Stop: stop binaries when no active pipelines remain
+- The `observability` hook MUST NOT contain any telemetry collection, cost computation, or report generation logic
+- The `otel_telemetry` hook MUST NOT contain any process start/stop/health-check logic for binaries
+- The `otel_telemetry` hook MAY query Prometheus HTTP API (which is started by the `observability` hook)
+
+### Hook Attachment Rules
+
+- **Orchestrator agent frontmatter:** Include `otel_telemetry` under `PreToolUse` and `PostToolUse` (for subagent call tracking)
+- **Orchestrator agent frontmatter:** Include `otel_telemetry` under `SessionStart` and `Stop` (pipeline baseline/finalization)
+- **Individual agents (non-orchestrator):** Do NOT include `otel_telemetry` in any event (telemetry is orchestrator-owned)
+- **Orchestrator agent frontmatter:** Include `observability` under `SessionStart` and `Stop` (for binary lifecycle)
+- **Individual agents (non-orchestrator):** Do NOT include `observability` hook (binaries are managed by orchestrator only)
+
+### Cost Output
+
+Cost estimates MUST be written to a separate file: `<output_folder>/cost_report.md` (in addition to telemetry_report.md).
+
 ## Metrics Collected
 
 ### Per-Agent Metrics
@@ -55,22 +80,57 @@ Collects OpenTelemetry metrics around each agent execution in the orchestrator p
 ### Pricing Source Priority
 
 1. **Environment variable** `OTEL_MODEL_PRICING_JSON` — inline JSON
-2. **File** `OTEL_MODEL_PRICING_FILE` — path to pricing JSON file
+2. **File** `OTEL_MODEL_PRICING_FILE` — path to pricing JSON file (default: `observability/model-pricing.json`)
 3. **URL** `OTEL_MODEL_PRICING_URL` — remote pricing endpoint
-4. **Defaults** — built-in model pricing table
+4. **Defaults** — load from `observability/model-pricing.json` (bundled with this repo)
+
+### Pricing File Location
+
+The pricing config lives at `observability/model-pricing.json`. To update:
+```bash
+python3 scripts/update-latest-model-pricing.py
+```
+
+The hook MUST read pricing from this external file — NEVER hardcode pricing in the hook script itself.
 
 ### Pricing Format
 
+The pricing file has a nested structure with `_metadata` and `models` keys:
+
 ```json
 {
-  "model-name": {
-    "input": 5.00,
-    "output": 25.00
+  "_metadata": {
+    "source": "https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing",
+    "last_updated": "2026-07-01T00:00:00Z",
+    "update_script": "scripts/update-latest-model-pricing.py"
+  },
+  "models": {
+    "gpt-4o": {
+      "provider": "OpenAI",
+      "input_per_1m_tokens": 2.50,
+      "output_per_1m_tokens": 10.00
+    }
   }
 }
 ```
 
-Values are **USD per 1 million tokens**.
+**CRITICAL pricing access pattern (MUST match this exactly):**
+```python
+def load_pricing() -> dict:
+    pricing_path = os.environ.get("MODEL_PRICING_FILE", str(PRICING_FILE))
+    with open(pricing_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def estimate_cost(model, input_tokens, output_tokens, pricing):
+    models = pricing.get("models", pricing)  # Handle nested structure
+    model_pricing = models.get(model, models.get("default", {}))
+    input_price = model_pricing.get("input_per_1m_tokens", model_pricing.get("input_per_1m", 0)) / 1_000_000
+    output_price = model_pricing.get("output_per_1m_tokens", model_pricing.get("output_per_1m", 0)) / 1_000_000
+    return (input_tokens * input_price) + (output_tokens * output_price)
+```
+
+The keys are `input_per_1m_tokens` and `output_per_1m_tokens` (NOT `input_per_1m` or just `input`).
+The pricing dict is nested under `"models"` key — MUST use `pricing.get("models", pricing)` to access.
 
 ### Default Pricing Table
 
@@ -112,24 +172,83 @@ The hook appends to `<output_folder>/telemetry_report.md`:
 
 ## Workflow Logic
 
+### Token Data Sources (Priority Order)
+
+The hook extracts token usage from the **event payload** that VS Code passes to hooks via stdin. This is the PRIMARY and most reliable source — no external dependencies required.
+
+1. **Event payload (PRIMARY)** — VS Code passes `usage.input_tokens` and `usage.output_tokens` in the PostToolUse event JSON. This is always available when a subagent completes.
+2. **Prometheus query (SECONDARY/FALLBACK)** — If event payload lacks token data, query Prometheus for `copilot_tokens_total` metric deltas. Requires OTel Collector + Prometheus running.
+3. **Estimation (LAST RESORT)** — If neither source works, estimate tokens from response length (≈4 chars per token).
+
+### Event Payload Structure (stdin JSON)
+
+VS Code provides hook events in this format:
+
+```json
+{
+  "event": "PostToolUse",
+  "toolName": "runSubagent",
+  "toolInput": {
+    "prompt": "...",
+    "description": "..."
+  },
+  "toolOutput": {
+    "result": "..."
+  },
+  "usage": {
+    "input_tokens": 1523,
+    "output_tokens": 892,
+    "model": "gpt-4o",
+    "total_tokens": 2415
+  }
+}
+```
+
+If `usage` field is present → use directly for cost computation.
+If `usage` field is absent → fall back to Prometheus or estimation.
+
 ### PreToolUse (runSubagent)
 
-1. Extract agent name from subagent prompt
-2. Query Prometheus for current token counters: `copilot_tokens_total{service="<OTEL_SERVICE>"}`
-3. Record snapshot: `{agent_name, start_time, baseline_tokens}`
-4. Save snapshot to `observability/.hook-state/tooluse_<agent_id>.json`
+1. Extract agent name from `toolInput.prompt` or `toolInput.description`
+2. Record start timestamp
+3. (Optional) Query Prometheus for current token counters as baseline: `copilot_tokens_total{service="<OTEL_SERVICE>"}`
+4. Save snapshot: `{agent_name, start_time, baseline_tokens}` to `observability/.hook-state/tooluse_<agent_id>.json`
 
 ### PostToolUse (runSubagent)
 
 1. Load pre-snapshot from `observability/.hook-state/tooluse_<agent_id>.json`
-2. Query Prometheus for current token counters
-3. Compute deltas: `post_tokens - pre_tokens`
-4. Compute wall time: `post_time - pre_time`
-5. Look up model pricing → compute estimated cost
-6. Append metrics to `telemetry_report.md`
-7. Clean up snapshot file
+2. **Extract token usage from event payload** (`usage.input_tokens`, `usage.output_tokens`, `usage.model`)
+3. If `usage` not in payload: query Prometheus for token counter deltas (fallback)
+4. If Prometheus unavailable: estimate from `toolOutput.result` length (last resort)
+5. Compute wall time: `current_time - pre_snapshot.start_time`
+6. Load pricing from `observability/model-pricing.json` → compute estimated cost:
+   `cost = (input_tokens × input_rate + output_tokens × output_rate) / 1_000_000`
+7. Append metrics to `telemetry_report.md`
+8. Append cost to `cost_report.md`
+9. **Print cost summary to stdout** so it appears in the agent's output:
+   ```
+   [TELEMETRY] Agent: <name> | Model: <model> | Tokens: <total> | Cost: $<amount> | Time: <seconds>s
+   ```
+10. Clean up snapshot file
 
-### Prometheus Query
+### SessionStart
+
+1. Record pipeline start timestamp
+2. Initialize session state in `observability/.hook-state/session.json`
+3. Reset accumulators: `total_tokens = 0`, `total_cost = 0`, `agents_executed = 0`
+
+### Stop
+
+1. Load session state from `observability/.hook-state/session.json`
+2. Compute totals across all agents
+3. Write final summary to `telemetry_report.md` and `cost_report.md`
+4. **Print pipeline cost summary to stdout:**
+   ```
+   [TELEMETRY] Pipeline Complete | Agents: <count> | Total Tokens: <count> | Total Cost: $<amount> | Time: <seconds>s
+   ```
+5. Clean up session state files
+
+### Prometheus Query (Fallback Only)
 
 ```promql
 # Total tokens by model and direction
@@ -146,6 +265,16 @@ sum by (model, direction) (
 | `1` | Telemetry degraded (Prometheus unreachable, metrics missing) | Pipeline proceeds, warning logged |
 
 Telemetry collection MUST NEVER block the pipeline. All failures are non-blocking (exit 0 or 1, never 2).
+
+## Cross-Platform Requirements
+
+- Hook script **MUST** be written in Python for cross-platform compatibility
+- Use `urllib.request` or `requests` for Prometheus queries (HTTP — platform-independent)
+- Use `os.path.join()` for all file paths to hook state files
+- Use `json` module for state serialization (platform-independent)
+- Timestamps use ISO 8601 format (platform-independent)
+- Hook state directory: `observability/.hook-state/` (created with `os.makedirs()`)
+- No shell-specific commands (no `curl`, no `grep`) — use Python standard library
 
 ## Customization Points
 

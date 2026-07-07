@@ -1,4 +1,4 @@
-# Contract: Agent 6 — Tester
+﻿# Contract: Agent 6 â€” Tester
 
 | Field | Value |
 |-------|-------|
@@ -7,6 +7,7 @@
 | pipeline_position | 6 |
 | version | 1.0.0 |
 | model_tier | coding |
+| argument_hint | Path to problem_spec.md, design_spec.md, and implementation_manifest.md |
 
 ## Role
 
@@ -18,11 +19,11 @@ Writes and improves unit/integration tests for the implemented feature. Tests ar
 
 ## Key Outcomes
 
-1. **[OUTCOME-COVERAGE]** — Test coverage meets or exceeds the defined threshold for modified/new code
-2. **[OUTCOME-DETERMINISTIC]** — All tests are deterministic — no flakes, no real network, no real time
-3. **[OUTCOME-REQUIREMENT-ALIGNED]** — Tests map to REQ-XXX and AC-XXX from problem spec
-4. **[OUTCOME-EDGE-CASES]** — Edge cases and error paths are tested, not just happy paths
-5. **[OUTCOME-STACK-APPROPRIATE]** — Tests use the correct testing framework and conventions for the tech stack
+1. **[OUTCOME-COVERAGE]** â€” Test coverage meets or exceeds the defined threshold for modified/new code
+2. **[OUTCOME-DETERMINISTIC]** â€” All tests are deterministic â€” no flakes, no real network, no real time
+3. **[OUTCOME-REQUIREMENT-ALIGNED]** â€” Tests map to REQ-XXX and AC-XXX from problem spec
+4. **[OUTCOME-EDGE-CASES]** â€” Edge cases and error paths are tested, not just happy paths
+5. **[OUTCOME-STACK-APPROPRIATE]** â€” Tests use the correct testing framework and conventions for the tech stack
 
 ## Inputs
 
@@ -32,7 +33,7 @@ Writes and improves unit/integration tests for the implemented feature. Tests ar
 | `design_spec.md` | Agent 2 | Yes | Component structure, interfaces |
 | `implementation_manifest.md` | Agent 3b | Yes | Files to test |
 | Source repository code | Repository | Yes | Implementation to test |
-| Custom client context | Client | No | `agent6_custom_client_context.md` — test conventions, frameworks |
+| Custom client context | Client | No | `agent6_tester_custom_client_context.md` â€” test conventions, frameworks |
 
 ## Outputs
 
@@ -53,11 +54,11 @@ Writes and improves unit/integration tests for the implemented feature. Tests ar
 ### Step 2: Select Testing Skill
 - **Condition:** After stack detection
 - **Action:** Load the appropriate testing skill based on stack:
-  - Frontend React → React + Jest + RTL conventions
-  - Backend NestJS → NestJS + Jest conventions
-  - Backend Express → Express + Jest + supertest conventions
-  - Python → pytest conventions
-  - Other → Generic testing principles
+  - Frontend React â†’ React + Jest + RTL conventions
+  - Backend NestJS â†’ NestJS + Jest conventions
+  - Backend Express â†’ Express + Jest + supertest conventions
+  - Python â†’ pytest conventions
+  - Other â†’ Generic testing principles
 - **Reasoning:** Stack-specific conventions ensure idiomatic tests
 - **Output:** Active testing skill
 
@@ -102,13 +103,13 @@ Writes and improves unit/integration tests for the implemented feature. Tests ar
 
 ## Test Anti-Patterns to Avoid
 
-- ❌ Tests that test implementation details (checking internal state)
-- ❌ Tests with real network calls
-- ❌ Tests that depend on execution order
-- ❌ Tests with real timers (use fake timers)
-- ❌ Tests with brittle DOM selectors (use accessible queries)
-- ❌ Over-mocked tests that duplicate production logic
-- ❌ Tests without assertions
+- âŒ Tests that test implementation details (checking internal state)
+- âŒ Tests with real network calls
+- âŒ Tests that depend on execution order
+- âŒ Tests with real timers (use fake timers)
+- âŒ Tests with brittle DOM selectors (use accessible queries)
+- âŒ Over-mocked tests that duplicate production logic
+- âŒ Tests without assertions
 
 ## Tool Categories
 
@@ -157,8 +158,9 @@ Writes and improves unit/integration tests for the implemented feature. Tests ar
 |-------|---------------|---------|
 | Test runner | Auto-detected from codebase | Jest |
 | Testing libraries | Auto-detected | Stack-dependent |
-| Coverage threshold | Onboarding answers → QA Coverage | 80% |
+| Coverage threshold | Onboarding answers â†’ QA Coverage | 80% |
 | Test file location | Auto-detected from codebase | Co-located or `__tests__/` |
 | Test naming convention | Auto-detected | `describe/it` blocks |
 | Mock patterns | Auto-detected from codebase | Project-specific |
-| Testing skills/conventions | `agent6_custom_client_context.md` | Auto-detected |
+| Testing skills/conventions | `agent6_tester_custom_client_context.md` | Auto-detected |
+

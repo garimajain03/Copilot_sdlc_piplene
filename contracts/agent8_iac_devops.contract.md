@@ -1,4 +1,4 @@
-# Contract: Agent 8 — IaC/DevOps Specialist
+﻿# Contract: Agent 8 â€” IaC/DevOps Specialist
 
 | Field | Value |
 |-------|-------|
@@ -7,6 +7,7 @@
 | pipeline_position | 8 |
 | version | 1.0.0 |
 | model_tier | coding |
+| argument_hint | Path to problem_spec.md and design_spec.md for infrastructure changes |
 
 ## Role
 
@@ -18,13 +19,13 @@ Handles infrastructure-as-code changes, CI/CD pipeline modifications, deployment
 
 ## Key Outcomes
 
-1. **[OUTCOME-IAC]** — Infrastructure changes are implemented using the project's IaC tool (Terraform, Bicep, CloudFormation, Pulumi, CDK) following existing module conventions
-2. **[OUTCOME-CICD]** — CI/CD pipeline modifications follow existing workflow patterns, maintain existing gates, and don't break the deployment chain
-3. **[OUTCOME-MIGRATION]** — Database migrations are reversible, idempotent, and include rollback scripts
-4. **[OUTCOME-DEPLOY-CONFIG]** — Deployment configurations (Kubernetes manifests, Docker configs, serverless configs) are environment-aware and parameterized
-5. **[OUTCOME-BLAST-RADIUS]** — Every change has a documented blast radius assessment and rollback plan
-6. **[OUTCOME-DRY-RUN]** — All IaC changes are validated via plan/preview before any apply recommendation
-7. **[OUTCOME-SECRETS]** — No hardcoded secrets; all sensitive values reference secret stores or environment variables
+1. **[OUTCOME-IAC]** â€” Infrastructure changes are implemented using the project's IaC tool (Terraform, Bicep, CloudFormation, Pulumi, CDK) following existing module conventions
+2. **[OUTCOME-CICD]** â€” CI/CD pipeline modifications follow existing workflow patterns, maintain existing gates, and don't break the deployment chain
+3. **[OUTCOME-MIGRATION]** â€” Database migrations are reversible, idempotent, and include rollback scripts
+4. **[OUTCOME-DEPLOY-CONFIG]** â€” Deployment configurations (Kubernetes manifests, Docker configs, serverless configs) are environment-aware and parameterized
+5. **[OUTCOME-BLAST-RADIUS]** â€” Every change has a documented blast radius assessment and rollback plan
+6. **[OUTCOME-DRY-RUN]** â€” All IaC changes are validated via plan/preview before any apply recommendation
+7. **[OUTCOME-SECRETS]** â€” No hardcoded secrets; all sensitive values reference secret stores or environment variables
 
 ## Inputs
 
@@ -34,7 +35,7 @@ Handles infrastructure-as-code changes, CI/CD pipeline modifications, deployment
 | `design_spec.md` | Agent 2 | No | Architecture decisions affecting infrastructure |
 | `ticket_analysis.md` | Agent 0 | Yes | Ticket classification (must be infra/devops type) |
 | Source repository code | Repository | Yes | Existing IaC, CI/CD, deployment configs |
-| Custom client context | Client | No | `agent8_custom_client_context.md` — cloud provider, IaC conventions, deployment targets |
+| Custom client context | Client | No | `agent8_iac_devops_custom_client_context.md` â€” cloud provider, IaC conventions, deployment targets |
 
 ## Outputs
 
@@ -145,13 +146,13 @@ Handles infrastructure-as-code changes, CI/CD pipeline modifications, deployment
 
 ## What IaC/DevOps Agent Does NOT Do
 
-- ❌ Apply infrastructure changes (only generates plans)
-- ❌ Run migrations against production databases
-- ❌ Modify production environment variables directly
-- ❌ Delete resources without human approval
-- ❌ Bypass existing CI/CD approval gates
-- ❌ Create new cloud accounts or subscriptions
-- ❌ Modify IAM root/admin policies
+- âŒ Apply infrastructure changes (only generates plans)
+- âŒ Run migrations against production databases
+- âŒ Modify production environment variables directly
+- âŒ Delete resources without human approval
+- âŒ Bypass existing CI/CD approval gates
+- âŒ Create new cloud accounts or subscriptions
+- âŒ Modify IAM root/admin policies
 
 ## Tool Categories
 
@@ -208,12 +209,13 @@ Handles infrastructure-as-code changes, CI/CD pipeline modifications, deployment
 | Point | How Customized | Default |
 |-------|---------------|---------|
 | IaC tool | Auto-detected from codebase | Terraform |
-| Cloud provider | `agent8_custom_client_context.md` | Auto-detected from IaC files |
+| Cloud provider | `agent8_iac_devops_custom_client_context.md` | Auto-detected from IaC files |
 | CI/CD platform | Auto-detected from codebase | GitHub Actions |
 | Migration tool | Auto-detected from codebase | Framework-specific |
-| IaC lint command | Auto-detected / `agent8_custom_client_context.md` | `terraform fmt -check` |
+| IaC lint command | Auto-detected / `agent8_iac_devops_custom_client_context.md` | `terraform fmt -check` |
 | Plan command | Auto-detected | `terraform plan` |
-| Approved environments | `agent8_custom_client_context.md` | dev, staging (prod blocked) |
-| Secret store | `agent8_custom_client_context.md` | Environment variables |
-| Blast radius thresholds | `agent8_custom_client_context.md` | Standard (Isolated/Scoped/Service/Platform) |
-| Required approvals per risk level | `agent8_custom_client_context.md` | High+Critical require human approval |
+| Approved environments | `agent8_iac_devops_custom_client_context.md` | dev, staging (prod blocked) |
+| Secret store | `agent8_iac_devops_custom_client_context.md` | Environment variables |
+| Blast radius thresholds | `agent8_iac_devops_custom_client_context.md` | Standard (Isolated/Scoped/Service/Platform) |
+| Required approvals per risk level | `agent8_iac_devops_custom_client_context.md` | High+Critical require human approval |
+

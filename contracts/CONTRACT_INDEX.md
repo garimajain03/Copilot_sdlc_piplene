@@ -152,6 +152,35 @@ Ticket/Requirement
 
 Each generated agent supports an optional `<agent>_custom_client_context.md` file. Agents MUST load and apply this file if it exists. See [custom_client_context_template.md](../templates/custom_client_context_template.md).
 
+## Generated Agent Requirements
+
+Every generated agent MUST include:
+- **Front Matter** — YAML with name, description, model, argumentHint, tools
+- **Agent metadata** — contract_id, version, pipeline_position, model_tier
+- **argument-hint** — Brief description of expected arguments
+- **Clearly defined inputs** — with source, required flag, and description
+- **Clearly defined outputs** — with consumer, format, and description
+- **Input validation** — rules for validating each input
+- **Output handling** — rules for writing and validating outputs
+- **Checkpointing strategy** — what state is saved and when
+- **Resume protocol** — how to resume from saved checkpoint
+- **Re-run protocol** — how to handle re-run with customer feedback
+- **Quality Checklist** — pre-completion verification items
+- **Completion criteria** — explicit conditions for agent to be considered done
+- **Hooks** — with full configuration and contract references
+- **Connector integration** — reference shared VCS/PM Connector Skills or MCP (never duplicate connector logic)
+
+## Connector Integration Modes
+
+Agents reference external platforms via one of two modes (determined during Preflight):
+
+| Mode | Artifact | Generated When |
+|------|----------|---------------|
+| **MCP** | `.mcp.json` server definitions | User selects MCP for a platform |
+| **API-based Connector Skill** | `.github/skills/<skill>/SKILL.md` | User selects API-based for a platform |
+
+Agents MUST use the shared integration (MCP or Connector Skill) rather than duplicating connector instructions.
+
 ## Contract Schema
 
 All contracts follow the schema defined in [contract_schema.md](../schemas/contract_schema.md).

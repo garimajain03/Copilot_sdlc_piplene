@@ -5,17 +5,27 @@
 The **SDLC Pipeline Bundle** (`github-copilot-sdlc-template`) is a standalone repository that enables any project to adopt a structured, multi-agent software development lifecycle powered by GitHub Copilot.
 
 The pipeline has two phases:
-1. **Preflight** — Validates onboarding, scans your codebase, generates setup artifacts
-2. **Pipeline Generation** — Creates customer-specific agents, skills, hooks from reusable contracts
+1. **Preflight** — Validates onboarding, configures connectors (MCP/API), sets up workspace with submodules, scans codebase, generates cross-platform setup scripts
+2. **Pipeline Generation** — Creates customer-specific agents, skills, hooks from reusable contracts (reuses existing agents when available)
 
 ---
 
 ## Prerequisites
 
 - [VS Code](https://code.visualstudio.com/) with [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) extension installed **OR** [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli)
-- Python 3.9+ (for automation scripts)
-- Git (for repository cloning)
+- Python 3.9+ (for automation scripts and cross-platform hooks)
+- Git (for repository cloning and submodule management)
 - A completed `intake-sources.md` (generated from `client-onboarding-wizard.html`)
+
+### Platform-Specific
+
+**macOS/Linux:**
+- Homebrew (macOS) or apt/dnf (Linux) for prerequisite installation
+- Bash for `setup.sh` execution
+
+**Windows:**
+- winget or Chocolatey for prerequisite installation
+- PowerShell 5.1+ for `setup.ps1` execution
 
 ---
 
@@ -37,7 +47,28 @@ Open `client-onboarding-wizard.html` in a browser and fill in your organization 
 gh copilot chat "Run the SDLC Preflight Agent on intake-sources.md"
 ```
 
-### 3. Run Pipeline Generator
+The Preflight Agent will:
+- Validate your onboarding answers
+- Ask which integration mode to use per platform (MCP vs API-based Connector Skills)
+- Configure workspace structure (default with submodules or custom)
+- Clone and scan repositories
+- Generate `setup.sh` (macOS/Linux) and `setup.ps1` (Windows)
+- Generate `index.md` with repository catalog and Service Catalogue
+- Generate `.mcp.json` if MCP integration selected
+
+### 3. Run Setup Script
+
+**macOS/Linux:**
+```bash
+chmod +x setup.sh && ./setup.sh
+```
+
+**Windows:**
+```powershell
+.\setup.ps1
+```
+
+### 4. Run Pipeline Generator
 
 **VS Code Copilot Chat:**
 ```
@@ -49,9 +80,61 @@ gh copilot chat "Run the SDLC Preflight Agent on intake-sources.md"
 gh copilot chat "Run the SDLC Pipeline Generator"
 ```
 
-### 4. Run Your Pipeline
+The Generator will:
+- Check for existing customer agents and reuse/enhance them
+- Only generate Connector Skills for API-based platforms (not MCP)
+- Generate agents with full metadata, inputs, outputs, validation, and checkpointing
+- Generate cross-platform hook scripts (Python)
+
+### 5. Run Your Pipeline
 
 Once generated, your SDLC pipeline agents are in `.github/agents/` ready to use.
+
+---
+
+## Connector Integration Modes
+
+Each external platform can be integrated via one of two mechanisms:
+
+| Mode | Generated Artifact | Best For |
+|------|-------------------|----------|
+| **MCP** | `.mcp.json` server definition | Direct tool integration, less configuration |
+| **API-based Connector Skill** | `SKILL.md` with CLI commands | Fine-grained control, custom workflows |
+
+The Preflight Agent asks which mode to use for:
+- **Jira** (Project Management)
+- **Confluence** (Knowledge Management)
+- **GitHub / GitLab** (Version Control)
+
+---
+
+## Workspace Structure
+
+### Default (Recommended)
+
+Uses a single Agents repository with Git submodules for development repos:
+
+```
+sdlc-agents/              ← Agents repository
+├── .github/
+│   ├── agents/           ← Generated agent definitions
+│   ├── hooks/            ← Generated hook scripts
+│   ├── skills/           ← Generated connector skills
+│   └── instructions/     ← Per-repo instruction files
+├── repos/                ← Git submodules
+│   ├── backend-service/
+│   ├── frontend-app/
+│   └── shared-libraries/
+├── index.md              ← Repository catalog + Service Catalogue
+├── setup.sh              ← macOS/Linux setup
+├── setup.ps1             ← Windows setup
+├── .mcp.json             ← MCP server definitions
+└── .gitmodules           ← Submodule configuration
+```
+
+### Custom
+
+Any customer-defined layout. The Preflight Agent will ask clarifying questions to understand the structure.
 
 ---
 

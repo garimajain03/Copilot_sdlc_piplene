@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>GHCP AGENTIC PDLC PIPELINE — Client Intake v2</title>
+<title>Agentic SDLC pipeline — Client Intake v2</title>
 <style>
   :root {
     --navy:   #1A233A;
@@ -83,8 +83,6 @@
   .sub-fields .field:last-child { margin-bottom: 0; }
   .sub-fields-title { font-size: 11px; font-weight: 700; color: var(--grey); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
 
-  .check-hint { font-size: 11px; color: var(--grey); font-weight: 400; }
-
   /* Checkboxes */
   .check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 8px; }
   .check-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 7px; cursor: pointer; font-size: 13px; transition: all .15s; }
@@ -158,10 +156,15 @@
   .btn-download:hover { border-color: var(--blue); color: var(--blue); }
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(8px); background: var(--navy); color: var(--white); padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .3s, transform .3s; pointer-events: none; z-index: 999; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  /* Tooltip icon */
+  .info-tooltip { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: var(--blue-lt); color: var(--blue); font-size: 10px; font-weight: 700; cursor: help; position: relative; margin-left: 6px; vertical-align: middle; border: 1px solid var(--blue); }
+  .info-tooltip .tooltip-text { visibility: hidden; opacity: 0; width: 280px; background: var(--navy); color: #fff; font-size: 12px; font-weight: 400; line-height: 1.5; text-align: left; border-radius: 8px; padding: 10px 14px; position: absolute; z-index: 100; bottom: 125%; left: 50%; transform: translateX(-50%); transition: opacity .2s; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,.25); }
+  .info-tooltip .tooltip-text::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: var(--navy) transparent transparent transparent; }
+  .info-tooltip:hover .tooltip-text { visibility: visible; opacity: 1; }
+  .section-label .info-tooltip, .section-label .info-tooltip .tooltip-text { text-transform: none; }
   /* Required field markers */
   .req { color: #E53E3E; margin-left: 2px; font-size: 11px; }
-  .field input.field-error, .field select.field-error, .field textarea.field-error { border-color: #E53E3E !important; }
-  .check-grid.field-error, .repeatable.field-error, #mcp-others-list.field-error { outline: 1.5px solid #E53E3E; border-radius: 8px; padding: 4px; }
+  .field input.field-error, .field select.field-error { border-color: #E53E3E !important; }
   .field-error-msg { font-size: 11.5px; color: #E53E3E; margin-top: 4px; line-height: 1.4; }
 .btn-teal { background: var(--teal); color: #fff; padding: 11px 28px; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .15s; }
 .btn-teal:hover { opacity: .88; }
@@ -176,7 +179,7 @@
 <body>
 
 <div class="header">
-  <div class="logo">GHCP AGENTIC PDLC PIPELINE</div>
+  <div class="logo">Agentic SDLC pipeline</div>
   <h1>Client Onboarding Intake</h1>
   <p>A guided intake form — each selection reveals only what's relevant for your context.</p>
 </div>
@@ -187,9 +190,10 @@
     <span class="role-label role-arch">Architect / Lead</span>
   </div>
   <div class="progress-labels">
-    <span id="lbl-1" class="active" onclick="goToStep(1)">1 · Engagement</span>
-    <span id="lbl-2" onclick="goToStep(2)">2 · Sources &amp; Constraints</span>
-    <span id="lbl-3" onclick="goToStep(3)">3 · Dev &amp; QA Workflow</span>
+    <span id="lbl-1" class="active" onclick="goToStep(1)">1 · Engagement Overview</span>
+    <span id="lbl-2" onclick="goToStep(2)">2 · Knowledge Sources</span>
+    <span id="lbl-3" onclick="goToStep(3)">3 · SDLC Tools</span>
+    <span id="lbl-4" onclick="goToStep(4)">4 · Integrations &amp; Context</span>
   </div>
   <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill" style="width:25%"></div></div>
 </div>
@@ -197,7 +201,7 @@
 
 <!-- ═══════════════════════════════ STEP 1 ═══════════════════════════════ -->
 <div class="card-step active" id="step-1">
-  <div class="step-tag">Step 1 of 3 · Delivery Manager</div>
+  <div class="step-tag">Step 1 of 4 · Delivery Manager</div>
   <h2>Engagement Overview</h2>
   <p class="step-subtitle">Client details, personas, approved AI tools and LLM models for this engagement.</p>
 
@@ -208,7 +212,7 @@
   </div>
 
   <div class="field">
-    <label>Industry / Domain <span class="req">*</span></label>
+    <label>Industry / Domain <span class="req">*</span> <span class="info-tooltip">i<span class="tooltip-text">The industry you select here will update the compliance and security instructions in your generated agents. For example, selecting Healthcare adds HIPAA rules; selecting BFSI adds PCI-DSS rules. Pick the one that matches your project.</span></span></label>
     <select id="industry" onchange="onIndustry(this.value)">
       <option value="">Select…</option>
       <option>BFSI (Banking, Financial Services &amp; Insurance)</option>
@@ -279,30 +283,6 @@
 
   <hr class="divider" />
 
-  <!-- Domain Model -->
-  <p class="section-label">Domain Model</p>
-  <div class="field">
-    <label>Brand structure <span class="req">*</span></label>
-    <select id="brand-model" onchange="onBrandModel(this.value)">
-      <option value="">Select…</option>
-      <option value="single-brand">Single brand</option>
-      <option value="multi-brand">Multi-brand / multi-tenant</option>
-    </select>
-    <p class="hint">Determines whether the pipeline enforces per-brand scope checks on every feature.</p>
-  </div>
-  <!-- ↳ Multi-brand: brand codes -->
-  <div class="ctx-block" id="ctx-brand-codes">
-    <div class="sub-fields">
-      <div class="field">
-        <label>Brand codes <span class="req">*</span></label>
-        <input type="text" id="brand-codes" placeholder="e.g. BK, PLK, TH, FHS" oninput="saveProgress()" />
-        <p class="hint">Comma-separated short codes. Used in every artifact's scope declaration.</p>
-      </div>
-    </div>
-  </div>
-
-  <hr class="divider" />
-
   <!-- EPAM Personas -->
   <p class="section-label">EPAM Personas Engaged</p>
   <div class="field">
@@ -317,10 +297,10 @@
 
   <hr class="divider" />
   <h2>AI Stack &amp; Constraints</h2>
-  <p class="step-subtitle">Declare approved AI tools and models for this engagement, configure integrations, and set hard constraints for the agent.</p>
+  <p class="step-subtitle">Declare approved AI tools and models for this engagement.</p>
 
   <!-- Approved AI Tools -->
-  <p class="section-label">Approved AI Tools</p>
+  <p class="section-label">Approved AI Tools <span class="info-tooltip">i<span class="tooltip-text">Select the AI tools approved for this engagement. The pipeline will generate agent configurations and model settings only for the selected tools. Approved models can then be specified per tool below.</span></span></p>
   <div class="field">
     <label>Which pipeline tools are approved for this engagement? <span class="opt">check all that apply</span></label>
     <div class="check-grid" id="approved-ai-grid">
@@ -342,66 +322,11 @@
 
   <hr class="divider" />
 
-  <!-- LLM Providers & Models -->
-  <p class="section-label">LLM Providers &amp; Approved Models</p>
-  <div class="field">
-    <label>Which LLM providers are approved? <span class="opt">check all that apply</span></label>
-    <div class="check-grid" id="llm-providers-grid">
-      <label class="check-item"><input type="checkbox" value="Anthropic" onchange="onLlmProvider()" /> Anthropic</label>
-      <label class="check-item"><input type="checkbox" value="Google" onchange="onLlmProvider()" /> Google</label>
-      <label class="check-item"><input type="checkbox" value="OpenAI" onchange="onLlmProvider()" /> OpenAI</label>
-      <label class="check-item"><input type="checkbox" value="Others" onchange="onLlmProvider()" /> Others</label>
-    </div>
-  </div>
-  <!-- ↳ Anthropic models -->
-  <div class="ctx-block" id="ctx-llm-anthropic">
+  <!-- Approved models by selected tools -->
+  <div class="ctx-block" id="ctx-approved-models">
     <div class="sub-fields">
-      <div class="sub-fields-title">Anthropic — approved models</div>
-      <div class="check-grid" id="models-anthropic-grid">
-        <label class="check-item"><input type="checkbox" value="claude-opus-4" onchange="saveProgress()" /> Claude Opus 4</label>
-        <label class="check-item"><input type="checkbox" value="claude-sonnet-4" onchange="saveProgress()" /> Claude Sonnet 4</label>
-        <label class="check-item"><input type="checkbox" value="claude-haiku-4" onchange="saveProgress()" /> Claude Haiku 4</label>
-        <label class="check-item"><input type="checkbox" value="claude-sonnet-3-7" onchange="saveProgress()" /> Claude Sonnet 3.7</label>
-        <label class="check-item"><input type="checkbox" value="claude-sonnet-3-5" onchange="saveProgress()" /> Claude Sonnet 3.5</label>
-      </div>
-    </div>
-  </div>
-  <!-- ↳ Google models -->
-  <div class="ctx-block" id="ctx-llm-google">
-    <div class="sub-fields">
-      <div class="sub-fields-title">Google — approved models</div>
-      <div class="check-grid" id="models-google-grid">
-        <label class="check-item"><input type="checkbox" value="gemini-2.5-pro" onchange="saveProgress()" /> Gemini 2.5 Pro</label>
-        <label class="check-item"><input type="checkbox" value="gemini-2.5-flash" onchange="saveProgress()" /> Gemini 2.5 Flash</label>
-        <label class="check-item"><input type="checkbox" value="gemini-2.0-flash" onchange="saveProgress()" /> Gemini 2.0 Flash</label>
-        <label class="check-item"><input type="checkbox" value="gemma-3" onchange="saveProgress()" /> Gemma 3</label>
-      </div>
-    </div>
-  </div>
-  <!-- ↳ OpenAI models -->
-  <div class="ctx-block" id="ctx-llm-openai">
-    <div class="sub-fields">
-      <div class="sub-fields-title">OpenAI — approved models</div>
-      <div class="check-grid" id="models-openai-grid">
-        <label class="check-item"><input type="checkbox" value="gpt-4o" onchange="saveProgress()" /> GPT-4o</label>
-        <label class="check-item"><input type="checkbox" value="gpt-4o-mini" onchange="saveProgress()" /> GPT-4o mini</label>
-        <label class="check-item"><input type="checkbox" value="o3" onchange="saveProgress()" /> o3</label>
-        <label class="check-item"><input type="checkbox" value="o4-mini" onchange="saveProgress()" /> o4-mini</label>
-      </div>
-    </div>
-  </div>
-  <!-- ↳ Others: free-form provider + models -->
-  <div class="ctx-block" id="ctx-llm-others">
-    <div class="sub-fields">
-      <div class="sub-fields-title">Other LLM providers</div>
-      <div class="repeatable" id="llm-others-list">
-        <div class="rep-row llm-other-row">
-          <input type="text" class="llm-other-provider" placeholder="Provider (e.g. Mistral, AWS Bedrock)" oninput="saveProgress()" />
-          <input type="text" class="llm-other-models" placeholder="Approved models (e.g. Mistral Large, Codestral)" oninput="saveProgress()" />
-          <button onclick="removeRow(this)" title="Remove">×</button>
-        </div>
-      </div>
-      <button class="add-row-btn" onclick="addLlmOther()">+ Add provider</button>
+      <p class="section-label" style="margin-top:0">Approved Models</p>
+      <div id="approved-models-container"></div>
     </div>
   </div>
 
@@ -409,15 +334,9 @@
 </div><!-- /step-1 -->
 
 <div class="card-step" id="step-2">
-  <div class="step-tag">Step 2 of 3 · Delivery Manager</div>
-  <h2>Sources &amp; Constraints</h2>
-  <p class="step-subtitle">Knowledge sources, design assets and MCP server connections.</p>
-
-  <h2>Source Pointers</h2>
-  <p class="step-subtitle">Where the client's existing documentation, design assets, and knowledge base live. All fields are optional — fill what applies.</p>
-
-  <!-- Knowledge Sources -->
-  <p class="section-label">Knowledge Sources</p>
+  <div class="step-tag">Step 2 of 4 · Delivery Manager</div>
+  <h2>Knowledge Sources <span class="info-tooltip">i<span class="tooltip-text">If there are any Confluence pages or documents from where the agents need to refer certain information, provide those knowledge sources here.</span></span></h2>
+  <p class="step-subtitle">Provide documentation and knowledge sources for the agents to reference.</p>
   <div class="field">
     <label>Do you have existing documentation to share? <span class="opt">optional</span></label>
     <select id="has-documents" onchange="onHasDocs(this.value)">
@@ -431,11 +350,6 @@
   <div class="ctx-block" id="ctx-docs-yes">
     <div class="sub-fields">
       <div class="field"><label>Document links <span class="opt">Google Drive, Notion, SharePoint, Confluence pages, etc.</span></label><textarea id="other-links" placeholder="Paste links here, one per line"></textarea></div>
-      <div class="field">
-        <label>Upload files <span class="opt">optional</span></label>
-        <div class="upload-zone" id="upload-zone"><input type="file" id="file-input" multiple accept=".txt,.vtt,.docx,.pdf,.md" onchange="handleFiles(this.files)" /><div class="upload-icon">📎</div><div class="upload-label">Drop files here or click to browse</div><div class="upload-hint">.txt · .vtt · .docx · .pdf · .md — Zoom/Teams/Meet exports welcome</div></div>
-        <div class="file-list" id="file-list"></div>
-      </div>
     </div>
   </div>
   <!-- ↳ No or Both: Confluence config -->
@@ -447,138 +361,24 @@
       <div class="field"><label>Specific high-value pages <span class="opt">optional — one URL or title per line</span></label><textarea id="confluence-pages" placeholder="e.g.&#10;https://yourcompany.atlassian.net/wiki/spaces/ARCH/pages/123&#10;API Design Guidelines"></textarea></div>
     </div>
   </div>
-
-  <hr class="divider" />
-  <!-- Design Assets -->
-  <p class="section-label">Design Assets</p>
-  <div class="field">
-    <label>Design / wireframe source <span class="opt">optional</span></label>
-    <select id="design-tool" onchange="onDesignTool(this.value)">
-      <option value="">None</option>
-      <option value="figma">Figma</option>
-      <option value="other">Other tool</option>
-    </select>
-  </div>
-  <!-- ↳ Figma -->
-  <div class="ctx-block" id="ctx-design-figma">
-    <div class="sub-fields">
-      <div class="field">
-        <label>Figma file URL</label>
-        <input type="url" id="figma-url" placeholder="https://www.figma.com/file/…" oninput="saveProgress()" />
-        <p class="hint">Pipeline extracts component specs and maps them to code during the requirements phase.</p>
-      </div>
-    </div>
-  </div>
-  <!-- ↳ Other design tool -->
-  <div class="ctx-block" id="ctx-design-other">
-    <div class="sub-fields">
-      <div class="sub-fields-title">Other design tool</div>
-      <div class="field"><label>Tool name</label><input type="text" id="design-tool-name" placeholder="e.g. Miro, Zeplin, Sketch, InVision" oninput="saveProgress()" /></div>
-      <div class="field"><label>URL / link <span class="opt">optional</span></label><input type="url" id="design-tool-url" placeholder="https://..." oninput="saveProgress()" /></div>
-    </div>
-  </div>
-
-
-
-  <hr class="divider" />
-
-  <!-- AI Stack: MCPs -->
-  <p class="section-label">AI Stack</p>
-  <div class="field">
-    <label>MCP servers available / configured?</label>
-    <div class="check-grid" id="mcps-grid">
-      <label class="check-item"><input type="checkbox" value="Atlassian" onchange="onMcp()" /> Atlassian</label>
-      <label class="check-item"><input type="checkbox" value="GitHub" onchange="onMcp()" /> GitHub</label>
-      <label class="check-item"><input type="checkbox" value="Others" onchange="onMcp()" /> Others</label>
-    </div>
-  </div>
-  <!-- ↳ MCP: Atlassian -->
-  <div class="ctx-block" id="ctx-mcp-atlassian">
-    <div class="sub-fields">
-      <div class="sub-fields-title">Atlassian MCP config</div>
-      <div class="field"><label>Atlassian base URL</label><input type="url" id="mcp-atlassian-url" placeholder="https://yourcompany.atlassian.net" oninput="saveProgress()" /></div>
-    </div>
-  </div>
-  <!-- ↳ MCP: GitHub -->
-  <div class="ctx-block" id="ctx-mcp-github">
-    <div class="sub-fields">
-      <div class="sub-fields-title">GitHub MCP config</div>
-      <div class="field"><label>GitHub Enterprise URL <span class="opt">leave blank for github.com</span></label><input type="url" id="mcp-github-url" placeholder="https://github.yourcompany.com" oninput="saveProgress()" /></div>
-    </div>
-  </div>
-  <!-- ↳ MCP: Others -->
-  <div class="ctx-block" id="ctx-mcp-others">
-    <div class="sub-fields">
-      <div class="sub-fields-title">Other MCP servers</div>
-      <div class="mcp-col-headers"><span>Server name</span><span>URL <span style="font-weight:400;text-transform:none;letter-spacing:0">— optional</span></span><span></span></div>
-      <div id="mcp-others-list"></div>
-      <button type="button" class="add-row-btn" onclick="addMcpOther()">+ Add MCP server</button>
-    </div>
-  </div>
-
-  <hr class="divider" />
-  <p class="section-label">Existing Agents &amp; Content Systems</p>
-  <div class="field">
-    <label>Existing internal AI agents? <span class="opt">optional</span></label>
-    <select id="existing-agents" onchange="onExistingAgents(this.value)">
-      <option value="">Select…</option>
-      <option value="yes">Yes</option>
-      <option value="no">No</option>
-    </select>
-    <p class="hint">Helps the generator avoid conflicts and decide whether to reuse or wrap existing agent capabilities.</p>
-  </div>
-  <div class="ctx-block" id="ctx-agents-desc">
-    <div class="sub-fields">
-      <div class="field"><label>Existing agents summary <span class="req">*</span></label><textarea id="existing-agents-desc" placeholder="Names, responsibilities, access boundaries, and whether they should be reused or avoided." oninput="saveProgress()"></textarea></div>
-    </div>
-  </div>
-  <div class="field">
-    <label>CMS / content platform <span class="opt">optional</span></label>
-    <select id="cms" onchange="onCms(this.value)">
-      <option value="">None</option>
-      <option>Sanity</option>
-      <option>Contentful</option>
-      <option>Strapi</option>
-      <option>WordPress / WooCommerce</option>
-      <option>Adobe AEM</option>
-      <option>Sitecore</option>
-      <option>Drupal</option>
-      <option>Other</option>
-    </select>
-  </div>
-  <div class="ctx-block" id="ctx-cms-config">
-    <div class="sub-fields">
-      <div class="sub-fields-title" id="cms-config-title">CMS config</div>
-      <div id="cms-config-fields"></div>
-    </div>
-  </div>
 </div><!-- /step-2 -->
 
 <div class="card-step" id="step-3">
-  <div class="step-tag arch">Step 3 of 3 · Architect / Lead</div>
-  <h2>Dev &amp; QA Workflow</h2>
+  <div class="step-tag arch">Step 3 of 4 · Architect / Lead</div>
+  <h2>SDLC Tools</h2>
   <p class="step-subtitle">Source control, project management and QA setup.</p>
 
-  <div class="info-box amber" style="margin-bottom:20px;"><strong>Architect / Tech Lead</strong> — please complete Step 3. Steps 1–2 were filled by the Delivery Manager.</div>
+  <div class="info-box amber" style="margin-bottom:20px;"><strong>Architect / Tech Lead</strong> — please complete Steps 3 and 4. Steps 1–2 were filled by the Delivery Manager.</div>
 <div id="wf-dev-section">
-    <p class="section-label section-label--dev">Developer Workflow</p>
-
-    <div class="info-box green" style="margin-bottom:20px;">
-      <strong>Languages, frameworks, linter, formatter, and naming conventions</strong> are automatically detected per repo by the Preflight Agent using <code>scripts/repo-scanner.py</code>. No need to declare them here.
-    </div>
-
-    <hr class="divider" />
-
+    <p class="section-label section-label--dev">Developer Tools</p>
     <div class="field">
-      <label>Application Lifecycle Management (ALM) Tool <span class="req">*</span></label>
+      <label>PM / Requirements system <span class="req">*</span></label>
       <select id="pm-system" onchange="onPmSystem(this.value)">
         <option value="">Select…</option>
         <option>Jira</option>
         <option>Azure DevOps</option>
         <option>Linear</option>
         <option>GitHub Issues</option>
-        <option>Shortcut</option>
-        <option>None</option>
         <option>Other</option>
       </select>
       <p class="hint">Used for work items live: ticket IDs, project keys, used to name branches (ILO-1234-feature) and link PRs.</p>
@@ -586,43 +386,41 @@
     <!-- ↳ PM: Jira -->
     <div class="ctx-block" id="ctx-pm-jira">
       <div class="sub-fields">
-        <div class="sub-fields-title">ALM Tool Config</div>
-        <div class="field"><label>Jira base URL <span class="req">*</span></label><input type="url" id="jira-url" placeholder="https://yourcompany.atlassian.net" oninput="saveProgress()" /><p class="hint">Pipeline navigates every ticket against this URL — required for SDLC phase links.</p></div>
-        <div class="field"><label>Default ticket prefix <span class="req">*</span></label><input type="text" id="ticket-prefix" placeholder="e.g. ILO, BK, TH" oninput="saveProgress()" /><p class="hint">Used to name branches (e.g. ILO-1234-short-desc) and PR titles.</p></div>
-        <div class="field"><label>Project keys in scope <span class="opt">comma-separated</span></label><input type="text" id="project-keys" placeholder="e.g. ILO, PLT, SEC" oninput="saveProgress()" /></div>
+        <div class="sub-fields-title">Jira config</div>
+        <div class="field"><label>Tool URL <span class="req">*</span></label><input type="url" id="jira-url" placeholder="https://yourcompany.atlassian.net" oninput="saveProgress()" /></div>
+        <div class="field"><label>Integration mode <span class="req">*</span></label><select id="jira-integration-mode" onchange="saveProgress()"><option value="">Select…</option><option value="mcp">MCP</option><option value="api">API-based connector</option></select></div>
       </div>
     </div>
     <!-- ↳ PM: Azure DevOps -->
     <div class="ctx-block" id="ctx-pm-ado">
       <div class="sub-fields">
         <div class="sub-fields-title">Azure DevOps config</div>
-        <div class="field"><label>Organisation <span class="req">*</span></label><input type="text" id="ado-org" placeholder="e.g. my-company" oninput="saveProgress()" /></div>
-        <div class="field"><label>Project <span class="req">*</span></label><input type="text" id="ado-project" placeholder="e.g. MyProject" oninput="saveProgress()" /></div>
-        <div class="field"><label>DevOps URL <span class="opt">optional</span></label><input type="url" id="ado-url" placeholder="https://dev.azure.com/my-company" oninput="saveProgress()" /></div>
+        <div class="field"><label>Tool URL <span class="req">*</span></label><input type="url" id="ado-url" placeholder="https://dev.azure.com/my-company" oninput="saveProgress()" /></div>
+        <div class="field"><label>Integration mode <span class="req">*</span></label><select id="ado-integration-mode" onchange="saveProgress()"><option value="">Select…</option><option value="mcp">MCP</option><option value="api">API-based connector</option></select></div>
       </div>
     </div>
     <!-- ↳ PM: Linear -->
     <div class="ctx-block" id="ctx-pm-linear">
       <div class="sub-fields">
         <div class="sub-fields-title">Linear config</div>
-        <div class="field"><label>Workspace slug <span class="req">*</span></label><input type="text" id="linear-workspace" placeholder="e.g. my-company" oninput="saveProgress()" /></div>
-        <div class="field"><label>Teams in scope <span class="opt">comma-separated</span></label><input type="text" id="linear-teams" placeholder="e.g. eng, platform" oninput="saveProgress()" /></div>
+        <div class="field"><label>Tool URL <span class="req">*</span></label><input type="url" id="linear-url" placeholder="https://linear.app/your-workspace" oninput="saveProgress()" /></div>
+        <div class="field"><label>Integration mode <span class="req">*</span></label><select id="linear-integration-mode" onchange="saveProgress()"><option value="">Select…</option><option value="mcp">MCP</option><option value="api">API-based connector</option></select></div>
       </div>
     </div>
-    <!-- ↳ PM: Shortcut -->
-    <div class="ctx-block" id="ctx-pm-shortcut">
+    <!-- ↳ PM: GitHub Issues -->
+    <div class="ctx-block" id="ctx-pm-github-issues">
       <div class="sub-fields">
-        <div class="sub-fields-title">Shortcut config</div>
-        <div class="field"><label>Workspace URL <span class="req">*</span></label><input type="url" id="shortcut-url" placeholder="https://app.shortcut.com/your-workspace" oninput="saveProgress()" /></div>
-        <div class="field"><label>Team / project IDs in scope <span class="opt">comma-separated</span></label><input type="text" id="shortcut-projects" placeholder="e.g. platform, checkout, mobile" oninput="saveProgress()" /></div>
+        <div class="sub-fields-title">GitHub Issues config</div>
+        <div class="field"><label>Tool URL <span class="req">*</span></label><input type="url" id="github-issues-url" placeholder="https://github.com/your-org/your-repo/issues" oninput="saveProgress()" /></div>
+        <div class="field"><label>Integration mode <span class="req">*</span></label><select id="github-issues-integration-mode" onchange="saveProgress()"><option value="">Select…</option><option value="mcp">MCP</option><option value="api">API-based connector</option></select></div>
       </div>
     </div>
     <!-- ↳ PM: Other -->
     <div class="ctx-block" id="ctx-pm-other">
       <div class="sub-fields">
         <div class="sub-fields-title">Other PM tool config</div>
-        <div class="field"><label>Tool name <span class="req">*</span></label><input type="text" id="pm-other-name" placeholder="e.g. Shortcut, ClickUp, Notion" oninput="saveProgress()" /></div>
-        <div class="field"><label>Tool URL <span class="opt">optional</span></label><input type="url" id="pm-other-url" placeholder="https://..." oninput="saveProgress()" /></div>
+        <div class="field"><label>Tool URL <span class="req">*</span></label><input type="url" id="pm-other-url" placeholder="https://..." oninput="saveProgress()" /></div>
+        <div class="field"><label>Integration mode <span class="req">*</span></label><select id="pm-other-integration-mode" onchange="saveProgress()"><option value="">Select…</option><option value="mcp">MCP</option><option value="api">API-based connector</option></select></div>
       </div>
     </div>
     <hr class="divider" />
@@ -641,73 +439,57 @@
     <!-- ↳ GitHub -->
     <div class="ctx-block" id="ctx-scm-github">
       <div class="sub-fields">
-        <div class="sub-fields-title">Source Control config</div>
-        <div class="field">
-          <label>GitHub org / user <span class="req">*</span></label>
-          <input type="text" id="github-org" placeholder="e.g. acme-corp" oninput="onGithubOrg(this.value)" />
-          <p class="hint">Pipeline reads your codebase and creates PRs against this org.</p>
-        </div>
-      </div>
-      <div class="ctx-block" id="ctx-github">
-        <div class="sub-fields">
-          <div class="field">
-            <label>Primary repositories</label>
-            <div class="repeatable" id="repos-list">
-              <div class="rep-row"><input type="text" class="repo-input" placeholder="repo-name" /><button onclick="removeRow(this)" title="Remove">×</button></div>
-            </div>
-            <button class="add-row-btn" onclick="addRepo()">+ Add repo</button>
-            <p class="hint">Agent reads: CLAUDE.md, .eslintrc, tsconfig.json, CODEOWNERS, .github/workflows/, samples recent PRs.</p>
-          </div>
-        </div>
+        <div class="sub-fields-title">GitHub config</div>
+        <div class="field"><label>GitHub instance URL <span class="opt">leave blank for github.com</span></label><input type="url" id="github-enterprise-url" placeholder="https://github.yourcompany.com" oninput="saveProgress()" /></div>
+        <div class="field"><label>Group / namespace <span class="opt">optional</span></label><input type="text" id="github-org" placeholder="e.g. acme-corp / my-team" oninput="saveProgress()" /></div>
+        <div class="field"><label>Primary repositories (one per line) <span class="opt">optional</span></label><textarea id="github-repos" placeholder="e.g.&#10;my-web-app&#10;shared-libs" oninput="saveProgress()"></textarea></div>
+        <div class="field"><label>Integration mode <span class="req">*</span></label><select id="github-integration-mode" onchange="saveProgress()"><option value="">Select…</option><option value="mcp">MCP</option><option value="api">API-based connector</option></select></div>
       </div>
     </div>
     <!-- ↳ GitLab -->
     <div class="ctx-block" id="ctx-scm-gitlab">
       <div class="sub-fields">
-        <div class="sub-fields-title">Source Control config</div>
+        <div class="sub-fields-title">GitLab config</div>
         <div class="field"><label>GitLab instance URL <span class="opt">leave blank for gitlab.com</span></label><input type="url" id="gitlab-url" placeholder="https://gitlab.yourcompany.com" oninput="saveProgress()" /></div>
         <div class="field"><label>Group / namespace <span class="opt">optional</span></label><input type="text" id="gitlab-group" placeholder="e.g. acme-corp / platform-team" oninput="saveProgress()" /></div>
         <div class="field"><label>Primary repositories (one per line) <span class="opt">optional</span></label><textarea id="gitlab-repos" placeholder="e.g.&#10;my-web-app&#10;shared-libs" oninput="saveProgress()"></textarea></div>
+        <div class="field"><label>Integration mode <span class="req">*</span></label><select id="gitlab-integration-mode" onchange="saveProgress()"><option value="">Select…</option><option value="mcp">MCP</option><option value="api">API-based connector</option></select></div>
       </div>
     </div>
     <!-- ↳ Bitbucket -->
     <div class="ctx-block" id="ctx-scm-bitbucket">
       <div class="sub-fields">
-        <div class="sub-fields-title">Source Control config</div>
+        <div class="sub-fields-title">Bitbucket config</div>
         <div class="field"><label>Workspace slug</label><input type="text" id="bitbucket-workspace" placeholder="e.g. acme-corp" oninput="saveProgress()" /></div>
         <div class="field"><label>Server URL <span class="opt">leave blank for bitbucket.org; fill for Server / Data Center</span></label><input type="url" id="bitbucket-url" placeholder="https://bitbucket.yourcompany.com" oninput="saveProgress()" /></div>
         <div class="field"><label>Primary repositories (one per line) <span class="opt">optional</span></label><textarea id="bitbucket-repos" placeholder="e.g.&#10;my-web-app&#10;shared-libs" oninput="saveProgress()"></textarea></div>
+        <div class="field"><label>Integration mode <span class="req">*</span></label><select id="bitbucket-integration-mode" onchange="saveProgress()"><option value="">Select…</option><option value="mcp">MCP</option><option value="api">API-based connector</option></select></div>
       </div>
     </div>
     <!-- ↳ Azure Repos -->
     <div class="ctx-block" id="ctx-scm-azure-repos">
       <div class="sub-fields">
-        <div class="sub-fields-title">Source Control config</div>
+        <div class="sub-fields-title">Azure Repos config</div>
         <div class="field"><label>Organisation</label><input type="text" id="azure-repos-org" placeholder="e.g. my-company" oninput="saveProgress()" /></div>
         <div class="field"><label>Project</label><input type="text" id="azure-repos-project" placeholder="e.g. MyProject" oninput="saveProgress()" /></div>
         <div class="field"><label>Repositories (one per line) <span class="opt">optional</span></label><textarea id="azure-repos-list" placeholder="e.g.&#10;MyWebApp&#10;MyAPI" oninput="saveProgress()"></textarea></div>
+        <div class="field"><label>Integration mode <span class="req">*</span></label><select id="azure-repos-integration-mode" onchange="saveProgress()"><option value="">Select…</option><option value="mcp">MCP</option><option value="api">API-based connector</option></select></div>
       </div>
     </div>
     <!-- ↳ Other SCM -->
     <div class="ctx-block" id="ctx-scm-other">
       <div class="sub-fields">
-        <div class="sub-fields-title">Source Control config</div>
+        <div class="sub-fields-title">Other source control</div>
         <div class="field"><label>Tool name</label><input type="text" id="scm-other-name" placeholder="e.g. Gerrit, Perforce, AWS CodeCommit" oninput="saveProgress()" /></div>
         <div class="field"><label>Repository URL <span class="opt">optional</span></label><input type="url" id="scm-other-url" placeholder="https://..." oninput="saveProgress()" /></div>
+        <div class="field"><label>Integration mode <span class="req">*</span></label><select id="scm-other-integration-mode" onchange="saveProgress()"><option value="">Select…</option><option value="mcp">MCP</option><option value="api">API-based connector</option></select></div>
       </div>
     </div>
-    <div class="field">
-      <label>Default branch name <span class="req">*</span></label>
-      <input type="text" id="default-branch" placeholder="e.g. main, master, develop" oninput="saveProgress()" />
-      <p class="hint">Pipeline bases all feature branches off this branch.</p>
-    </div>
-
-
 </div><!-- /wf-dev-section -->
 
 <div id="wf-qa-section">
   <hr class="divider" />
-  <p class="section-label section-label--qa">QA / Testing Workflow</p>
+  <p class="section-label section-label--qa">QA / Testing Tools</p>
 
     <!-- Test management tool -->
     <div class="field">
@@ -758,6 +540,51 @@
           </div>
         </div>
 
+        <!-- Programming language -->
+        <div class="field">
+          <label>Programming language for automation</label>
+          <div class="check-grid" id="qa-prog-lang-grid">
+            <label class="check-item"><input type="checkbox" value="Java" onchange="onQaProgLangOther()" /> Java</label>
+            <label class="check-item"><input type="checkbox" value="Python" onchange="onQaProgLangOther()" /> Python</label>
+            <label class="check-item"><input type="checkbox" value="TypeScript" onchange="onQaProgLangOther()" /> TypeScript</label>
+            <label class="check-item"><input type="checkbox" value=".NET" onchange="onQaProgLangOther()" /> .NET</label>
+            <label class="check-item"><input type="checkbox" value="Others" onchange="onQaProgLangOther()" /> Others</label>
+          </div>
+        </div>
+        <div class="ctx-block" id="ctx-qa-prog-lang-other">
+          <div class="field"><label>Other language</label><input type="text" id="qa-prog-lang-other-text" placeholder="e.g. Ruby, Go, C#" oninput="saveProgress()" /></div>
+        </div>
+
+        <!-- UI automation frameworks (shown when UI scope checked) -->
+        <div class="ctx-block" id="ctx-qa-ui-automation">
+          <div class="sub-fields-title">UI automation framework</div>
+          <div class="field">
+            <div class="check-grid" id="qa-ui-framework-grid">
+              <label class="check-item"><input type="checkbox" value="Selenium" onchange="onQaUiFrameworkOther()" /> Selenium</label>
+              <label class="check-item"><input type="checkbox" value="Playwright" onchange="onQaUiFrameworkOther()" /> Playwright</label>
+              <label class="check-item"><input type="checkbox" value="Others" onchange="onQaUiFrameworkOther()" /> Others</label>
+            </div>
+          </div>
+          <div class="ctx-block" id="ctx-qa-ui-framework-other">
+            <div class="field"><label>Other UI framework</label><input type="text" id="qa-ui-framework-other-text" placeholder="e.g. Cypress, WebdriverIO, Appium" oninput="saveProgress()" /></div>
+          </div>
+        </div>
+
+        <!-- API automation frameworks (shown when API scope checked) -->
+        <div class="ctx-block" id="ctx-qa-api-automation">
+          <div class="sub-fields-title">API automation framework</div>
+          <div class="field">
+            <div class="check-grid" id="qa-api-framework-grid">
+              <label class="check-item"><input type="checkbox" value="Rest Assured" onchange="onQaApiFrameworkOther()" /> Rest Assured</label>
+              <label class="check-item"><input type="checkbox" value="REST" onchange="onQaApiFrameworkOther()" /> REST</label>
+              <label class="check-item"><input type="checkbox" value="Playwright" onchange="onQaApiFrameworkOther()" /> Playwright</label>
+              <label class="check-item"><input type="checkbox" value="Others" onchange="onQaApiFrameworkOther()" /> Others</label>
+            </div>
+          </div>
+          <div class="ctx-block" id="ctx-qa-api-framework-other">
+            <div class="field"><label>Other API framework</label><input type="text" id="qa-api-framework-other-text" placeholder="e.g. Karate, Postman, SuperTest" oninput="saveProgress()" /></div>
+          </div>
+        </div>
 
         <!-- Reporting tool -->
         <div class="field">
@@ -778,44 +605,68 @@
 
 </div><!-- /wf-qa-section -->
 
+</div><!-- /step-3 -->
+
+<div class="card-step" id="step-4">
+  <div class="step-tag arch">Step 4 of 4 · Architect / Lead</div>
+  <h2>Integrations &amp; Context <span class="info-tooltip">i<span class="tooltip-text">Declare any existing AI agents or automations already in use so the pipeline avoids conflicts, and configure the behavioral guardrails that all generated agents must follow.</span></span></h2>
+  <p class="step-subtitle">Existing agents and behavioral guardrails for the pipeline.</p>
+
+  <hr class="divider" />
+<!-- Existing Agents -->
+  <div class="field">
+    <label>Existing AI agents or automations in use?</label>
+    <select id="existing-agents" onchange="reveal('ctx-agents-desc', this.value === 'yes')">
+      <option value="">Select…</option>
+      <option value="yes">Yes</option>
+      <option value="no">No</option>
+    </select>
+    <p class="hint">Helps the generator avoid conflicts and decide whether to reuse or wrap existing agent capabilities.</p>
+  </div>
+  <div class="ctx-block" id="ctx-agents-desc">
+    <div class="sub-fields">
+      <div class="field"><label>Existing agents / automations (one per line) <span class="req">*</span></label><textarea id="existing-agents-desc" placeholder="e.g.&#10;GitHub Actions auto-triage bot&#10;Slack deployment notifier&#10;Internal code-review bot" oninput="saveProgress()"></textarea></div>
+    </div>
+  </div>
+
   <hr class="divider" />
   <p class="section-label">Agent Behavioral Guardrails</p>
   <div class="field">
     <label>Agent Behavioral Guardrails <span class="opt">review and edit as needed</span></label>
-    <textarea id="forbidden" rows="26" oninput="saveProgress()" style="font-size:13px;line-height:1.7;">🛡️ Scope & Control
+    <textarea id="forbidden" rows="26" oninput="saveProgress()" style="font-size:13px;line-height:1.7;">&#x1F6E1;&#xFE0F; Scope &amp; Control
 - Agent only modifies what it was explicitly asked to — no unsolicited improvements
 - Agent never proceeds to the next step without explicit human approval
 - Agent halts and reports immediately when it hits a decision it cannot resolve confidently — never guesses silently
 
-🔒 Security & Privacy
+&#x1F512; Security &amp; Privacy
 - Never commit API keys, passwords, or credentials under any circumstance
 - Never log personal data (names, emails, phone numbers, payment details) to any monitoring system
 - Never use or process user data before consent is explicitly confirmed in the application
 
-🧪 Code Quality
+&#x1F9EA; Code Quality
 - Test every change immediately — never batch changes and test at the end
 - Never rewrite or reformat code that was not part of the requested change
 - Never delete a file without explicit developer confirmation
 
-📋 Transparency & Traceability
+&#x1F4CB; Transparency &amp; Traceability
 - Every code change must be traceable to a specific ticket or requirement
 - All significant decisions (architecture, dependencies) must be explained with reasoning before being implemented
 - When uncertain, always ask — never guess and proceed
 
-🚦 Quality Gates
+&#x1F6A6; Quality Gates
 - Never bypass automated tests or CI/CD pipeline checks
 - Never create a PR without a linked ticket reference
 - Never push to shared or protected branches without human sign-off
 
-⚠️ Risk Management
+&#x26A0;&#xFE0F; Risk Management
 - Flag potential side effects and risks before making changes, not after
 - If a change could affect more than the requested scope, stop and confirm first
 - Never make database schema changes without explicit, confirmed instruction</textarea>
     <p class="hint">These become the behavioural guardrails for the AI agent across your entire development pipeline. Add, remove or reword any law to match your team's standards.</p>
   </div>
 
-</div><!-- /step-3 -->
 
+</div><!-- /step-4 -->
 
 <div class="card-step" id="step-done">
   <div class="check-circle">✅</div>
@@ -830,10 +681,11 @@
     </div>
   </div>
   <div class="download-box">
-    <div class="dl-title">Or download the intake file</div>
-    <div class="dl-desc">Use the generated <code>intake-sources.md</code> as the Preflight input. A sample lives at <code>examples/intake-sources.md</code>.</div>
+    <div class="dl-title">Or download the intake files</div>
+    <div class="dl-desc">Drop into <code>docs/onboarding/</code> in your repo.</div>
     <div class="dl-row">
-      <button class="btn-download" onclick="downloadMd()">⬇ Download intake-sources.md</button>
+      <button class="btn-download" onclick="downloadMd()">⬇ Download .md</button>
+      <button class="btn-download" onclick="downloadJson()">⬇ Download .json</button>
     </div>
   </div>
   <p style="font-size:12px;color:var(--grey);line-height:1.6;">Next step: your contact will schedule Session 1 (validation, ~60 min) once ingestion is complete.</p>
@@ -854,10 +706,87 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const totalSteps = 3;
+const totalSteps = 4;
 let currentStep  = 1;
 let uploadedFiles = [];
 const STORAGE_KEY = 'sdlc-intake-v2';
+let approvedModelsConfig = {};
+
+const DEFAULT_APPROVED_MODELS = {
+  'Claude Code': [
+    { id: 'claude-opus-4-1', label: 'Claude Opus 4.1' },
+    { id: 'claude-sonnet-4', label: 'Claude Sonnet 4' },
+    { id: 'claude-3-7-sonnet', label: 'Claude 3.7 Sonnet' }
+  ],
+  'GitHub Copilot': [
+    { id: 'gpt-5', label: 'GPT-5' },
+    { id: 'gpt-5-mini', label: 'GPT-5 mini' },
+    { id: 'o4-mini', label: 'o4-mini' }
+  ]
+};
+
+function normaliseModelConfig(raw) {
+  const result = {};
+  Object.entries(raw || {}).forEach(([tool, entries]) => {
+    if (!Array.isArray(entries)) return;
+    result[tool] = entries
+      .map(e => (typeof e === 'string' ? { id: e, label: e } : e))
+      .filter(e => e && typeof e.id === 'string' && typeof e.label === 'string');
+  });
+  return result;
+}
+
+async function loadApprovedModelsConfig() {
+  approvedModelsConfig = normaliseModelConfig(DEFAULT_APPROVED_MODELS);
+  try {
+    const res = await fetch('./onboarding-approved-models.json', { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const parsed = normaliseModelConfig(data);
+    if (Object.keys(parsed).length) approvedModelsConfig = parsed;
+  } catch (e) {
+    // Keep built-in defaults if file fetch fails (e.g., file:// access).
+  }
+}
+
+function getSelectedToolModels() {
+  const result = {};
+  document.querySelectorAll('#approved-models-container .models-by-tool').forEach(group => {
+    const tool = group.getAttribute('data-tool');
+    const models = [...group.querySelectorAll('.model-input')].map(i => i.value.trim()).filter(Boolean);
+    if (models.length) result[tool] = models;
+  });
+  return result;
+}
+
+function renderApprovedModelsForTools(selectedTools, selectedModels = {}) {
+  const container = document.getElementById('approved-models-container');
+  if (!container) return;
+
+  const supported = selectedTools.filter(t => t === 'Claude Code' || t === 'GitHub Copilot');
+  if (!supported.length) {
+    container.innerHTML = '';
+    reveal('ctx-approved-models', false);
+    return;
+  }
+
+  container.innerHTML = '';
+  supported.forEach(tool => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'field models-by-tool';
+    wrapper.setAttribute('data-tool', tool);
+    const toolId = tool.replace(/\s+/g, '-').toLowerCase();
+    const models = (selectedModels[tool] || []);
+    wrapper.innerHTML = `<label>${tool} — Approved Models</label>
+      <div class="repeatable" id="model-list-${toolId}">
+        ${models.length ? models.map(m => `<div class="rep-row"><input type="text" class="model-input" data-tool="${tool}" value="${m}" placeholder="e.g. claude-sonnet-4, gpt-4o" oninput="saveProgress()" /><button onclick="removeRow(this)" title="Remove">×</button></div>`).join('') : `<div class="rep-row"><input type="text" class="model-input" data-tool="${tool}" placeholder="e.g. claude-sonnet-4, gpt-4o" oninput="saveProgress()" /><button onclick="removeRow(this)" title="Remove">×</button></div>`}
+      </div>
+      <button class="add-row-btn" onclick="addModel('${toolId}', '${tool}')">+ Add model</button>`;
+    container.appendChild(wrapper);
+  });
+
+  reveal('ctx-approved-models', true);
+}
 
 // ── Industry compliance map ────────────────────────────────────────────────
 const INDUSTRY_COMPLIANCE = {
@@ -907,12 +836,6 @@ function reveal(id, show) {
   else      el.classList.remove('open');
 }
 
-// ── Domain model ─────────────────────────────────────────────────────────
-function onBrandModel(val) {
-  reveal('ctx-brand-codes', val === 'multi-brand');
-  saveProgress();
-}
-
 // ── Industry ─────────────────────────────────────────────────────────────
 function onIndustry(val) {
   reveal('ctx-industry-other', val === 'Other');
@@ -932,7 +855,9 @@ function onIndustry(val) {
 // ── Approved AI tools ─────────────────────────────────────────────────────
 function onAiTool() {
   const checked = [...document.querySelectorAll('#approved-ai-grid input:checked')].map(c => c.value);
+  const selectedModels = getSelectedToolModels();
   reveal('ctx-ai-others', checked.includes('Others'));
+  renderApprovedModelsForTools(checked, selectedModels);
   saveProgress();
 }
 
@@ -943,20 +868,11 @@ function addOtherTool() {
   list.appendChild(row); saveProgress();
 }
 
-// ── LLM Providers ─────────────────────────────────────────────────────────
-function onLlmProvider() {
-  const checked = [...document.querySelectorAll('#llm-providers-grid input:checked')].map(c => c.value);
-  reveal('ctx-llm-anthropic', checked.includes('Anthropic'));
-  reveal('ctx-llm-google',    checked.includes('Google'));
-  reveal('ctx-llm-openai',    checked.includes('OpenAI'));
-  reveal('ctx-llm-others',    checked.includes('Others'));
-  saveProgress();
-}
-
-function addLlmOther() {
-  const list = document.getElementById('llm-others-list');
-  const row = document.createElement('div'); row.className = 'rep-row llm-other-row';
-  row.innerHTML = '<input type="text" class="llm-other-provider" placeholder="Provider (e.g. Mistral, AWS Bedrock)" oninput="saveProgress()" /><input type="text" class="llm-other-models" placeholder="Approved models (e.g. Mistral Large, Codestral)" oninput="saveProgress()" /><button onclick="removeRow(this)" title="Remove">×</button>';
+function addModel(toolId, tool) {
+  const list = document.getElementById('model-list-' + toolId);
+  if (!list) return;
+  const row = document.createElement('div'); row.className = 'rep-row';
+  row.innerHTML = `<input type="text" class="model-input" data-tool="${tool}" placeholder="e.g. claude-sonnet-4, gpt-4o" oninput="saveProgress()" /><button onclick="removeRow(this)" title="Remove">×</button>`;
   list.appendChild(row); saveProgress();
 }
 
@@ -969,23 +885,32 @@ function onPersona() {
   saveProgress();
 }
 function syncWorkflowSections() {
-  const checked = [...document.querySelectorAll('#personas-grid input:checked')].map(c => c.value);
-  const hasDev  = checked.includes('Dev');
-  const hasQa   = checked.includes('QA');
-  const showAll = !hasDev && !hasQa;
   const devEl = document.getElementById('wf-dev-section');
   const qaEl  = document.getElementById('wf-qa-section');
-  if (devEl) devEl.style.display = (hasDev || showAll) ? '' : 'none';
-  if (qaEl)  qaEl.style.display  = (hasQa  || showAll) ? '' : 'none';
+  if (devEl) devEl.style.display = '';
+  if (qaEl)  qaEl.style.display  = '';
 }
 
-// ── PM system ─────────────────────────────────────────────────────────────
+// ── ALM System ─────────────────────────────────────────────────────────────
 function onPmSystem(val) {
   reveal('ctx-pm-jira',   val === 'Jira');
   reveal('ctx-pm-linear', val === 'Linear');
+  reveal('ctx-pm-github-issues', val === 'GitHub Issues');
   reveal('ctx-pm-ado',    val === 'Azure DevOps');
-  reveal('ctx-pm-shortcut', val === 'Shortcut');
   reveal('ctx-pm-other',  val === 'Other');
+  saveProgress();
+}
+
+// ── BA format ────────────────────────────────────────────────────────────
+function onBaFormat(val) {
+  reveal('ctx-ba-bdd',          val.includes('BDD') || val.includes('Given'));
+  reveal('ctx-ba-format-custom', val.includes('Custom') || val.includes('internal'));
+  saveProgress();
+}
+
+// ── BDD framework ─────────────────────────────────────────────────────────
+function onBddFramework(val) {
+  reveal('ctx-bdd-framework-other', val === 'Other');
   saveProgress();
 }
 
@@ -1003,6 +928,30 @@ function onQaAutomationExists(val) {
 
 // ── QA automation scope (UI / API) ────────────────────────────────────────
 function onQaAutomationScope() {
+  const checked = [...document.querySelectorAll('#qa-automation-scope input:checked')].map(c => c.value);
+  reveal('ctx-qa-ui-automation',  checked.includes('UI'));
+  reveal('ctx-qa-api-automation', checked.includes('API'));
+  saveProgress();
+}
+
+// ── QA programming language Other ────────────────────────────────────────
+function onQaProgLangOther() {
+  const checked = [...document.querySelectorAll('#qa-prog-lang-grid input:checked')].map(c => c.value);
+  reveal('ctx-qa-prog-lang-other', checked.includes('Others'));
+  saveProgress();
+}
+
+// ── QA UI framework Other ─────────────────────────────────────────────────
+function onQaUiFrameworkOther() {
+  const checked = [...document.querySelectorAll('#qa-ui-framework-grid input:checked')].map(c => c.value);
+  reveal('ctx-qa-ui-framework-other', checked.includes('Others'));
+  saveProgress();
+}
+
+// ── QA API framework Other ────────────────────────────────────────────────
+function onQaApiFrameworkOther() {
+  const checked = [...document.querySelectorAll('#qa-api-framework-grid input:checked')].map(c => c.value);
+  reveal('ctx-qa-api-framework-other', checked.includes('Others'));
   saveProgress();
 }
 
@@ -1034,12 +983,6 @@ function onHasDocs(val) {
   saveProgress();
 }
 
-// ── Design tool ───────────────────────────────────────────────────────────
-function onDesignTool(val) {
-  reveal('ctx-design-figma',  val === 'figma');
-  reveal('ctx-design-other',  val === 'other');
-  saveProgress();
-}
 
 // ── PII ───────────────────────────────────────────────────────────────────
 function onPii() {
@@ -1049,28 +992,6 @@ function onPii() {
   reveal('ctx-pii-ip',      checked.includes('Location/IP'));
   saveProgress();
 }
-
-// ── MCPs ──────────────────────────────────────────────────────────────────
-function onMcp() {
-  const checked = [...document.querySelectorAll('#mcps-grid input:checked')].map(c => c.value);
-  reveal('ctx-mcp-atlassian', checked.includes('Atlassian'));
-  reveal('ctx-mcp-github',    checked.includes('GitHub'));
-  reveal('ctx-mcp-others',    checked.includes('Others'));
-  saveProgress();
-}
-
-function onExistingAgents(val) {
-  reveal('ctx-agents-desc', val === 'yes');
-  saveProgress();
-}
-
-function addMcpOther() {
-  const list = document.getElementById('mcp-others-list');
-  const row = document.createElement('div'); row.className = 'mcp-other-row';
-  row.innerHTML = '<input type="text" class="mcp-other-name" placeholder="e.g. Datadog, Slack, Figma" oninput="saveProgress()" /><input type="url" class="mcp-other-url" placeholder="https://…" oninput="saveProgress()" /><button onclick="removeRow(this)" title="Remove">×</button>';
-  list.appendChild(row); saveProgress();
-}
-
 // ── CMS ───────────────────────────────────────────────────────────────────
 const CMS_CONFIG = {
   'Sanity':      { title: 'Sanity config', fields: [{ label:'Project ID', id:'cms-sanity-pid', ph:'abc123def' },{ label:'Dataset', id:'cms-sanity-ds', ph:'production' }] },
@@ -1121,6 +1042,24 @@ function renderFileList() {
 }
 function removeFile(i) { uploadedFiles.splice(i, 1); renderFileList(); saveProgress(); }
 
+// ── Agent file upload ─────────────────────────────────────────────────────
+let uploadedAgentFiles = [];
+function handleAgentFiles(files) {
+  Array.from(files).forEach(f => { if (!uploadedAgentFiles.find(x => x.name === f.name)) { uploadedAgentFiles.push(f); renderAgentFileList(); } });
+  saveProgress();
+}
+function renderAgentFileList() {
+  const list = document.getElementById('agent-file-list');
+  list.innerHTML = '';
+  uploadedAgentFiles.forEach((f, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'file-chip';
+    chip.innerHTML = `<span>📄 ${f.name}</span><button onclick="removeAgentFile(${i})">×</button>`;
+    list.appendChild(chip);
+  });
+}
+function removeAgentFile(i) { uploadedAgentFiles.splice(i, 1); renderAgentFileList(); saveProgress(); }
+
 // ── Repos ─────────────────────────────────────────────────────────────────
 function addRepo() {
   const list = document.getElementById('repos-list');
@@ -1141,46 +1080,44 @@ function chk(id) { const g = document.getElementById(id); if (!g || inClosedCtx(
 function v(id)   { const el = document.getElementById(id); if (!el || inClosedCtx(el)) return ''; return el.value.trim(); }
 
 function collectData() {
-  const repos = [...document.querySelectorAll('.repo-input')].filter(i => !inClosedCtx(i)).map(i => i.value.trim()).filter(Boolean);
+  const pmSystem = v('pm-system');
+  const pmToolUrl = pmSystem === 'Jira' ? v('jira-url')
+    : pmSystem === 'Azure DevOps' ? v('ado-url')
+    : pmSystem === 'Linear' ? v('linear-url')
+    : pmSystem === 'GitHub Issues' ? v('github-issues-url')
+    : pmSystem === 'Other' ? v('pm-other-url') : '';
+  const pmIntegrationMode = pmSystem === 'Jira' ? v('jira-integration-mode')
+    : pmSystem === 'Azure DevOps' ? v('ado-integration-mode')
+    : pmSystem === 'Linear' ? v('linear-integration-mode')
+    : pmSystem === 'GitHub Issues' ? v('github-issues-integration-mode')
+    : pmSystem === 'Other' ? v('pm-other-integration-mode') : '';
+
   return {
     meta: { captured_at: new Date().toISOString(), tool_version: '3.0' },
     organisation: {
       company: v('company'), industry: v('industry'), industry_other: v('industry-other-text'),
       approved_ai_tools: chk('approved-ai-grid'),
       other_ai_tools: [...document.querySelectorAll('.other-tool-input')].filter(i => !inClosedCtx(i)).map(i => i.value.trim()).filter(Boolean),
-      llm_providers: chk('llm-providers-grid'),
-      llm_models: {
-        anthropic: chk('models-anthropic-grid'),
-        google:    chk('models-google-grid'),
-        openai:    chk('models-openai-grid'),
-        others: [...document.querySelectorAll('#llm-others-list .llm-other-row')].filter(r => !inClosedCtx(r)).map(r => ({ provider: r.querySelector('.llm-other-provider')?.value.trim(), models: r.querySelector('.llm-other-models')?.value.trim() })).filter(r => r.provider),
-      },
+      approved_models: getSelectedToolModels(),
       personas: chk('personas-grid'),
       compliance: chk('compliance-grid'),
-      brand_model: v('brand-model'), brand_codes: v('brand-codes'),
     },
     workflow: {
-      dev: { pm_system: v('pm-system'), pm_other_name: v('pm-other-name'), pm_other_url: v('pm-other-url'), jira_url: v('jira-url'), ticket_prefix: v('ticket-prefix'), project_keys: v('project-keys'), default_branch: v('default-branch'), linear_workspace: v('linear-workspace'), linear_teams: v('linear-teams'), ado_org: v('ado-org'), ado_project: v('ado-project'), ado_url: v('ado-url'), shortcut_url: v('shortcut-url'), shortcut_projects: v('shortcut-projects'),
-        scm: { system: v('scm-system'), github: { org: v('github-org'), repos }, gitlab: { url: v('gitlab-url'), group: v('gitlab-group'), repos: v('gitlab-repos') }, bitbucket: { workspace: v('bitbucket-workspace'), url: v('bitbucket-url'), repos: v('bitbucket-repos') }, azure_repos: { org: v('azure-repos-org'), project: v('azure-repos-project'), repos: v('azure-repos-list') }, other: { name: v('scm-other-name'), url: v('scm-other-url') } } },
-      qa:  { test_mgmt_system: v('test-mgmt-system'), test_mgmt_other: v('test-mgmt-other-name'), sample_test_case_format: v('sample-test-case-format'), automation_exists: v('qa-automation-exists'), automation_scope: chk('qa-automation-scope'), reporting_tools: chk('qa-reporting-grid'), reporting_other: v('qa-reporting-other-text') },
+      dev: { pm_system: pmSystem, pm_tool_url: pmToolUrl, pm_integration_mode: pmIntegrationMode,
+        scm: { system: v('scm-system'), github: { url: v('github-enterprise-url'), group: v('github-org'), repos: v('github-repos'), integration_mode: v('github-integration-mode') }, gitlab: { url: v('gitlab-url'), group: v('gitlab-group'), repos: v('gitlab-repos'), integration_mode: v('gitlab-integration-mode') }, bitbucket: { workspace: v('bitbucket-workspace'), url: v('bitbucket-url'), repos: v('bitbucket-repos'), integration_mode: v('bitbucket-integration-mode') }, azure_repos: { org: v('azure-repos-org'), project: v('azure-repos-project'), repos: v('azure-repos-list'), integration_mode: v('azure-repos-integration-mode') }, other: { name: v('scm-other-name'), url: v('scm-other-url'), integration_mode: v('scm-other-integration-mode') } } },
+      ba:  { req_format: v('ba-req-format'), req_format_custom: v('ba-req-format-custom-desc'), bdd_framework: v('bdd-framework'), bdd_framework_other: v('bdd-framework-other-text'), dor: v('ba-dor'), dor_url: v('ba-dor-url'), signoff: v('ba-signoff') },
+      qa:  { test_mgmt_system: v('test-mgmt-system'), test_mgmt_other: v('test-mgmt-other-name'), sample_test_case_format: v('sample-test-case-format'), automation_exists: v('qa-automation-exists'), automation_scope: chk('qa-automation-scope'), prog_languages: chk('qa-prog-lang-grid'), prog_lang_other: v('qa-prog-lang-other-text'), ui_frameworks: chk('qa-ui-framework-grid'), ui_framework_other: v('qa-ui-framework-other-text'), api_frameworks: chk('qa-api-framework-grid'), api_framework_other: v('qa-api-framework-other-text'), reporting_tools: chk('qa-reporting-grid'), reporting_other: v('qa-reporting-other-text') },
     },
     sources: {
       confluence: { base_url: v('confluence-url'), space_keys: v('confluence-spaces'), specific_pages: v('confluence-pages') },
-      figma_url: v('figma-url'), design_tool: v('design-tool'), design_tool_name: v('design-tool-name'), design_tool_url: v('design-tool-url'),
       has_documents: v('has-documents'), other_links: v('other-links'), uploaded_files: uploadedFiles.map(f => f.name),
     },
     constraints: {
       pii_types: chk('pii-grid'),
       forbidden: v('forbidden'),
-      extra_context: v('extra-context'),
     },
     ai_stack: {
-      mcps: chk('mcps-grid'),
-        mcp_atlassian: { url: v('mcp-atlassian-url') },
-        mcp_github:    { url: v('mcp-github-url') },
-        mcp_others: [...document.querySelectorAll('#mcp-others-list .mcp-other-row')].filter(r => !inClosedCtx(r)).map(r => ({ name: r.querySelector('.mcp-other-name')?.value.trim(), url: r.querySelector('.mcp-other-url')?.value.trim() })).filter(r => r.name),
-      existing_agents: v('existing-agents'), existing_agents_desc: v('existing-agents-desc'),
-      cms: v('cms'), cms_config: getCmsConfig(),
+      existing_agents: v('existing-agents'), existing_agents_desc: v('existing-agents-desc'), existing_agents_files: uploadedAgentFiles.map(f => f.name),
     },
   };
 }
@@ -1210,58 +1147,53 @@ function restoreData(d) {
   const s  = d.sources || {};
   const c  = d.constraints || {};
   const a  = d.ai_stack || {};
-  const dev= wf.dev || {}; const qa = wf.qa || {};
+  const dev= wf.dev || {}; const ba = wf.ba || {}; const qa = wf.qa || {};
 
   sv('company', o.company); sv('industry', o.industry);
   if (o.industry) onIndustry(o.industry);
   sv('industry-other-text', o.industry_other);
   sc('approved-ai-grid', o.approved_ai_tools || []); onAiTool();
+  renderApprovedModelsForTools(o.approved_ai_tools || [], o.approved_models || {});
   const otherList = document.getElementById('other-tools-list'); otherList.innerHTML = '';
   (o.other_ai_tools || []).forEach(t => { const row = document.createElement('div'); row.className = 'rep-row'; row.innerHTML = `<input type="text" class="other-tool-input" value="${t}" placeholder="e.g. Cursor" oninput="saveProgress()" /><button onclick="removeRow(this)">×</button>`; otherList.appendChild(row); });
   if (!(o.other_ai_tools || []).length) { const row = document.createElement('div'); row.className = 'rep-row'; row.innerHTML = '<input type="text" class="other-tool-input" placeholder="e.g. Cursor, Windsurf, Amazon Q Developer" oninput="saveProgress()" /><button onclick="removeRow(this)">×</button>'; otherList.appendChild(row); }
-  sc('llm-providers-grid', o.llm_providers || []); onLlmProvider();
-  const lm = o.llm_models || {};
-  sc('models-anthropic-grid', lm.anthropic || []);
-  sc('models-google-grid',    lm.google    || []);
-  sc('models-openai-grid',    lm.openai    || []);
-  const llmOtherList = document.getElementById('llm-others-list'); llmOtherList.innerHTML = '';
-  (lm.others || []).forEach(entry => { const row = document.createElement('div'); row.className = 'rep-row llm-other-row'; row.innerHTML = `<input type="text" class="llm-other-provider" value="${entry.provider||''}" placeholder="Provider" oninput="saveProgress()" /><input type="text" class="llm-other-models" value="${entry.models||''}" placeholder="Approved models" oninput="saveProgress()" /><button onclick="removeRow(this)" title="Remove">×</button>`; llmOtherList.appendChild(row); });
-  if (!(lm.others || []).length) { const row = document.createElement('div'); row.className = 'rep-row llm-other-row'; row.innerHTML = '<input type="text" class="llm-other-provider" placeholder="Provider (e.g. Mistral, AWS Bedrock)" oninput="saveProgress()" /><input type="text" class="llm-other-models" placeholder="Approved models (e.g. Mistral Large, Codestral)" oninput="saveProgress()" /><button onclick="removeRow(this)" title="Remove">×</button>'; llmOtherList.appendChild(row); }
   sc('personas-grid', o.personas || []); onPersona();
   if (o.compliance) sc('compliance-grid', o.compliance);
-  sv('brand-model', o.brand_model); onBrandModel(o.brand_model || '');
-  sv('brand-codes', o.brand_codes);
 
   sv('pm-system', dev.pm_system); onPmSystem(dev.pm_system || '');
-  sv('pm-other-name', dev.pm_other_name); sv('pm-other-url', dev.pm_other_url);
-  sv('jira-url', dev.jira_url); sv('ticket-prefix', dev.ticket_prefix);
-  sv('project-keys', dev.project_keys); sv('default-branch', dev.default_branch);
-  sv('release-branch-prefix', dev.release_prefix); sv('hotfix-branch-prefix', dev.hotfix_prefix);
-  sv('linear-workspace', dev.linear_workspace); sv('linear-teams', dev.linear_teams);
-  sv('ado-org', dev.ado_org); sv('ado-project', dev.ado_project); sv('ado-url', dev.ado_url);
-  sv('shortcut-url', dev.shortcut_url); sv('shortcut-projects', dev.shortcut_projects);
+  if (dev.pm_system === 'Jira') { sv('jira-url', dev.pm_tool_url || dev.jira_url); sv('jira-integration-mode', dev.pm_integration_mode); }
+  if (dev.pm_system === 'Azure DevOps') { sv('ado-url', dev.pm_tool_url || dev.ado_url); sv('ado-integration-mode', dev.pm_integration_mode); }
+  if (dev.pm_system === 'Linear') { sv('linear-url', dev.pm_tool_url); sv('linear-integration-mode', dev.pm_integration_mode); }
+  if (dev.pm_system === 'GitHub Issues') { sv('github-issues-url', dev.pm_tool_url); sv('github-issues-integration-mode', dev.pm_integration_mode); }
+  if (dev.pm_system === 'Other') { sv('pm-other-url', dev.pm_tool_url || dev.pm_other_url); sv('pm-other-integration-mode', dev.pm_integration_mode); }
   const scm = dev.scm || {};
   sv('scm-system', scm.system); onScmSystem(scm.system || '');
-  sv('github-org', scm.github?.org); onGithubOrg(scm.github?.org || '');
-  const repos = scm.github?.repos || [];
-  const list = document.getElementById('repos-list'); list.innerHTML = '';
-  repos.forEach(r => { const row = document.createElement('div'); row.className = 'rep-row'; row.innerHTML = `<input type="text" class="repo-input" value="${r}" placeholder="repo-name" oninput="saveProgress()" /><button onclick="removeRow(this)">×</button>`; list.appendChild(row); });
-  if (!repos.length) addRepo();
-  sv('gitlab-url', scm.gitlab?.url); sv('gitlab-group', scm.gitlab?.group); sv('gitlab-repos', scm.gitlab?.repos);
-  sv('bitbucket-workspace', scm.bitbucket?.workspace); sv('bitbucket-url', scm.bitbucket?.url); sv('bitbucket-repos', scm.bitbucket?.repos);
-  sv('azure-repos-org', scm.azure_repos?.org); sv('azure-repos-project', scm.azure_repos?.project); sv('azure-repos-list', scm.azure_repos?.repos);
-  sv('scm-other-name', scm.other?.name); sv('scm-other-url', scm.other?.url);
+  sv('github-enterprise-url', scm.github?.url || scm.github?.enterprise_url); sv('github-org', scm.github?.group || scm.github?.org); sv('github-repos', scm.github?.repos); sv('github-integration-mode', scm.github?.integration_mode);
+  sv('gitlab-url', scm.gitlab?.url); sv('gitlab-group', scm.gitlab?.group); sv('gitlab-repos', scm.gitlab?.repos); sv('gitlab-integration-mode', scm.gitlab?.integration_mode);
+  sv('bitbucket-workspace', scm.bitbucket?.workspace); sv('bitbucket-url', scm.bitbucket?.url); sv('bitbucket-repos', scm.bitbucket?.repos); sv('bitbucket-integration-mode', scm.bitbucket?.integration_mode);
+  sv('azure-repos-org', scm.azure_repos?.org); sv('azure-repos-project', scm.azure_repos?.project); sv('azure-repos-list', scm.azure_repos?.repos); sv('azure-repos-integration-mode', scm.azure_repos?.integration_mode);
+  sv('scm-other-name', scm.other?.name); sv('scm-other-url', scm.other?.url); sv('scm-other-integration-mode', scm.other?.integration_mode);
+
+  sv('ba-req-format', ba.req_format); onBaFormat(ba.req_format || '');
+  sv('ba-req-format-custom-desc', ba.req_format_custom);
+  sv('bdd-framework', ba.bdd_framework); onBddFramework(ba.bdd_framework || '');
+  sv('bdd-framework-other-text', ba.bdd_framework_other); sv('ba-dor', ba.dor);
+  reveal('ctx-ba-dor-detail', ba.dor === 'yes'); sv('ba-dor-url', ba.dor_url); sv('ba-signoff', ba.signoff);
 
   sv('test-mgmt-system', qa.test_mgmt_system); onTestMgmt(qa.test_mgmt_system || '');
   sv('test-mgmt-other-name', qa.test_mgmt_other);
   sv('sample-test-case-format', qa.sample_test_case_format);
   sv('qa-automation-exists', qa.automation_exists); onQaAutomationExists(qa.automation_exists || '');
   sc('qa-automation-scope', qa.automation_scope || []); onQaAutomationScope();
+  sc('qa-prog-lang-grid', qa.prog_languages || []); onQaProgLangOther();
+  sv('qa-prog-lang-other-text', qa.prog_lang_other);
+  sc('qa-ui-framework-grid', qa.ui_frameworks || []); onQaUiFrameworkOther();
+  sv('qa-ui-framework-other-text', qa.ui_framework_other);
+  sc('qa-api-framework-grid', qa.api_frameworks || []); onQaApiFrameworkOther();
+  sv('qa-api-framework-other-text', qa.api_framework_other);
   sc('qa-reporting-grid', qa.reporting_tools || []); onQaReportingOther();
   sv('qa-reporting-other-text', qa.reporting_other);
 
-  sv('design-tool', s.design_tool); onDesignTool(s.design_tool || '');
-  sv('figma-url', s.figma_url); sv('design-tool-name', s.design_tool_name); sv('design-tool-url', s.design_tool_url);
   sv('confluence-spaces', s.confluence?.space_keys);
   sv('confluence-url', s.confluence?.base_url);
   sv('confluence-pages', s.confluence?.specific_pages);
@@ -1269,15 +1201,8 @@ function restoreData(d) {
 
   sc('pii-grid', c.pii_types || []); onPii();
   sv('forbidden', c.forbidden);
-  sv('extra-context', c.extra_context);
 
-  sc('mcps-grid', a.mcps || []); onMcp();
-  sv('mcp-atlassian-url', a.mcp_atlassian?.url);
-  sv('mcp-github-url',    a.mcp_github?.url);
-  (a.mcp_others || []).forEach(e => { const list = document.getElementById('mcp-others-list'); const row = document.createElement('div'); row.className = 'mcp-other-row'; row.innerHTML = '<input type="text" class="mcp-other-name" placeholder="e.g. Datadog, Slack, Figma" oninput="saveProgress()" /><input type="url" class="mcp-other-url" placeholder="https://…" oninput="saveProgress()" /><button onclick="removeRow(this)" title="Remove">×</button>'; list.appendChild(row); if (e.name) row.querySelector('.mcp-other-name').value = e.name; if (e.url) row.querySelector('.mcp-other-url').value = e.url; });
-  sv('existing-agents', a.existing_agents); onExistingAgents(a.existing_agents || ''); sv('existing-agents-desc', a.existing_agents_desc);
-  sv('cms', a.cms); onCms(a.cms || '');
-  if (a.cms_config) setTimeout(() => { Object.entries(a.cms_config).forEach(([id, val]) => sv(id, val)); }, 50);
+  sv('existing-agents', a.existing_agents); reveal('ctx-agents-desc', a.existing_agents === 'yes'); sv('existing-agents-desc', a.existing_agents_desc); sv('existing-agents-repos', a.existing_agents_repos);
 }
 
 function sv(id, val) { const el = document.getElementById(id); if (el && val) el.value = val; }
@@ -1303,100 +1228,16 @@ function markError(id, msg) {
   err.textContent = '⚠ ' + msg;
   el.parentNode.appendChild(err);
 }
-function markGroupError(id, msg) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.classList.add('field-error');
-  const err = document.createElement('p');
-  err.className = 'field-error-msg';
-  err.textContent = '⚠ ' + msg;
-  el.insertAdjacentElement('afterend', err);
-}
-function sectionVisible(id) {
-  const el = document.getElementById(id);
-  return !!el && getComputedStyle(el).display !== 'none';
-}
-function validBranchName(name) {
-  return /^[A-Za-z0-9._/-]+$/.test(name) && !name.startsWith('/') && !name.endsWith('/') && !name.includes('..') && !name.includes(' ');
-}
-function hasOtherLlmModel() {
-  return [...document.querySelectorAll('#llm-others-list .llm-other-row')]
-    .filter(row => !inClosedCtx(row))
-    .some(row => row.querySelector('.llm-other-provider')?.value.trim() && row.querySelector('.llm-other-models')?.value.trim());
-}
-function hasAnyApprovedModel() {
-  return chk('models-anthropic-grid').length > 0 || chk('models-google-grid').length > 0 || chk('models-openai-grid').length > 0 || hasOtherLlmModel();
-}
-function hasProvidedDocuments() {
-  return !!v('other-links') || uploadedFiles.length > 0;
-}
 function validateStep(step) {
   clearErrors();
   let ok = true;
   const req = (id, msg) => { if (!v(id)) { markError(id, msg); ok = false; } };
-  const reqGroup = (id, msg) => { if (!chk(id).length) { markGroupError(id, msg); ok = false; } };
   if (step === 1) {
     req('company',  'Company name is required.');
     req('industry', 'Industry is required — determines compliance and PII enforcement.');
-    if (v('industry') === 'Other') req('industry-other-text', 'Please specify the industry.');
-    req('brand-model', 'Brand structure is required.');
-    if (v('brand-model') === 'multi-brand') req('brand-codes', 'Brand codes are required for multi-brand engagements.');
-    reqGroup('approved-ai-grid', 'Select at least one approved AI tool.');
-    reqGroup('llm-providers-grid', 'Select at least one approved LLM provider.');
-    if (chk('llm-providers-grid').includes('Anthropic') && !chk('models-anthropic-grid').length) { markGroupError('models-anthropic-grid', 'Select at least one Anthropic model.'); ok = false; }
-    if (chk('llm-providers-grid').includes('Google') && !chk('models-google-grid').length) { markGroupError('models-google-grid', 'Select at least one Google model.'); ok = false; }
-    if (chk('llm-providers-grid').includes('OpenAI') && !chk('models-openai-grid').length) { markGroupError('models-openai-grid', 'Select at least one OpenAI model.'); ok = false; }
-    if (chk('llm-providers-grid').includes('Others') && !hasOtherLlmModel()) { markGroupError('llm-others-list', 'Add at least one other provider with approved model names.'); ok = false; }
-    if (!hasAnyApprovedModel()) { markGroupError('llm-providers-grid', 'At least one provider/model pair is required.'); ok = false; }
   }
-  if (step === 2) {
-    const docsStrategy = v('has-documents');
-    if ((docsStrategy === 'yes' || docsStrategy === 'both') && !hasProvidedDocuments()) { markGroupError('file-list', 'Provide at least one document link or uploaded file name.'); ok = false; }
-    if (docsStrategy === 'no' || docsStrategy === 'both') {
-      req('confluence-spaces', 'Confluence spaces are required when Confluence is the knowledge source.');
-      req('confluence-url', 'Confluence base URL is required when Confluence is the knowledge source.');
-    }
-    if (v('design-tool') === 'figma') req('figma-url', 'Figma file URL is required when Figma is selected.');
-    if (v('design-tool') === 'other') req('design-tool-name', 'Design tool name is required when Other is selected.');
-    if (v('existing-agents') === 'yes') req('existing-agents-desc', 'Describe the existing agents so generation can avoid conflicts.');
-  }
-  if (step === 3) {
-    if (sectionVisible('wf-dev-section')) {
-      req('pm-system', 'ALM tool is required. Select None only if the engagement has no PM system.');
-      if (v('pm-system') === 'Jira') {
-        req('jira-url', 'Jira base URL is required.');
-        req('ticket-prefix', 'Default ticket prefix is required for Jira.');
-      }
-      if (v('pm-system') === 'Azure DevOps') {
-        req('ado-org', 'Azure DevOps organisation is required.');
-        req('ado-project', 'Azure DevOps project is required.');
-      }
-      if (v('pm-system') === 'Linear') req('linear-workspace', 'Linear workspace slug is required.');
-      if (v('pm-system') === 'Shortcut') req('shortcut-url', 'Shortcut workspace URL is required.');
-      if (v('pm-system') === 'Other') req('pm-other-name', 'PM tool name is required.');
-      req('scm-system', 'Source control system is required.');
-      if (v('scm-system') === 'github') req('github-org', 'GitHub org/user is required.');
-      if (v('scm-system') === 'bitbucket') req('bitbucket-workspace', 'Bitbucket workspace is required.');
-      if (v('scm-system') === 'azure-repos') {
-        req('azure-repos-org', 'Azure Repos organisation is required.');
-        req('azure-repos-project', 'Azure Repos project is required.');
-      }
-      if (v('scm-system') === 'other') req('scm-other-name', 'SCM tool name is required.');
-      req('default-branch', 'Default branch is required.');
-      if (v('default-branch') && !validBranchName(v('default-branch'))) { markError('default-branch', 'Use a valid branch name without spaces, leading slash, trailing slash, or double dots.'); ok = false; }
-    }
-    if (sectionVisible('wf-qa-section')) {
-      if (v('test-mgmt-system') === 'Others') req('test-mgmt-other-name', 'Test management tool name is required.');
-      if (v('qa-automation-exists') === 'yes' && !chk('qa-automation-scope').length) { markGroupError('qa-automation-scope', 'Select at least one automation scope.'); ok = false; }
-      if (chk('qa-reporting-grid').includes('Others')) req('qa-reporting-other-text', 'Reporting tool name is required.');
-    }
-    req('forbidden', 'Agent behavioral guardrails are required.');
-  }
-  if (!ok) {
-    const firstError = document.querySelector('.field-error');
-    if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    else window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
+  // Steps 2–4: all fields optional; no blocking validation
+  if (!ok) window.scrollTo({ top: 0, behavior: 'smooth' });
   return ok;
 }
 
@@ -1448,39 +1289,6 @@ function showDone() {
 }
 
 // ── Markdown output ───────────────────────────────────────────────────────
-function collectClarifications(d) {
-  const items = [];
-  const organisation = d.organisation || {};
-  const workflow = d.workflow || {};
-  const dev = workflow.dev || {};
-  const qa = workflow.qa || {};
-  const sources = d.sources || {};
-  const constraints = d.constraints || {};
-  const ai = d.ai_stack || {};
-  const scm = dev.scm || {};
-
-  if (!organisation.personas?.length) items.push('Confirm which EPAM delivery personas are in scope for generated workflows.');
-  if (!constraints.pii_types?.length) items.push('Confirm whether the system handles PII, PHI, payment data, or public-only data.');
-  if (scm.system === 'github' && !scm.github?.repos?.length) items.push('Confirm GitHub repositories in scope for cloning and scanning.');
-  if (scm.system === 'gitlab' && !scm.gitlab?.repos) items.push('Confirm GitLab repositories in scope for cloning and scanning.');
-  if (scm.system === 'bitbucket' && !scm.bitbucket?.repos) items.push('Confirm Bitbucket repositories in scope for cloning and scanning.');
-  if (scm.system === 'azure-repos' && !scm.azure_repos?.repos) items.push('Confirm Azure Repos repositories in scope for cloning and scanning.');
-  if (!sources.has_documents && !sources.confluence?.base_url && !sources.other_links && !sources.uploaded_files?.length) items.push('Confirm whether any knowledge sources, onboarding docs, ADRs, or runbooks should be provided.');
-  if (qa.automation_exists === 'yes' && !qa.reporting_tools?.length) items.push('Confirm whether automated test reports should be generated or imported.');
-  if (!ai.mcps?.length) items.push('Confirm whether MCP servers are unavailable or simply not configured yet.');
-  return items;
-}
-
-function displayScmName(system) {
-  const names = { 'github': 'GitHub', 'gitlab': 'GitLab', 'bitbucket': 'Bitbucket', 'azure-repos': 'Azure Repos', 'other': 'Other' };
-  return names[system] || system || '';
-}
-
-function formatCmsConfig(config) {
-  const entries = Object.entries(config || {}).filter(([, value]) => value);
-  return entries.length ? entries.map(([key, value]) => `  - ${key}: ${value}`).join('\n') : '  - None specified';
-}
-
 function buildMarkdown() {
   const d = collectData();
   const o = d.organisation; const wf = d.workflow; const s = d.sources;
@@ -1488,92 +1296,81 @@ function buildMarkdown() {
   const ts = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
   const none = v => v || '_(not provided)_';
   const list = arr => arr?.length ? arr.map(v => `  - ${v}`).join('\n') : '  - None specified';
-  const compact = arr => arr?.length ? arr.join(', ') : '_(none)_';
   const personas = o.personas || [];
-  const dev = wf.dev || {};
+
+  // Industry with "Other" text
+  const industryDisplay = o.industry === 'Other' && o.industry_other ? `Other - ${o.industry_other}` : (o.industry || '_(not provided)_');
+
+  // SCM details
+  const scm = wf.dev?.scm || {};
+  let scmSection = `- SCM System: ${none(scm.system)}\n`;
+  if (scm.system === 'github') {
+    scmSection += `- GitHub URL: ${none(scm.github?.url)}\n`;
+    scmSection += `- GitHub Org/Namespace: ${none(scm.github?.group)}\n`;
+    scmSection += `- Repositories:\n${scm.github?.repos ? scm.github.repos.split('\n').filter(Boolean).map(r => `  - ${r.trim()}`).join('\n') : '  - _(not provided)_'}\n`;
+    scmSection += `- SCM Integration Mode: ${none(scm.github?.integration_mode)}\n`;
+  } else if (scm.system === 'gitlab') {
+    scmSection += `- GitLab URL: ${none(scm.gitlab?.url)}\n`;
+    scmSection += `- GitLab Group/Namespace: ${none(scm.gitlab?.group)}\n`;
+    scmSection += `- Repositories:\n${scm.gitlab?.repos ? scm.gitlab.repos.split('\n').filter(Boolean).map(r => `  - ${r.trim()}`).join('\n') : '  - _(not provided)_'}\n`;
+    scmSection += `- SCM Integration Mode: ${none(scm.gitlab?.integration_mode)}\n`;
+  } else if (scm.system === 'bitbucket') {
+    scmSection += `- Bitbucket URL: ${none(scm.bitbucket?.url)}\n`;
+    scmSection += `- Workspace: ${none(scm.bitbucket?.workspace)}\n`;
+    scmSection += `- Repositories:\n${scm.bitbucket?.repos ? scm.bitbucket.repos.split('\n').filter(Boolean).map(r => `  - ${r.trim()}`).join('\n') : '  - _(not provided)_'}\n`;
+    scmSection += `- SCM Integration Mode: ${none(scm.bitbucket?.integration_mode)}\n`;
+  } else if (scm.system === 'azure-repos') {
+    scmSection += `- Organisation: ${none(scm.azure_repos?.org)}\n`;
+    scmSection += `- Project: ${none(scm.azure_repos?.project)}\n`;
+    scmSection += `- Repositories:\n${scm.azure_repos?.repos ? scm.azure_repos.repos.split('\n').filter(Boolean).map(r => `  - ${r.trim()}`).join('\n') : '  - _(not provided)_'}\n`;
+    scmSection += `- SCM Integration Mode: ${none(scm.azure_repos?.integration_mode)}\n`;
+  } else if (scm.system === 'other') {
+    scmSection += `- Tool Name: ${none(scm.other?.name)}\n`;
+    scmSection += `- URL: ${none(scm.other?.url)}\n`;
+    scmSection += `- SCM Integration Mode: ${none(scm.other?.integration_mode)}\n`;
+  }
+
+  // Developer workflow section (always shown)
+  let wfSection = `\n### Developer Tools\n- PM/Requirements System: ${none(wf.dev?.pm_system)}\n- PM Tool URL: ${none(wf.dev?.pm_tool_url)}\n- PM Integration Mode: ${none(wf.dev?.pm_integration_mode)}\n${scmSection}`;
+
+  // QA workflow section (always shown)
   const qa = wf.qa || {};
-  const scm = dev.scm || {};
-  const lm = o.llm_models || {};
+  wfSection += `\n### QA / Testing Tools\n- Test Management: ${none(qa.test_mgmt_system)}${qa.test_mgmt_other ? ` (${qa.test_mgmt_other})` : ''}\n- Sample Test Case Format: ${none(qa.sample_test_case_format)}\n- Automation Exists: ${none(qa.automation_exists)}\n`;
+  if (qa.automation_exists === 'yes') {
+    wfSection += `- Automation Scope: ${qa.automation_scope?.length ? qa.automation_scope.join(', ') : '_(not provided)_'}\n`;
+    wfSection += `- Languages: ${qa.prog_languages?.length ? qa.prog_languages.join(', ') + (qa.prog_lang_other ? `, ${qa.prog_lang_other}` : '') : '_(not provided)_'}\n`;
+    wfSection += `- UI Frameworks: ${qa.ui_frameworks?.length ? qa.ui_frameworks.join(', ') + (qa.ui_framework_other ? `, ${qa.ui_framework_other}` : '') : '_(not provided)_'}\n`;
+    wfSection += `- API Frameworks: ${qa.api_frameworks?.length ? qa.api_frameworks.join(', ') + (qa.api_framework_other ? `, ${qa.api_framework_other}` : '') : '_(not provided)_'}\n`;
+    wfSection += `- Reporting Tools: ${qa.reporting_tools?.length ? qa.reporting_tools.join(', ') + (qa.reporting_other ? `, ${qa.reporting_other}` : '') : '_(not provided)_'}\n`;
+  }
+
+  // Approved models
   const modelRows = [];
-  if ((lm.anthropic || []).length) modelRows.push(`| Anthropic | ${lm.anthropic.join(', ')} |`);
-  if ((lm.google || []).length) modelRows.push(`| Google | ${lm.google.join(', ')} |`);
-  if ((lm.openai || []).length) modelRows.push(`| OpenAI | ${lm.openai.join(', ')} |`);
-  (lm.others || []).forEach(entry => { if (entry.provider) modelRows.push(`| ${entry.provider} | ${entry.models || '_(not specified)_'} |`); });
+  Object.entries(o.approved_models || {}).forEach(([tool, models]) => {
+    if (!models?.length) return;
+    modelRows.push(`| ${tool} | ${models.join(', ')} |`);
+  });
 
-  const devHasData = !!(dev.pm_system || dev.default_branch || scm.system || dev.jira_url || dev.ado_org || dev.linear_workspace || dev.shortcut_url || dev.pm_other_name);
-  const qaHasData = !!(qa.test_mgmt_system || qa.sample_test_case_format || qa.automation_exists || qa.automation_scope?.length || qa.reporting_tools?.length);
-  const includeDev = personas.includes('Dev') || (!personas.length && devHasData) || devHasData;
-  const includeQa = personas.includes('QA') || qaHasData;
-  let wfSection = '';
+  // Document links
+  const docLinks = (s.other_links || '').split('\n').map(v => v.trim()).filter(Boolean);
 
-  if (includeDev) {
-    const devLines = [`- PM System: ${none(dev.pm_system)}`];
-    if (dev.pm_system === 'Jira') {
-      devLines.push(`- Jira URL: ${none(dev.jira_url)}`);
-      devLines.push(`- Ticket Prefix: ${none(dev.ticket_prefix)}`);
-      devLines.push(`- Project Keys: ${none(dev.project_keys)}`);
-    } else if (dev.pm_system === 'Azure DevOps') {
-      devLines.push(`- Azure DevOps Organisation: ${none(dev.ado_org)}`);
-      devLines.push(`- Azure DevOps Project: ${none(dev.ado_project)}`);
-      devLines.push(`- Azure DevOps URL: ${none(dev.ado_url)}`);
-    } else if (dev.pm_system === 'Linear') {
-      devLines.push(`- Linear Workspace: ${none(dev.linear_workspace)}`);
-      devLines.push(`- Linear Teams: ${none(dev.linear_teams)}`);
-    } else if (dev.pm_system === 'Shortcut') {
-      devLines.push(`- Shortcut URL: ${none(dev.shortcut_url)}`);
-      devLines.push(`- Shortcut Projects: ${none(dev.shortcut_projects)}`);
-    } else if (dev.pm_system === 'Other') {
-      devLines.push(`- PM Tool Name: ${none(dev.pm_other_name)}`);
-      devLines.push(`- PM Tool URL: ${none(dev.pm_other_url)}`);
-    }
-    devLines.push(`- SCM: ${none(displayScmName(scm.system))}`);
-    if (scm.system === 'github') {
-      devLines.push(`- GitHub Org/User: ${none(scm.github?.org)}`);
-      devLines.push(`- Repositories:\n${list(scm.github?.repos)}`);
-    } else if (scm.system === 'gitlab') {
-      devLines.push(`- GitLab URL: ${none(scm.gitlab?.url || 'gitlab.com')}`);
-      devLines.push(`- GitLab Group/Namespace: ${none(scm.gitlab?.group)}`);
-      devLines.push(`- Repositories:\n${list((scm.gitlab?.repos || '').split('\n').map(r => r.trim()).filter(Boolean))}`);
-    } else if (scm.system === 'bitbucket') {
-      devLines.push(`- Bitbucket Workspace: ${none(scm.bitbucket?.workspace)}`);
-      devLines.push(`- Bitbucket Server URL: ${none(scm.bitbucket?.url || 'bitbucket.org')}`);
-      devLines.push(`- Repositories:\n${list((scm.bitbucket?.repos || '').split('\n').map(r => r.trim()).filter(Boolean))}`);
-    } else if (scm.system === 'azure-repos') {
-      devLines.push(`- Azure Repos Organisation: ${none(scm.azure_repos?.org)}`);
-      devLines.push(`- Azure Repos Project: ${none(scm.azure_repos?.project)}`);
-      devLines.push(`- Repositories:\n${list((scm.azure_repos?.repos || '').split('\n').map(r => r.trim()).filter(Boolean))}`);
-    } else if (scm.system === 'other') {
-      devLines.push(`- SCM Tool Name: ${none(scm.other?.name)}`);
-      devLines.push(`- Repository URL: ${none(scm.other?.url)}`);
-    }
-    devLines.push(`- Default Branch: ${none(dev.default_branch)}`);
-    wfSection += `\n### Developer\n${devLines.join('\n')}\n`;
+  // Sources section
+  let sourcesSection = `## Knowledge Sources\n- **Confluence URL:** ${none(s.confluence?.base_url)}\n- **Confluence Spaces:** ${none(s.confluence?.space_keys)}\n- **Specific Confluence pages:**\n${s.confluence?.specific_pages ? s.confluence.specific_pages.split('\n').filter(Boolean).map(p => `  - ${p.trim()}`).join('\n') : '  - _(not provided)_'}\n`;
+  sourcesSection += `- **Docs strategy:** ${s.has_documents === 'yes' ? 'Specific links/files provided' : s.has_documents === 'no' ? 'Confluence crawl' : s.has_documents === 'both' ? 'Both specific docs and Confluence' : '_(not specified)_'}\n`;
+  sourcesSection += `- **Document links:**\n${docLinks.length ? list(docLinks) : '  - _(not provided)_'}\n`;
+
+  // AI Stack section
+  let aiSection = `## Integrations & Context\n- **Existing agents/automations:** ${none(a.existing_agents)}\n`;
+  if (a.existing_agents === 'yes') {
+    aiSection += `- **Agents/Automations:**\n${a.existing_agents_desc ? a.existing_agents_desc.split('\n').filter(Boolean).map(l => `  - ${l.trim()}`).join('\n') : '  - _(not provided)_'}\n`;
   }
 
-  if (includeQa) {
-    const testMgmt = qa.test_mgmt_system === 'Others' ? qa.test_mgmt_other : qa.test_mgmt_system;
-    const qaLines = [
-      `- Test Mgmt: ${none(testMgmt)}`,
-      `- Sample Test Case Format: ${none(qa.sample_test_case_format)}`,
-      `- Automation Exists: ${none(qa.automation_exists)}`,
-    ];
-    if (qa.automation_exists === 'yes') qaLines.push(`- Automation Covers:\n${list(qa.automation_scope)}`);
-    qaLines.push(`- Reporting Tools:\n${list(qa.reporting_tools)}`);
-    if (qa.reporting_other) qaLines.push(`- Other Reporting Tool: ${qa.reporting_other}`);
-    wfSection += `\n### QA\n${qaLines.join('\n')}\n`;
-  }
-
-  const docsStrategy = s.has_documents === 'yes' ? 'Specific links/files provided' : s.has_documents === 'no' ? 'Confluence crawl' : s.has_documents === 'both' ? 'Specific links/files plus Confluence crawl' : '_(not specified)_';
-  const clarificationItems = collectClarifications(d);
-  const jsonFenceStart = '```json';
-  const jsonFenceEnd = '```';
-
-  return `# Client Intake — SDLC Onboarding Context\n_Generated: ${ts}_\n\n---\n\n## Organisation\n| Field | Value |\n|---|---|\n| Company | ${none(o.company)} |\n| Industry | ${none(o.industry)}${o.industry === 'Other' && o.industry_other ? ` - ${o.industry_other}` : ''} |\n| Approved AI tools | ${compact(o.approved_ai_tools)}${(o.other_ai_tools || []).length ? `, ${o.other_ai_tools.join(', ')}` : ''} |\n| LLM providers | ${compact(o.llm_providers)} |\n| Personas engaged | ${compact(personas)} |\n| Compliance | ${compact(o.compliance)} |\n| Domain model | ${o.brand_model === 'multi-brand' ? 'Multi-brand' : o.brand_model === 'single-brand' ? 'Single brand' : '_(not set)_'} |${o.brand_model === 'multi-brand' && o.brand_codes ? `\n| Brands | ${o.brand_codes} |` : ''}\n\n## Approved LLM Models\n| Provider | Models |\n|---|---|\n${modelRows.length ? modelRows.join('\n') : '| _(none)_ | _(none)_ |'}\n\n---\n\n## Workflow${wfSection || '\n_(no workflow personas or workflow details provided)_\n'}\n---\n\n## Codebase Scan (auto-detected per repo)\n\n> The following details are not captured in this intake. The Preflight Agent detects them per repository using scripts/repo-scanner.py.\n\n| Detail | Detected from |\n|--------|---------------|\n| Languages & frameworks | package manifests, file extensions, tsconfig.json |\n| Linter | .eslintrc.*, biome.json, eslint.config.* |\n| Formatter | .prettierrc.*, biome.json, dprint.json |\n| Naming conventions | ESLint naming-convention rules and detected patterns |\n| Test runner & commands | jest.config.*, vitest.config.*, playwright.config.* |\n| Package manager | pnpm-lock.yaml, yarn.lock, package-lock.json and other lock files |\n| TypeScript strictness | tsconfig.json strict, paths, baseUrl |\n| Pre-commit hooks | .husky/, .lefthook.yml, lint-staged |\n| Build tool | vite.config.*, webpack.config.*, next.config.* |\n\n---\n\n## Sources\n- **Confluence:** ${none(s.confluence?.base_url)} — spaces: ${none(s.confluence?.space_keys)}\n- **Specific Confluence pages:**\n${list((s.confluence?.specific_pages || '').split('\n').map(v => v.trim()).filter(Boolean))}\n- **SCM:** ${none(displayScmName(scm.system))} — org/workspace: ${none(scm.github?.org || scm.gitlab?.group || scm.bitbucket?.workspace || scm.azure_repos?.org || scm.other?.name)}\n- **Docs strategy:** ${docsStrategy}\n- **Document links:**\n${list((s.other_links || '').split('\n').map(v => v.trim()).filter(Boolean))}\n- **Uploaded file names:**\n${list(s.uploaded_files)}\n- **Design source:** ${none(s.design_tool)}${s.figma_url ? ` — ${s.figma_url}` : ''}${s.design_tool_name ? ` — ${s.design_tool_name}` : ''}${s.design_tool_url ? ` (${s.design_tool_url})` : ''}\n\n---\n\n## Constraints\n- **PII handled:**\n${list(c.pii_types)}\n- **Agent Behavioral Guardrails:**\n${c.forbidden ? c.forbidden.split('\n').filter(Boolean).map(line => `  ${line}`).join('\n') : '  _(to be confirmed)_'}\n\n---\n\n## AI Stack\n- **MCPs:** ${compact(a.mcps)}${a.mcp_atlassian?.url ? `\n  - Atlassian: ${a.mcp_atlassian.url}` : ''}${a.mcp_github?.url ? `\n  - GitHub Enterprise: ${a.mcp_github.url}` : ''}${(a.mcp_others || []).filter(entry => entry.name).map(entry => `\n  - ${entry.name}${entry.url ? `: ${entry.url}` : ''}`).join('')}\n- **Existing agents:** ${none(a.existing_agents)}${a.existing_agents_desc ? `\n  - Summary: ${a.existing_agents_desc.replace(/\n/g, '\n    ')}` : ''}\n- **CMS:** ${a.cms || 'None'}\n- **CMS config:**\n${formatCmsConfig(a.cms_config)}\n\n---\n\n## Preflight Clarifications Needed\n${clarificationItems.length ? list(clarificationItems) : '  - None identified by the wizard'}\n\n---\n\n## Machine-readable Intake JSON\n\n${jsonFenceStart}\n${JSON.stringify(d, null, 2)}\n${jsonFenceEnd}\n\n---\n_Generated by SDLC Pipeline Client Intake Wizard - reference example: examples/intake-sources.md_\n`;
+  return `# Client Intake — SDLC Onboarding Context\n_Generated: ${ts}_\n\n---\n\n## Organisation\n| Field | Value |\n|---|---|\n| Company | ${none(o.company)} |\n| Industry | ${industryDisplay} |\n| Approved AI tools | ${(o.approved_ai_tools||[]).join(', ') || '_(none)_'}${(o.other_ai_tools||[]).length ? `, ${o.other_ai_tools.join(', ')}` : ''} |\n| Personas engaged | ${personas.join(', ') || '_(none)_'} |\n| Compliance | ${(o.compliance||[]).join(', ') || '_(none)_'} |\n| PII types | ${(c.pii_types||[]).join(', ') || '_(none)_'} |${modelRows.length ? `\n\n## Approved Models\n| Tool | Models |\n|---|---|\n${modelRows.join('\n')}` : ''}\n\n---\n\n## SDLC Tools${wfSection}\n---\n\n${sourcesSection}\n---\n\n## Agent Behavioral Guardrails\n${c.forbidden ? c.forbidden.split('\n').filter(Boolean).map(l=>`${l}`).join('\n') : '_(to be confirmed)_'}\n\n---\n\n${aiSection}\n---\n_Generated by SDLC Pipeline Client Intake Wizard · Save to \`docs/onboarding/intake-sources.md\`_\n`;
 }
 
 // ── Download / share ──────────────────────────────────────────────────────
-function brandMarkdown(markdown) { return markdown.replace('SDLC Pipeline Client Intake Wizard', 'GHCP AGENTIC PDLC PIPELINE Client Intake Wizard'); }
-function downloadMd()   { trigger(new Blob([brandMarkdown(buildMarkdown())],     {type:'text/markdown'}),      'intake-sources.md'); }
+function downloadMd()   { trigger(new Blob([buildMarkdown()],                    {type:'text/markdown'}),      'intake-sources.md'); }
+function downloadJson() { trigger(new Blob([JSON.stringify(collectData(),null,2)],{type:'application/json'}),  'intake-sources.json'); }
 function trigger(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href); }
 
 function encodeStateToUrl() {
@@ -1597,7 +1394,8 @@ function showToast(msg) {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadApprovedModelsConfig();
   try {
     const hash = window.location.hash;
     if (hash.startsWith('#v3=')) {

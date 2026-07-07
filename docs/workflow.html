@@ -836,12 +836,12 @@
             <h4>What It Does</h4>
             <ul>
               <li>Generates SCM connector SKILL.md from <code>SC-SCM</code> contract</li>
-              <li>Clones repos to <code>.sdlc-preflight/repos/</code></li>
+              <li>Clones repos to <code>repos/</code></li>
               <li>Handles failures per-repo: retry, skip, or alternative URL</li>
               <li>All repos failing = blocking error, pauses workflow</li>
             </ul>
             <h4>Scripts</h4>
-            <ul><li><code>python3 scripts/scm-bootstrap.py --repos '[...]' --scm github --org &lt;org&gt; --target-dir .sdlc-preflight/repos</code></li></ul>
+            <ul><li><code>python3 scripts/scm-bootstrap.py --repos '[...]' --scm github --org &lt;org&gt; --target-dir repos</code></li></ul>
           </div>
         </div>
 
@@ -859,7 +859,7 @@
               <li>Parallel scanning via sub-agents for 3+ repos</li>
             </ul>
             <h4>Scripts</h4>
-            <ul><li><code>python3 scripts/repo-scanner.py --repo-path .sdlc-preflight/repos/&lt;repo&gt; --output-dir .sdlc-preflight/scans --format both --max-depth 6</code></li></ul>
+            <ul><li><code>python3 scripts/repo-scanner.py --repo-path repos/&lt;repo&gt; --output-dir .github/sdlc-pipeline/scans --format both --max-depth 6</code></li></ul>
           </div>
         </div>
 
@@ -875,7 +875,7 @@
               <li>Includes custom instructions placeholder for customer</li>
             </ul>
             <h4>Scripts</h4>
-            <ul><li><code>python3 scripts/instructions-generator.py --scan-dir .sdlc-preflight/scans --output-dir .github/instructions</code></li></ul>
+            <ul><li><code>python3 scripts/instructions-generator.py --scan-dir .github/sdlc-pipeline/scans --output-dir .github/instructions</code></li></ul>
           </div>
         </div>
 
@@ -1109,21 +1109,21 @@
       <div class="script-card">
         <h3><span class="agent-badge badge-script">Python</span> repo-scanner.py</h3>
         <p>Smart repository scanner — analyzes structure, dependencies, build tools, linters, test frameworks, patterns, and conventions.</p>
-        <div class="usage">python3 scripts/repo-scanner.py \<br>  --repo-path .sdlc-preflight/repos/&lt;repo&gt; \<br>  --output-dir .sdlc-preflight/scans \<br>  --format both --max-depth 6</div>
+        <div class="usage">python3 scripts/repo-scanner.py \<br>  --repo-path repos/&lt;repo&gt; \<br>  --output-dir .github/sdlc-pipeline/scans \<br>  --format both --max-depth 6</div>
         <div class="used-by">Used by: <span>Preflight Phase 4</span></div>
       </div>
 
       <div class="script-card">
         <h3><span class="agent-badge badge-script">Python</span> scm-bootstrap.py</h3>
         <p>Clones customer repositories. Supports GitHub, GitLab, Bitbucket, Azure DevOps. Shallow clone, retry logic, branch targeting.</p>
-        <div class="usage">python3 scripts/scm-bootstrap.py \<br>  --repos '["repo1","repo2"]' \<br>  --scm github --org &lt;org&gt; \<br>  --target-dir .sdlc-preflight/repos</div>
+        <div class="usage">python3 scripts/scm-bootstrap.py \<br>  --repos '["repo1","repo2"]' \<br>  --scm github --org &lt;org&gt; \<br>  --target-dir repos</div>
         <div class="used-by">Used by: <span>Preflight Phase 3</span></div>
       </div>
 
       <div class="script-card">
         <h3><span class="agent-badge badge-script">Python</span> instructions-generator.py</h3>
         <p>Generates <code>.github/instructions/&lt;repo&gt;.instructions.md</code> files from scan JSON. Includes YAML frontmatter, structure, deps, tools, patterns.</p>
-        <div class="usage">python3 scripts/instructions-generator.py \<br>  --scan-dir .sdlc-preflight/scans \<br>  --output-dir .github/instructions</div>
+        <div class="usage">python3 scripts/instructions-generator.py \<br>  --scan-dir .github/sdlc-pipeline/scans \<br>  --output-dir .github/instructions</div>
         <div class="used-by">Used by: <span>Preflight Phase 5</span></div>
       </div>
 

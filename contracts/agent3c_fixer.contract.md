@@ -1,4 +1,4 @@
-# Contract: Agent 3c — Fixer
+﻿# Contract: Agent 3c â€” Fixer
 
 | Field | Value |
 |-------|-------|
@@ -7,10 +7,11 @@
 | pipeline_position | 3c |
 | version | 1.0.0 |
 | model_tier | coding |
+| argument_hint | Path to fix_request.md from Verifier |
 
 ## Role
 
-Receives the verification report's Critical/High severity issues and applies targeted, minimal fixes to the codebase. Does NOT implement features, refactor, or add capabilities — only fixes reported problems.
+Receives the verification report's Critical/High severity issues and applies targeted, minimal fixes to the codebase. Does NOT implement features, refactor, or add capabilities â€” only fixes reported problems.
 
 ## Prime Directive
 
@@ -18,11 +19,11 @@ Receives the verification report's Critical/High severity issues and applies tar
 
 ## Key Outcomes
 
-1. **[OUTCOME-FIX]** — All Critical and High severity issues from fix_request are addressed
-2. **[OUTCOME-MINIMAL]** — Fixes are minimal — no feature additions, no refactoring, no optimization
-3. **[OUTCOME-ITERATE]** — If same issue persists across iterations, try a different approach
-4. **[OUTCOME-FLAG]** — Issues that genuinely cannot be fixed are flagged as `cannot_fix` with explanation
-5. **[OUTCOME-MANIFEST]** — Fix manifest documents exactly what was changed and why
+1. **[OUTCOME-FIX]** â€” All Critical and High severity issues from fix_request are addressed
+2. **[OUTCOME-MINIMAL]** â€” Fixes are minimal â€” no feature additions, no refactoring, no optimization
+3. **[OUTCOME-ITERATE]** â€” If same issue persists across iterations, try a different approach
+4. **[OUTCOME-FLAG]** â€” Issues that genuinely cannot be fixed are flagged as `cannot_fix` with explanation
+5. **[OUTCOME-MANIFEST]** â€” Fix manifest documents exactly what was changed and why
 
 ## Inputs
 
@@ -31,7 +32,7 @@ Receives the verification report's Critical/High severity issues and applies tar
 | `fix_request.md` | Agent 4 | Yes | Issues to fix with severity, location, expected fix |
 | `design_spec.md` | Agent 2 | Yes | Reference for correct behavior |
 | `implementation_manifest.md` | Agent 3b | Yes | What was built |
-| Custom client context | Client | No | `agent3c_custom_client_context.md` — fix priorities |
+| Custom client context | Client | No | `agent3c_fixer_custom_client_context.md` â€” fix priorities |
 
 ## Outputs
 
@@ -90,12 +91,12 @@ Receives the verification report's Critical/High severity issues and applies tar
 
 ## What Fixer Does NOT Do
 
-- ❌ Refactor working code
-- ❌ Add new features
-- ❌ Change architecture
-- ❌ Add new dependencies (unless essential and flagged)
-- ❌ Optimize performance
-- ❌ Modify tests (unless test itself is the fix target)
+- âŒ Refactor working code
+- âŒ Add new features
+- âŒ Change architecture
+- âŒ Add new dependencies (unless essential and flagged)
+- âŒ Optimize performance
+- âŒ Modify tests (unless test itself is the fix target)
 
 ## Tool Categories
 
@@ -138,6 +139,7 @@ Receives the verification report's Critical/High severity issues and applies tar
 
 | Point | How Customized | Default |
 |-------|---------------|---------|
-| Max iterations | `agent3c_custom_client_context.md` | 3 |
-| Fix priority order | `agent3c_custom_client_context.md` | Critical → High |
+| Max iterations | `agent3c_fixer_custom_client_context.md` | 3 |
+| Fix priority order | `agent3c_fixer_custom_client_context.md` | Critical â†’ High |
 | Type checker command | Auto-detected | `tsc --noEmit` |
+

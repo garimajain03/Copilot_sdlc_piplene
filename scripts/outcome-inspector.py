@@ -25,6 +25,9 @@ import sys
 from pathlib import Path
 
 
+GENERATED_AGENT_PATTERN = re.compile(r"^agent\d+[a-z]?_.*\.md$")
+
+
 class Inspector:
     def __init__(self):
         self.findings = []
@@ -167,9 +170,16 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
         inspector.error("completeness", "No .github/agents/ directory found")
         return
 
-    agent_files = [f for f in os.listdir(agents_dir) if f.endswith(".md")]
+    agent_files = [
+        f for f in os.listdir(agents_dir)
+        if f.endswith(".md") and (GENERATED_AGENT_PATTERN.match(f) or f == "orchestrator.md")
+    ]
     if len(agent_files) < 8:
-        inspector.warning("completeness", f"Only {len(agent_files)} agent files found (expected ~12)")
+        inspector.warning("completeness", f"Only {len(agent_files)} generated agent files found (expected ~12)")
+
+    if len(agent_files) == 0:
+        inspector.error("completeness", "No generated pipeline agents found (agent*.md / orchestrator.md)")
+        return
 
     # Check orchestrator exists
     orch_files = [f for f in agent_files if "orchestrator" in f.lower()]
@@ -178,10 +188,25 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
 
     # Check each agent file has required sections
     required_sections = [
+        "Metadata",
+        "Role",
         "Prime Directive",
         "Behavioral Guardrails",
+        "Client Onboarding Context",
+        "Inputs",
+        "Input Validation",
+        "Outputs",
+        "Output Handling",
+        "Connector Integration",
+        "Instructions",
+        "Checkpointing Strategy",
+        "Resume Protocol",
+        "Re-run Protocol",
         "Custom Client Context",
         "Quality Checklist",
+        "Completion Criteria",
+        "Access Restrictions",
+        "Hooks",
     ]
 
     for agent_file in agent_files:
@@ -191,13 +216,47 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
 
         for section in required_sections:
             if section not in content:
-                inspector.warning("consistency", f"Missing section: {section}", agent_file)
+                inspector.error("consistency", f"Missing section: {section}", agent_file)
 
         # Check frontmatter
         if not content.startswith("---"):
-            inspector.warning("structure", "Missing YAML frontmatter", agent_file)
+            inspector.error("structure", "Missing YAML frontmatter", agent_file)
         elif "model:" not in content.split("---")[1] if len(content.split("---")) > 1 else True:
-            inspector.warning("structure", "Missing model in frontmatter", agent_file)
+            inspector.error("structure", "Missing model in frontmatter", agent_file)
+
+        if "python3 .github/hooks/" in content:
+            inspector.warning("cross_platform", "Hook commands use python3; consider portable python command for Windows", agent_file)
+
+        # Detect obvious duplicate top-level headings.
+        top_headings = re.findall(r"^##\s+(.+?)\s*$", content, flags=re.MULTILINE)
+        seen = set()
+        dups = set()
+        for h in top_headings:
+            if h in seen:
+                dups.add(h)
+            seen.add(h)
+        if dups:
+            inspector.error("consistency", f"Duplicate top-level sections: {', '.join(sorted(dups))}", agent_file)
+
+        # Frontmatter hook shape checks: worker agents vs orchestrator.
+        parts = content.split("---", 2)
+        fm = parts[1] if len(parts) >= 3 else ""
+        if agent_file == "orchestrator.md":
+            if "agents:" not in fm:
+                inspector.error("frontmatter", "Orchestrator missing 'agents' list in frontmatter", agent_file)
+            required_hook_events = ["SessionStart:", "PreToolUse:", "PostToolUse:", "Stop:"]
+            for ev in required_hook_events:
+                if ev not in fm:
+                    inspector.error("frontmatter", f"Orchestrator missing hook event: {ev.rstrip(':')}", agent_file)
+            if fm.count("SessionStart:") > 1 or fm.count("PreToolUse:") > 1 or fm.count("PostToolUse:") > 1 or fm.count("Stop:") > 1:
+                inspector.error("frontmatter", "Orchestrator has duplicate hook event blocks", agent_file)
+        else:
+            if "PreToolUse:" not in fm:
+                inspector.error("frontmatter", "Worker agent missing PreToolUse hook block", agent_file)
+            if "PostToolUse:" in fm or "SessionStart:" in fm or "Stop:" in fm:
+                inspector.error("frontmatter", "Worker agent frontmatter must only contain PreToolUse hooks", agent_file)
+            if "argument-hint:" not in fm:
+                inspector.warning("frontmatter", "Worker agent missing 'argument-hint' key", agent_file)
 
     # Check custom client context templates
     context_dir = os.path.join(output_dir, ".github", "sdlc-pipeline", "client-context")
@@ -206,6 +265,16 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
         if len(context_files) < 8:
             inspector.warning("completeness",
                               f"Only {len(context_files)} custom context templates (expected ~12)")
+
+        # Ensure each generated agent has a matching slug-based context template.
+        context_set = set(context_files)
+        for af in agent_files:
+            if af == "orchestrator.md":
+                expected = "orchestrator_custom_client_context.md"
+            else:
+                expected = af.replace(".md", "") + "_custom_client_context.md"
+            if expected not in context_set:
+                inspector.error("cross_reference", f"Missing matching client context template: {expected}", af)
     else:
         inspector.warning("completeness", "No client-context directory found")
 
@@ -270,6 +339,34 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
                             if not os.path.exists(script_path):
                                 inspector.error("cross_reference",
                                                 f"hooks.json references non-existent script: {script}", "hooks.json")
+
+            # Ensure hooks configuration uses a single script naming family.
+            scripts = []
+            for _, event_hooks in hooks_config.get("hooks", {}).items():
+                if isinstance(event_hooks, list):
+                    for hook in event_hooks:
+                        script = hook.get("script", hook.get("path", ""))
+                        if script:
+                            scripts.append(Path(script).name)
+            has_prefixed = any(name.startswith("hook_") for name in scripts)
+            has_plain = any(not name.startswith("hook_") for name in scripts)
+            if has_prefixed and has_plain:
+                inspector.error("consistency", "hooks.json mixes prefixed and non-prefixed hook script naming", "hooks.json")
+
+            # Detect duplicate hook files present on disk with both naming families.
+            hooks_dir = os.path.join(output_dir, ".github", "hooks")
+            if os.path.isdir(hooks_dir):
+                disk_files = [f for f in os.listdir(hooks_dir) if f.endswith(".py")]
+                disk_set = set(disk_files)
+                duplicate_aliases = []
+                for f in disk_files:
+                    if f.startswith("hook_"):
+                        plain = f[len("hook_"):]
+                        if plain in disk_set:
+                            duplicate_aliases.append((f, plain))
+                if duplicate_aliases:
+                    pairs = [f"{a} <-> {b}" for a, b in duplicate_aliases]
+                    inspector.error("consistency", f"Duplicate hook alias families present: {', '.join(pairs)}", ".github/hooks")
         except (json.JSONDecodeError, IOError):
             pass
 
@@ -284,7 +381,7 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
                     inspector.error("cross_reference",
                                     f"Skill directory {skill_name}/ missing SKILL.md", skill_name)
 
-    # Frontmatter schema validation for agents
+    # Frontmatter schema validation for generated agents
     for agent_file in agent_files:
         filepath = os.path.join(agents_dir, agent_file)
         with open(filepath, "r", encoding="utf-8") as f:

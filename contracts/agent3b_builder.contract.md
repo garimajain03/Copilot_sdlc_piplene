@@ -1,4 +1,4 @@
-# Contract: Agent 3b — Builder
+﻿# Contract: Agent 3b â€” Builder
 
 | Field | Value |
 |-------|-------|
@@ -7,6 +7,7 @@
 | pipeline_position | 3b |
 | version | 1.0.0 |
 | model_tier | coding |
+| argument_hint | Path to scaffold_manifest.md and design_spec.md |
 
 ## Role
 
@@ -18,12 +19,12 @@ Creates files from the Scaffolder's blueprint and implements actual business log
 
 ## Key Outcomes
 
-1. **[OUTCOME-IMPLEMENT]** — All components from scaffold manifest are implemented with working logic
-2. **[OUTCOME-COMPILE]** — Code compiles without type errors (verified via type checker)
-3. **[OUTCOME-CONVENTIONS]** — Implementation follows codebase conventions (naming, patterns, imports)
-4. **[OUTCOME-REUSE]** — Existing utilities and components are used — no reinventing the wheel
-5. **[OUTCOME-CLEAN]** — Dead code is cleaned up; unused imports and references removed
-6. **[OUTCOME-MANIFEST]** — Implementation manifest documents all files created/modified
+1. **[OUTCOME-IMPLEMENT]** â€” All components from scaffold manifest are implemented with working logic
+2. **[OUTCOME-COMPILE]** â€” Code compiles without type errors (verified via type checker)
+3. **[OUTCOME-CONVENTIONS]** â€” Implementation follows codebase conventions (naming, patterns, imports)
+4. **[OUTCOME-REUSE]** â€” Existing utilities and components are used â€” no reinventing the wheel
+5. **[OUTCOME-CLEAN]** â€” Dead code is cleaned up; unused imports and references removed
+6. **[OUTCOME-MANIFEST]** â€” Implementation manifest documents all files created/modified
 
 ## Inputs
 
@@ -33,7 +34,7 @@ Creates files from the Scaffolder's blueprint and implements actual business log
 | `design_spec.md` | Agent 2 | Yes | Technical design, types, APIs |
 | `problem_spec.md` | Agent 1 | Yes | Business requirements |
 | `checkpoint.md` | Pipeline | Yes | Source repos, codebase location |
-| Custom client context | Client | No | `agent3b_custom_client_context.md` — coding standards, patterns |
+| Custom client context | Client | No | `agent3b_builder_custom_client_context.md` â€” coding standards, patterns |
 
 ## Outputs
 
@@ -60,7 +61,7 @@ Creates files from the Scaffolder's blueprint and implements actual business log
 ### Step 3: Implement Logic
 - **Condition:** After shells created
 - **Action:** For each file, replace TODO stubs with actual implementation: business logic, UI components, state management, data access, API calls. Search codebase for existing utilities/components before creating new ones
-- **Reasoning:** This is the core value — turning design into working code
+- **Reasoning:** This is the core value â€” turning design into working code
 - **Output:** Implemented files
 
 ### Step 4: Enrich with Design Context (Optional)
@@ -147,5 +148,6 @@ Creates files from the Scaffolder's blueprint and implements actual business log
 | Lint command | Auto-detected from codebase | `eslint --fix` |
 | Build command | Auto-detected from codebase | `npm run build` |
 | Design tool connector | Onboarding answers | None |
-| Coding standards | `agent3b_custom_client_context.md` | Auto-detected |
+| Coding standards | `agent3b_builder_custom_client_context.md` | Auto-detected |
 | Package manager | Auto-detected from lock file | npm/yarn/pnpm |
+
