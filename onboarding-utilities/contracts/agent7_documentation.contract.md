@@ -1,4 +1,4 @@
-﻿# Contract: Agent 7 â€” Documentation Generator
+﻿# Contract: Agent 7 - Documentation Generator
 
 | Field | Value |
 |-------|-------|
@@ -19,13 +19,13 @@ Generates and updates project documentation artifacts aligned to the implemented
 
 ## Key Outcomes
 
-1. **[OUTCOME-API-DOCS]** â€” API documentation (OpenAPI/Swagger, GraphQL schema docs) is generated or updated for every new/modified endpoint
-2. **[OUTCOME-CHANGELOG]** â€” A structured changelog entry is produced following the project's changelog convention (Keep a Changelog, Conventional Commits, etc.)
-3. **[OUTCOME-README]** â€” README sections affected by the change are updated (new features, configuration, usage examples)
-4. **[OUTCOME-PR-DESC]** â€” A PR description is generated with: summary, changes list, testing notes, migration notes, screenshots (if UI)
-5. **[OUTCOME-ADR]** â€” ADRs from design_spec are materialized as standalone files in the project's ADR directory
-6. **[OUTCOME-COMMIT-MSG]** â€” Conventional commit messages are generated for each logical change unit
-7. **[OUTCOME-CONSISTENCY]** â€” All documentation follows the project's existing documentation style and conventions
+1. **[OUTCOME-API-DOCS]** - API documentation (OpenAPI/Swagger, GraphQL schema docs) is generated or updated for every new/modified endpoint
+2. **[OUTCOME-CHANGELOG]** - A structured changelog entry is produced following the project's changelog convention (Keep a Changelog, Conventional Commits, etc.)
+3. **[OUTCOME-README]** - README sections affected by the change are updated (new features, configuration, usage examples)
+4. **[OUTCOME-PR-DESC]** - A PR description is generated with: summary, changes list, testing notes, migration notes, screenshots (if UI)
+5. **[OUTCOME-ADR]** - ADRs from design_spec are materialized as standalone files in the project's ADR directory
+6. **[OUTCOME-COMMIT-MSG]** - Conventional commit messages are generated for each logical change unit
+7. **[OUTCOME-CONSISTENCY]** - All documentation follows the project's existing documentation style and conventions
 
 ## Inputs
 
@@ -33,12 +33,12 @@ Generates and updates project documentation artifacts aligned to the implemented
 |----------|--------|----------|-------------|
 | `problem_spec.md` | Agent 1 | Yes | Requirements context for documentation |
 | `design_spec.md` | Agent 2 | Yes | ADRs, API contracts, component descriptions |
-| `implementation_manifest.md` | Agent 3b | Yes | Files created/modified â€” determines doc scope |
+| `implementation_manifest.md` | Agent 3b | Yes | Files created/modified - determines doc scope |
 | `verification_report.md` | Agent 4 | Yes | Verification status for PR description |
 | `risk_assessment.md` | Agent 5 | No | Risks to document in PR/changelog |
 | `test_report.md` | Agent 6 | No | Test coverage info for PR description |
 | Source repository code | Repository | Yes | Existing docs, README, changelog |
-| Custom client context | Client | No | `agent7_documentation_custom_client_context.md` â€” doc conventions, templates |
+| Custom client context | Client | No | `agent7_documentation_custom_client_context.md` - doc conventions, templates |
 
 ## Outputs
 
@@ -212,4 +212,5 @@ Generates and updates project documentation artifacts aligned to the implemented
 | API documentation tool | Auto-detected from codebase | OpenAPI for REST, schema docs for GraphQL |
 | Documentation generator | Auto-detected | None (raw Markdown) |
 | Commit grouping strategy | `agent7_documentation_custom_client_context.md` | One commit per logical change unit |
+
 

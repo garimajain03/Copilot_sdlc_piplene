@@ -1,4 +1,4 @@
-# Contract: Hook — Lint on Save
+﻿# Contract: Hook - Lint on Save
 
 | Field | Value |
 |-------|-------|
@@ -37,7 +37,7 @@ After any file write/edit operation, automatically runs the project's configured
 
 | Code | Meaning | Agent Behavior |
 |------|---------|----------------|
-| `0` | Clean — no issues or all auto-fixed | Normal |
+| `0` | Clean - no issues or all auto-fixed | Normal |
 | `2` | Unfixable lint errors remain | Errors fed to agent for manual fix |
 
 ## Customization Points
@@ -48,3 +48,4 @@ After any file write/edit operation, automatically runs the project's configured
 | Lint command | Auto-detected from package.json scripts | `npx eslint --fix` |
 | File extensions | Auto-detected | Language-specific |
 | Disable for certain paths | `hook_lint_custom.md` | None |
+

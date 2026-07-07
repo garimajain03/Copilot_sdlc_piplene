@@ -1,4 +1,4 @@
-﻿# Contract: Agent 8 â€” IaC/DevOps Specialist
+﻿# Contract: Agent 8 - IaC/DevOps Specialist
 
 | Field | Value |
 |-------|-------|
@@ -19,13 +19,13 @@ Handles infrastructure-as-code changes, CI/CD pipeline modifications, deployment
 
 ## Key Outcomes
 
-1. **[OUTCOME-IAC]** â€” Infrastructure changes are implemented using the project's IaC tool (Terraform, Bicep, CloudFormation, Pulumi, CDK) following existing module conventions
-2. **[OUTCOME-CICD]** â€” CI/CD pipeline modifications follow existing workflow patterns, maintain existing gates, and don't break the deployment chain
-3. **[OUTCOME-MIGRATION]** â€” Database migrations are reversible, idempotent, and include rollback scripts
-4. **[OUTCOME-DEPLOY-CONFIG]** â€” Deployment configurations (Kubernetes manifests, Docker configs, serverless configs) are environment-aware and parameterized
-5. **[OUTCOME-BLAST-RADIUS]** â€” Every change has a documented blast radius assessment and rollback plan
-6. **[OUTCOME-DRY-RUN]** â€” All IaC changes are validated via plan/preview before any apply recommendation
-7. **[OUTCOME-SECRETS]** â€” No hardcoded secrets; all sensitive values reference secret stores or environment variables
+1. **[OUTCOME-IAC]** - Infrastructure changes are implemented using the project's IaC tool (Terraform, Bicep, CloudFormation, Pulumi, CDK) following existing module conventions
+2. **[OUTCOME-CICD]** - CI/CD pipeline modifications follow existing workflow patterns, maintain existing gates, and don't break the deployment chain
+3. **[OUTCOME-MIGRATION]** - Database migrations are reversible, idempotent, and include rollback scripts
+4. **[OUTCOME-DEPLOY-CONFIG]** - Deployment configurations (Kubernetes manifests, Docker configs, serverless configs) are environment-aware and parameterized
+5. **[OUTCOME-BLAST-RADIUS]** - Every change has a documented blast radius assessment and rollback plan
+6. **[OUTCOME-DRY-RUN]** - All IaC changes are validated via plan/preview before any apply recommendation
+7. **[OUTCOME-SECRETS]** - No hardcoded secrets; all sensitive values reference secret stores or environment variables
 
 ## Inputs
 
@@ -35,7 +35,7 @@ Handles infrastructure-as-code changes, CI/CD pipeline modifications, deployment
 | `design_spec.md` | Agent 2 | No | Architecture decisions affecting infrastructure |
 | `ticket_analysis.md` | Agent 0 | Yes | Ticket classification (must be infra/devops type) |
 | Source repository code | Repository | Yes | Existing IaC, CI/CD, deployment configs |
-| Custom client context | Client | No | `agent8_iac_devops_custom_client_context.md` â€” cloud provider, IaC conventions, deployment targets |
+| Custom client context | Client | No | `agent8_iac_devops_custom_client_context.md` - cloud provider, IaC conventions, deployment targets |
 
 ## Outputs
 
@@ -146,13 +146,13 @@ Handles infrastructure-as-code changes, CI/CD pipeline modifications, deployment
 
 ## What IaC/DevOps Agent Does NOT Do
 
-- âŒ Apply infrastructure changes (only generates plans)
-- âŒ Run migrations against production databases
-- âŒ Modify production environment variables directly
-- âŒ Delete resources without human approval
-- âŒ Bypass existing CI/CD approval gates
-- âŒ Create new cloud accounts or subscriptions
-- âŒ Modify IAM root/admin policies
+- [X] Apply infrastructure changes (only generates plans)
+- [X] Run migrations against production databases
+- [X] Modify production environment variables directly
+- [X] Delete resources without human approval
+- [X] Bypass existing CI/CD approval gates
+- [X] Create new cloud accounts or subscriptions
+- [X] Modify IAM root/admin policies
 
 ## Tool Categories
 
@@ -218,4 +218,5 @@ Handles infrastructure-as-code changes, CI/CD pipeline modifications, deployment
 | Secret store | `agent8_iac_devops_custom_client_context.md` | Environment variables |
 | Blast radius thresholds | `agent8_iac_devops_custom_client_context.md` | Standard (Isolated/Scoped/Service/Platform) |
 | Required approvals per risk level | `agent8_iac_devops_custom_client_context.md` | High+Critical require human approval |
+
 

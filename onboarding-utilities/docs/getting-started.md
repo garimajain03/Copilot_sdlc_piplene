@@ -1,12 +1,12 @@
-# Getting Started — SDLC Pipeline Bundle
+﻿# Getting Started - SDLC Pipeline Bundle
 
 ## Overview
 
 The **SDLC Pipeline Bundle** (`github-copilot-sdlc-template`) is a standalone repository that enables any project to adopt a structured, multi-agent software development lifecycle powered by GitHub Copilot.
 
 The pipeline has two phases:
-1. **Preflight** — Validates onboarding, configures connectors (MCP/API), sets up workspace with submodules, scans codebase, generates cross-platform setup scripts
-2. **Pipeline Generation** — Creates customer-specific agents, skills, hooks from reusable contracts (reuses existing agents when available)
+1. **Preflight** - Validates onboarding, configures connectors (MCP/API), sets up workspace with submodules, scans codebase, generates cross-platform setup scripts
+2. **Pipeline Generation** - Creates customer-specific agents, skills, hooks from reusable contracts (reuses existing agents when available)
 
 ---
 
@@ -177,7 +177,7 @@ The agent resumes from the last completed phase. All prior work is preserved.
 ### Re-run with Feedback
 
 ```
-/rerun-phase Phase 4 Code Scan — scan repo-X with deeper analysis for testing patterns
+/rerun-phase Phase 4 Code Scan - scan repo-X with deeper analysis for testing patterns
 ```
 
 The agent resets that phase, applies your feedback, and re-executes.
@@ -192,7 +192,7 @@ Shows completed phases, current phase, pending feedback, and any errors.
 
 ---
 
-## Preflight Agent — Detailed Workflow
+## Preflight Agent - Detailed Workflow
 
 ### What It Does
 
@@ -202,13 +202,13 @@ The Preflight Agent validates your onboarding answers, clones your repositories,
 
 | Phase | Name | What Happens | Scripts Used |
 |-------|------|-------------|--------------|
-| 1 | Validate Onboarding | Reads `intake-sources.md`, validates against `schemas/onboarding_answers_schema.md`, asks clarifying questions for missing fields | — |
-| 2 | Collect Repos | Asks for repository list, validates names, confirms with user | — |
+| 1 | Validate Onboarding | Reads `intake-sources.md`, validates against `schemas/onboarding_answers_schema.md`, asks clarifying questions for missing fields | - |
+| 2 | Collect Repos | Asks for repository list, validates names, confirms with user | - |
 | 3 | Clone Repos | Clones repos using SCM connector, handles failures per-repo | `scripts/scm-bootstrap.py` |
 | 4 | Smart Code Scan | Scans each repo for structure, dependencies, patterns, conventions. Parallel scanning for 3+ repos via sub-agents | `scripts/repo-scanner.py` |
 | 5 | Generate Instructions | Creates `.github/instructions/<repo>.instructions.md` for each scanned repo | `scripts/instructions-generator.py` |
 | 6 | Setup & Connectors | Generates `setup.sh`, connector SKILL.md files, observability setup | `scripts/install-observability.sh` |
-| 7 | Generate hooks.json | Registers all hooks (guard, secrets, lint, observability, telemetry, learnings) | — |
+| 7 | Generate hooks.json | Registers all hooks (guard, secrets, lint, observability, telemetry, learnings) | - |
 | 8 | Outcome Inspection | Self-validates all outputs for completeness, quality, security, consistency | `scripts/outcome-inspector.py` |
 
 ### Outputs
@@ -226,7 +226,7 @@ The Preflight Agent validates your onboarding answers, clones your repositories,
 
 ---
 
-## Pipeline Generator — Detailed Workflow
+## Pipeline Generator - Detailed Workflow
 
 ### What It Does
 
@@ -243,14 +243,14 @@ The Preflight Agent must have completed successfully. Required outputs:
 
 | Phase | Name | What Happens | Scripts Used |
 |-------|------|-------------|--------------|
-| 1 | Load Context | Reads all contracts, customer onboarding answers, preflight outputs, instruction files | — |
-| 2 | Clarify | Asks clarification questions about tools, ways of working, standards, security, testing | — |
-| 3 | Model Mapping | Maps contract model tiers (reasoning/coding/fast) to customer's approved LLM models | — |
-| 4 | Generate Agents | Creates agent definitions from contracts. Parallel generation in 3 groups + sequential orchestrator | — |
-| 5 | Generate Skills | Creates skill SKILL.md files from skill contracts (ticket, SCM, design, testing) | — |
-| 6 | Generate Hooks | Creates hook scripts from hook contracts (guard, secrets, lint, observability, telemetry, learnings) | — |
-| 7 | Custom Context Templates | Creates `<agent>_custom_client_context.md` template for each agent | — |
-| 8 | Support Files | Generates workflow README and repository index | — |
+| 1 | Load Context | Reads all contracts, customer onboarding answers, preflight outputs, instruction files | - |
+| 2 | Clarify | Asks clarification questions about tools, ways of working, standards, security, testing | - |
+| 3 | Model Mapping | Maps contract model tiers (reasoning/coding/fast) to customer's approved LLM models | - |
+| 4 | Generate Agents | Creates agent definitions from contracts. Parallel generation in 3 groups + sequential orchestrator | - |
+| 5 | Generate Skills | Creates skill SKILL.md files from skill contracts (ticket, SCM, design, testing) | - |
+| 6 | Generate Hooks | Creates hook scripts from hook contracts (guard, secrets, lint, observability, telemetry, learnings) | - |
+| 7 | Custom Context Templates | Creates `<agent>_custom_client_context.md` template for each agent | - |
+| 8 | Support Files | Generates workflow README and repository index | - |
 | 9 | Outcome Inspection | Validates all generated agents against their contracts | `scripts/outcome-inspector.py` |
 
 ### Outputs
@@ -276,7 +276,7 @@ The Preflight Agent must have completed successfully. Required outputs:
 | `scripts/repo-scanner.py` | Scans a repository for structure, dependencies, patterns, conventions. Smart filtering ignores `node_modules`, `dist`, binary files, etc. Tags files as `source`, `test`, `config`, `docs`, `ci_cd`, etc. | Preflight Phase 4 |
 | `scripts/scm-bootstrap.py` | Clones customer repositories via GitHub/GitLab/Bitbucket/Azure DevOps. Shallow clone, retry logic, branch targeting. | Preflight Phase 3 |
 | `scripts/instructions-generator.py` | Generates `.github/instructions/<repo>.instructions.md` files from scan JSON. Includes YAML frontmatter, structure, deps, tools, patterns. | Preflight Phase 5 |
-| `scripts/checkpoint-manager.py` | Manages pipeline state — save, load, reset, feedback, error tracking. Enables pause/resume/re-run workflows. | All phases |
+| `scripts/checkpoint-manager.py` | Manages pipeline state - save, load, reset, feedback, error tracking. Enables pause/resume/re-run workflows. | All phases |
 | `scripts/outcome-inspector.py` | Self-validates agent outputs for structural completeness, content quality, consistency, security, and functionality. | Preflight Phase 8, Generator Phase 9 |
 | `scripts/install-observability.sh` | Downloads OTel Collector + Prometheus binaries. No sudo/Docker required. Supports `--check` and `--json` modes. | Preflight Phase 6 |
 
@@ -284,7 +284,7 @@ The Preflight Agent must have completed successfully. Required outputs:
 
 ## Contracts Reference
 
-The pipeline generates agents from **reusable contracts** — tools-agnostic specifications that define each agent's behavior.
+The pipeline generates agents from **reusable contracts** - tools-agnostic specifications that define each agent's behavior.
 
 | Contract | ID | Purpose |
 |----------|----|---------|
@@ -339,7 +339,7 @@ github-copilot-sdlc-template/
 │   └── copilot-instructions.md              ← Repo-level Copilot context
 ├── contracts/                               ← Reusable Agent Contracts
 │   ├── CONTRACT_INDEX.md
-│   ├── agent0–agent6 + orchestrator contracts
+│   ├── agent0-agent6 + orchestrator contracts
 │   ├── hooks/                               ← Hook contracts
 │   └── skills/                              ← Skill contracts
 ├── templates/                               ← Generation templates (Handlebars)
@@ -374,3 +374,4 @@ Use `/rerun-phase` with feedback describing what went wrong. The agent will adap
 
 ### Need to start completely fresh
 Delete `.github/sdlc-pipeline/checkpoint_state.json` and run `/preflight` again.
+

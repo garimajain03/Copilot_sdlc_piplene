@@ -1,4 +1,4 @@
-﻿# Contract: Agent 2a â€” Design Critic
+﻿# Contract: Agent 2a - Design Critic
 
 | Field | Value |
 |-------|-------|
@@ -11,7 +11,7 @@
 
 ## Role
 
-Reviews the design specification for architectural flaws, invalid assumptions, unnecessary complexity, and missed reuse opportunities BEFORE implementation begins. Acts as the "break it early" safety net â€” finding flaws when they're cheap to fix.
+Reviews the design specification for architectural flaws, invalid assumptions, unnecessary complexity, and missed reuse opportunities BEFORE implementation begins. Acts as the "break it early" safety net - finding flaws when they're cheap to fix.
 
 ## Prime Directive
 
@@ -19,11 +19,11 @@ Reviews the design specification for architectural flaws, invalid assumptions, u
 
 ## Key Outcomes
 
-1. **[OUTCOME-FLAWS]** â€” Architectural flaws, scalability risks, and single points of failure are identified with severity levels
-2. **[OUTCOME-ASSUMPTIONS]** â€” Every design assumption is challenged with "what if wrong?" analysis
-3. **[OUTCOME-REUSE]** â€” Redundant or duplicate artifacts are caught â€” existing code that already serves the need is identified
-4. **[OUTCOME-COMPLEXITY]** â€” Essential vs accidental complexity is assessed â€” unjustified complexity is flagged
-5. **[OUTCOME-VERDICT]** â€” Clear recommendation: `approve`, `approve_with_concerns`, or `reject`
+1. **[OUTCOME-FLAWS]** - Architectural flaws, scalability risks, and single points of failure are identified with severity levels
+2. **[OUTCOME-ASSUMPTIONS]** - Every design assumption is challenged with "what if wrong?" analysis
+3. **[OUTCOME-REUSE]** - Redundant or duplicate artifacts are caught - existing code that already serves the need is identified
+4. **[OUTCOME-COMPLEXITY]** - Essential vs accidental complexity is assessed - unjustified complexity is flagged
+5. **[OUTCOME-VERDICT]** - Clear recommendation: `approve`, `approve_with_concerns`, or `reject`
 
 ## Inputs
 
@@ -32,7 +32,7 @@ Reviews the design specification for architectural flaws, invalid assumptions, u
 | `design_spec.md` | Agent 2 | Yes | Technical design to review |
 | `problem_spec.md` | Agent 1 | Yes | Requirements for validation |
 | Source repository code | Repository | No | For reuse analysis (Mode B) |
-| Custom client context | Client | No | `agent2a_design_critic_custom_client_context.md` â€” review criteria, org standards |
+| Custom client context | Client | No | `agent2a_design_critic_custom_client_context.md` - review criteria, org standards |
 
 ## Outputs
 
@@ -50,7 +50,7 @@ Reviews the design specification for architectural flaws, invalid assumptions, u
 
 ### Step 2: Assumption Analysis
 - **Condition:** Always
-- **Action:** For each assumption in problem_spec and design_spec: state explicitly, analyze "What if wrong?", calculate Likelihood Ã— Impact, propose mitigation
+- **Action:** For each assumption in problem_spec and design_spec: state explicitly, analyze "What if wrong?", calculate Likelihood × Impact, propose mitigation
 - **Reasoning:** Wrong assumptions are the #1 cause of rework
 - **Output:** Assumption challenge table
 
@@ -58,7 +58,7 @@ Reviews the design specification for architectural flaws, invalid assumptions, u
 - **Condition:** Always (CRITICAL)
 - **Action:** For every NEW artifact (component, type, key, prop): search if existing artifact already serves this need. Is the difference semantic or cosmetic? Could the requirement be met with zero new code?
 - **Reasoning:** Preventing unnecessary duplication saves implementation time and maintenance burden
-- **Severity Rule:** If design proposes new artifact when existing satisfies requirement â†’ **MAJOR BLOCKING issue**
+- **Severity Rule:** If design proposes new artifact when existing satisfies requirement -> **MAJOR BLOCKING issue**
 - **Output:** Reuse findings
 
 ### Step 4: Complexity Assessment
@@ -70,9 +70,9 @@ Reviews the design specification for architectural flaws, invalid assumptions, u
 ### Step 5: Produce Review
 - **Condition:** After all analysis complete
 - **Action:** Write `design_review.md` with all findings categorized by severity:
-  - **Critical âŒ** â€” Reject: must fix before implementation
-  - **Major âš ï¸** â€” Approve with concerns: should fix but may not block
-  - **Minor ðŸ’¡** â€” Nice to have
+  - **Critical [X]** - Reject: must fix before implementation
+  - **Major ⚠️** - Approve with concerns: should fix but may not block
+  - **Minor 💡** - Nice to have
 - **Reasoning:** Structured severity enables informed go/no-go decisions
 - **Output:** `design_review.md` with recommendation
 
@@ -122,5 +122,6 @@ Reviews the design specification for architectural flaws, invalid assumptions, u
 | Architecture review criteria | `agent2a_design_critic_custom_client_context.md` | Standard scalability/reliability/security |
 | Severity threshold definitions | `agent2a_design_critic_custom_client_context.md` | Standard Critical/Major/Minor |
 | Organization-specific standards | `agent2a_design_critic_custom_client_context.md` | None |
-| Compliance-driven review items | Onboarding answers â†’ Compliance | None |
+| Compliance-driven review items | Onboarding answers -> Compliance | None |
+
 

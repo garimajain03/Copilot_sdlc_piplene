@@ -1,4 +1,4 @@
-# Contract: Skill — Ticket Connector
+﻿# Contract: Skill - Ticket Connector
 
 | Field | Value |
 |-------|-------|
@@ -15,18 +15,18 @@ Provides a unified interface for retrieving ticket context from any project mana
 
 | PM System | Implementation | Detection |
 |-----------|---------------|-----------|
-| Jira | Atlassian REST API / CLI | Onboarding → PM System = Jira |
-| Linear | Linear GraphQL API | Onboarding → PM System = Linear |
-| Azure DevOps | Azure DevOps REST API | Onboarding → PM System = Azure DevOps |
-| GitHub Issues | GitHub REST/GraphQL API | Onboarding → PM System = GitHub Issues |
-| Shortcut | Shortcut REST API | Onboarding → PM System = Shortcut |
+| Jira | Atlassian REST API / CLI | Onboarding -> PM System = Jira |
+| Linear | Linear GraphQL API | Onboarding -> PM System = Linear |
+| Azure DevOps | Azure DevOps REST API | Onboarding -> PM System = Azure DevOps |
+| GitHub Issues | GitHub REST/GraphQL API | Onboarding -> PM System = GitHub Issues |
+| Shortcut | Shortcut REST API | Onboarding -> PM System = Shortcut |
 
 ## Capabilities (Abstract)
 
 | Capability | Description | Agents Using |
 |------------|-------------|-------------|
 | `get-ticket` | Fetch ticket summary, description, status, priority, assignee | Agent 0 |
-| `get-details` | Cost-optimized staged retrieval (core → enrichment → artifacts) | Agent 0 |
+| `get-details` | Cost-optimized staged retrieval (core -> enrichment -> artifacts) | Agent 0 |
 | `get-linked` | Retrieve linked/related tickets | Agent 0 |
 | `get-comments` | Fetch ticket comments/discussion | Agent 0 |
 | `get-attachments` | List and download ticket attachments | Agent 0 |
@@ -52,10 +52,10 @@ Provides a unified interface for retrieving ticket context from any project mana
 
 | Setting | Source | Example |
 |---------|--------|---------|
-| PM base URL | Onboarding answers → PM URL | `https://myorg.atlassian.net` |
+| PM base URL | Onboarding answers -> PM URL | `https://myorg.atlassian.net` |
 | Auth token | Setup script (stored in `.env` or OS keychain) | `JIRA_TOKEN` |
-| Ticket prefix regex | Onboarding answers → Ticket Prefix | `[A-Z]+-\d+` |
-| Wiki spaces | Onboarding answers → Confluence spaces | `ARCH, ENG` |
+| Ticket prefix regex | Onboarding answers -> Ticket Prefix | `[A-Z]+-\d+` |
+| Wiki spaces | Onboarding answers -> Confluence spaces | `ARCH, ENG` |
 
 ## Customization Points
 
@@ -63,6 +63,7 @@ Provides a unified interface for retrieving ticket context from any project mana
 |-------|---------------|---------|
 | PM system type | Onboarding answers | Jira |
 | Authentication method | Setup script | Token-based |
-| Ticket ID pattern | Onboarding answers → Ticket Prefix | `[A-Z]+-\d+` |
-| Wiki integration | Onboarding answers → Sources | Confluence |
+| Ticket ID pattern | Onboarding answers -> Ticket Prefix | `[A-Z]+-\d+` |
+| Wiki integration | Onboarding answers -> Sources | Confluence |
 | Custom fields to extract | `skill_ticket_custom.md` | Standard fields |
+

@@ -1,5 +1,5 @@
 ﻿---
-description: "Check the current status of the SDLC Pipeline â€” show checkpoint state, completed phases, and pending work"
+description: "Check the current status of the SDLC Pipeline - show checkpoint state, completed phases, and pending work"
 mode: "agent"
 tools:
   - read
@@ -21,4 +21,5 @@ Show the current status of the SDLC Pipeline workflow.
 3. If no checkpoint file exists, report "No pipeline run in progress."
 
 **Format the output** as a clear status table the user can quickly scan.
+
 

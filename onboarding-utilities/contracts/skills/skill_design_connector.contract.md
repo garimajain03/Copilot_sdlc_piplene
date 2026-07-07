@@ -1,4 +1,4 @@
-# Contract: Skill — Design Connector
+﻿# Contract: Skill - Design Connector
 
 | Field | Value |
 |-------|-------|
@@ -43,3 +43,4 @@ Retrieves implementation-ready design context from design tools. Provides layout
 | Design tool | Auto-detected | Figma |
 | Token format | `skill_design_custom.md` | CSS variables |
 | Screenshot resolution | `skill_design_custom.md` | 2x |
+

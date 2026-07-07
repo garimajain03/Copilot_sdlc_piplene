@@ -1,5 +1,5 @@
 ﻿---
-description: "Run the SDLC Preflight Agent â€” validates onboarding answers, asks workspace mode (Default/Custom), bootstraps selected repository layout, scans repositories, and generates preflight outputs into outputs/agents-repo"
+description: "Run the SDLC Preflight Agent - validates onboarding answers, asks workspace mode (Default/Custom), bootstraps selected repository layout, scans repositories, and generates preflight outputs into outputs/agents-repo"
 mode: "agent"
 tools:
   - execute
@@ -26,9 +26,9 @@ Run the **SDLC Preflight Agent** to prepare a customer's project for the SDLC Pi
 6. Bootstraps workspace under `outputs/` via `onboarding-utilities/scripts/workspace-bootstrap.py`
 7. Smart-scans each repo for structure, dependencies, and patterns via `onboarding-utilities/scripts/repo-scanner.py`
 8. Incrementally maintains `index.md` with repository catalog and Service Catalogue
-9. Generates `.github/instructions/<repo>.instructions.md` per repo under `outputs/agents-repo/.github/instructions/` via `onboarding-utilities/scripts/instructions-generator.py`
+9. Generates `outputs/agents-repo/.github/instructions/<repo>.instructions.md` per repo via `onboarding-utilities/scripts/instructions-generator.py`
 10. Generates `copilot-instructions.md` using scanned repository context, including per-repo files in each cloned repo at `<repo>/.github/copilot-instructions.md`
-11. Generates `setup.sh` (macOS/Linux) and `setup.ps1` (Windows) â€” both include prerequisite installation, workspace config, submodule init, and validation
+11. Generates `setup.sh` (macOS/Linux) and `setup.ps1` (Windows) - both include prerequisite installation, workspace config, submodule init, and validation
 12. Generates connector configs, `.env.template`, and `.gitmodules` (if default workspace)
 13. Runs the appropriate setup script to install all prerequisites
 14. Self-validates all outputs via `onboarding-utilities/scripts/outcome-inspector.py`
@@ -42,12 +42,12 @@ Read and follow the full agent instructions at `.github/agents/sdlc-preflight.ag
 - The onboarding repository root `.github/` folder must remain unchanged.
 - All preflight-generated pipeline artifacts must be written in the selected workspace under `outputs/agents-repo` (especially `outputs/agents-repo/.github/...`).
 
-**IMPORTANT â€” Execution Format:**
+**IMPORTANT - Execution Format:**
 - You MUST announce each phase with a visible heading before starting it (single separator line above the heading only, no line below)
 - You MUST show a completion status after each phase
 - You MUST execute all phases sequentially (Phase 1 through Phase 10)
 - You MUST NOT skip any phase unless resuming from a checkpoint
-- You MUST NOT ask "Continue/Pause/Re-run" between phases â€” auto-continue to the next phase immediately
+- You MUST NOT ask "Continue/Pause/Re-run" between phases - auto-continue to the next phase immediately
 - You MUST display "Next Steps" at the end
 
 **Start by reading** `intake-sources.md` in the workspace root. If it doesn't exist, ask the user to provide it or point to its location.
@@ -55,4 +55,5 @@ Read and follow the full agent instructions at `.github/agents/sdlc-preflight.ag
 **Fresh Start:** When running `/preflight`, always start fresh from Phase 1. Reset any existing checkpoint state first.
 
 **On completion:** Display the Next Steps section telling the user to run `/generate-pipeline` next.
+
 

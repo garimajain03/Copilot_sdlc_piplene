@@ -1,4 +1,4 @@
-# Contract: Hook — Session Learnings
+﻿# Contract: Hook - Session Learnings
 
 | Field | Value |
 |-------|-------|
@@ -31,7 +31,7 @@ At the end of each agent session, extracts learnings, patterns discovered, and m
 | Code | Meaning |
 |------|---------|
 | `0` | Learnings stored (or nothing worth storing) |
-| `1` | Error storing — log but don't block |
+| `1` | Error storing - log but don't block |
 
 ## Customization Points
 
@@ -40,3 +40,4 @@ At the end of each agent session, extracts learnings, patterns discovered, and m
 | Memory storage path | Generated from setup | `/memories/repo/` |
 | Learning categories | `hook_learnings_custom.md` | Patterns, mistakes, preferences |
 | Minimum session length | `hook_learnings_custom.md` | 3 tool invocations |
+

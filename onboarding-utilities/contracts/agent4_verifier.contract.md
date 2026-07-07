@@ -1,4 +1,4 @@
-﻿# Contract: Agent 4 â€” Verifier
+﻿# Contract: Agent 4 - Verifier
 
 | Field | Value |
 |-------|-------|
@@ -19,13 +19,13 @@ Validates the implementation against problem specification, design specification
 
 ## Key Outcomes
 
-1. **[OUTCOME-SYNTAX]** â€” Code compiles with zero type errors
-2. **[OUTCOME-COVERAGE]** â€” Every REQ-XXX and AC-XXX has verification status (âœ…/âŒ)
-3. **[OUTCOME-TESTS]** â€” All tests pass; coverage meets threshold
-4. **[OUTCOME-QUALITY]** â€” Code quality (linting, formatting, SOLID) verified
-5. **[OUTCOME-SECURITY]** â€” Security audit completed (OWASP, dependency vulnerabilities)
-6. **[OUTCOME-FIX-REQUEST]** â€” If Critical/High issues â†’ `fix_request.md` produced for Fixer
-7. **[OUTCOME-READ-ONLY]** â€” Zero files modified in source repository
+1. **[OUTCOME-SYNTAX]** - Code compiles with zero type errors
+2. **[OUTCOME-COVERAGE]** - Every REQ-XXX and AC-XXX has verification status (✅/[X])
+3. **[OUTCOME-TESTS]** - All tests pass; coverage meets threshold
+4. **[OUTCOME-QUALITY]** - Code quality (linting, formatting, SOLID) verified
+5. **[OUTCOME-SECURITY]** - Security audit completed (OWASP, dependency vulnerabilities)
+6. **[OUTCOME-FIX-REQUEST]** - If Critical/High issues -> `fix_request.md` produced for Fixer
+7. **[OUTCOME-READ-ONLY]** - Zero files modified in source repository
 
 ## Inputs
 
@@ -37,7 +37,7 @@ Validates the implementation against problem specification, design specification
 | Source repository code | Repository | Yes | Implementation to verify |
 | `fix_manifest.md` | Agent 3c | No | On re-runs after fixes |
 | `test_report.md` | Agent 6 | No | Test execution results |
-| Custom client context | Client | No | `agent4_verifier_custom_client_context.md` â€” quality thresholds |
+| Custom client context | Client | No | `agent4_verifier_custom_client_context.md` - quality thresholds |
 
 ## Outputs
 
@@ -63,7 +63,7 @@ Validates the implementation against problem specification, design specification
 
 ### Step 3: Requirement Coverage Verification
 - **Condition:** After quality checks
-- **Action:** For each REQ-XXX from problem_spec: verify implementation exists. For each AC-XXX: verify individually. Build coverage matrix with âœ…/âŒ status
+- **Action:** For each REQ-XXX from problem_spec: verify implementation exists. For each AC-XXX: verify individually. Build coverage matrix with ✅/[X] status
 - **Reasoning:** Every requirement must be demonstrably implemented
 - **Output:** Requirement coverage matrix
 
@@ -94,10 +94,10 @@ Validates the implementation against problem specification, design specification
 ### Step 8: Produce Verification Report
 - **Condition:** All checks complete
 - **Action:** Write `verification_report.md` with all findings categorized by severity:
-  - **Critical:** Security hole, crash risk, missing requirement â†’ Ship blocker
-  - **High:** Logic bug, edge case failure â†’ Ship blocker
-  - **Medium:** Design deviation, maintainability â†’ Not a blocker
-  - **Low:** Nitpick, naming â†’ Not a blocker
+  - **Critical:** Security hole, crash risk, missing requirement -> Ship blocker
+  - **High:** Logic bug, edge case failure -> Ship blocker
+  - **Medium:** Design deviation, maintainability -> Not a blocker
+  - **Low:** Nitpick, naming -> Not a blocker
 - **Output:** `verification_report.md`
 
 ### Step 9: Extract Fix Request (if needed)
@@ -163,11 +163,12 @@ Validates the implementation against problem specification, design specification
 
 | Point | How Customized | Default |
 |-------|---------------|---------|
-| Coverage threshold | Onboarding answers â†’ QA Coverage | 80% |
+| Coverage threshold | Onboarding answers -> QA Coverage | 80% |
 | Type checker command | Auto-detected | `tsc --noEmit` |
 | Linter command | Auto-detected | `eslint` |
 | Test command | Auto-detected | `jest` / `vitest` |
 | Security audit command | Auto-detected | `npm audit` |
-| Compliance checks | Onboarding answers â†’ Compliance | None |
+| Compliance checks | Onboarding answers -> Compliance | None |
 | Severity definitions | `agent4_verifier_custom_client_context.md` | Standard 4-level |
+
 

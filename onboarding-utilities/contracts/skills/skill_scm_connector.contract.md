@@ -1,4 +1,4 @@
-# Contract: Skill — SCM Connector
+﻿# Contract: Skill - SCM Connector
 
 | Field | Value |
 |-------|-------|
@@ -15,10 +15,10 @@ Provides a unified interface for source control operations. Abstracts away SCM-s
 
 | SCM | Implementation | Detection |
 |-----|---------------|-----------|
-| GitHub | GitHub CLI / REST API | Onboarding → SCM = github |
-| GitLab | GitLab CLI / REST API | Onboarding → SCM = gitlab |
-| Bitbucket | Bitbucket REST API | Onboarding → SCM = bitbucket |
-| Azure DevOps | Azure DevOps REST API | Onboarding → SCM = azure-devops |
+| GitHub | GitHub CLI / REST API | Onboarding -> SCM = github |
+| GitLab | GitLab CLI / REST API | Onboarding -> SCM = gitlab |
+| Bitbucket | Bitbucket REST API | Onboarding -> SCM = bitbucket |
+| Azure DevOps | Azure DevOps REST API | Onboarding -> SCM = azure-devops |
 
 ## Capabilities (Abstract)
 
@@ -38,11 +38,11 @@ Provides a unified interface for source control operations. Abstracts away SCM-s
 
 | Setting | Source | Example |
 |---------|--------|---------|
-| SCM provider | Onboarding answers → SCM | `github` |
-| Organization/workspace | Onboarding answers → SCM org | `myorg` |
-| Default branch | Onboarding answers → Default Branch | `main` |
+| SCM provider | Onboarding answers -> SCM | `github` |
+| Organization/workspace | Onboarding answers -> SCM org | `myorg` |
+| Default branch | Onboarding answers -> Default Branch | `main` |
 | Auth token | Setup script | `GITHUB_TOKEN` |
-| Enterprise URL | Onboarding answers → GitHub Enterprise | `https://github.myorg.com` |
+| Enterprise URL | Onboarding answers -> GitHub Enterprise | `https://github.myorg.com` |
 
 ## Customization Points
 
@@ -51,5 +51,6 @@ Provides a unified interface for source control operations. Abstracts away SCM-s
 | SCM provider | Onboarding answers | GitHub |
 | Branch naming convention | `skill_scm_custom.md` | `feature/<ticket-id>` |
 | PR template | `skill_scm_custom.md` | Standard template |
-| Protected branches | Onboarding answers → Default Branch | `main` |
+| Protected branches | Onboarding answers -> Default Branch | `main` |
 | CI status check names | `skill_scm_custom.md` | Auto-detected |
+

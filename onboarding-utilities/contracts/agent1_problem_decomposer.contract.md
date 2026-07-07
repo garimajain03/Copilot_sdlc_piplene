@@ -1,4 +1,4 @@
-﻿# Contract: Agent 1 â€” Problem Decomposer
+﻿# Contract: Agent 1 - Problem Decomposer
 
 | Field | Value |
 |-------|-------|
@@ -19,11 +19,11 @@ Transforms vague feature requests, bug reports, or ticket descriptions into prec
 
 ## Key Outcomes
 
-1. **[OUTCOME-STRUCTURE]** â€” Every requirement has a unique tracking ID (REQ-XXX), acceptance criteria (AC-XXX), edge cases (EC-XXX), and assumptions (ASM-XXX)
-2. **[OUTCOME-COMPLETENESS]** â€” All ambiguities are resolved â€” either by codebase search or by asking the user
-3. **[OUTCOME-TRACEABILITY]** â€” Every requirement is traceable to the original ticket/request
-4. **[OUTCOME-SCOPE]** â€” Clear separation between in-scope, out-of-scope, and non-goals
-5. **[OUTCOME-SELF-RESOLVE]** â€” Agent searches codebase for answers before asking the user (minimize interruptions)
+1. **[OUTCOME-STRUCTURE]** - Every requirement has a unique tracking ID (REQ-XXX), acceptance criteria (AC-XXX), edge cases (EC-XXX), and assumptions (ASM-XXX)
+2. **[OUTCOME-COMPLETENESS]** - All ambiguities are resolved - either by codebase search or by asking the user
+3. **[OUTCOME-TRACEABILITY]** - Every requirement is traceable to the original ticket/request
+4. **[OUTCOME-SCOPE]** - Clear separation between in-scope, out-of-scope, and non-goals
+5. **[OUTCOME-SELF-RESOLVE]** - Agent searches codebase for answers before asking the user (minimize interruptions)
 
 ## Inputs
 
@@ -33,14 +33,14 @@ Transforms vague feature requests, bug reports, or ticket descriptions into prec
 | Repository index | Repository | Yes | Maps repos to domains |
 | Source repository code | Repository | Yes | Existing codebase for self-resolution |
 | Downloaded images/attachments | Agent 0 | No | Visual context from ticket |
-| Custom client context | Client | No | `agent1_problem_decomposer_custom_client_context.md` â€” domain terminology, standard questions |
+| Custom client context | Client | No | `agent1_problem_decomposer_custom_client_context.md` - domain terminology, standard questions |
 
 ## Outputs
 
 | Artifact | Consumed By | Format | Description |
 |----------|-------------|--------|-------------|
 | `problem_spec.md` | Agent 2, 3b, 4, 5, 6 | Markdown | Structured requirements with REQ/AC/EC/ASM IDs |
-| `clarification_questions.md` | Orchestrator â†’ User | Markdown | Questions awaiting user answers (if needed) |
+| `clarification_questions.md` | Orchestrator -> User | Markdown | Questions awaiting user answers (if needed) |
 | `checkpoint.md` | All agents | Markdown | Updated pipeline state |
 
 ## Workflow Logic
@@ -61,7 +61,7 @@ Transforms vague feature requests, bug reports, or ticket descriptions into prec
 - **Condition:** After context loaded
 - **Action:** Generate questions in priority tiers:
   - **Tier 1 (Universal):** Scope, platforms, backward compatibility, affected users/brands
-  - **Tier 2 (Context-dependent):** UI states, offline behavior, auth requirements, API contracts, data migration, compliance â€” based on repo type
+  - **Tier 2 (Context-dependent):** UI states, offline behavior, auth requirements, API contracts, data migration, compliance - based on repo type
   - **Tier 3 (Advanced):** Performance requirements, monitoring, rollback strategy
 - **Reasoning:** Structured questioning ensures nothing is missed
 - **Output:** Question list by tier
@@ -69,7 +69,7 @@ Transforms vague feature requests, bug reports, or ticket descriptions into prec
 ### Step 4: Self-Resolution
 - **Condition:** For each question in Step 3
 - **Action:** Search codebase for the answer before asking the user. Check existing patterns, configurations, test fixtures, documentation
-- **Reasoning:** Minimize user interruptions â€” only ask what the codebase can't answer
+- **Reasoning:** Minimize user interruptions - only ask what the codebase can't answer
 - **Output:** Self-resolved answers (with source citations), remaining unresolved questions
 
 ### Step 5: Ask User (if needed)
@@ -146,7 +146,7 @@ Transforms vague feature requests, bug reports, or ticket descriptions into prec
 - [ ] All clarifications resolved (self or user) and documented
 - [ ] Self-resolved answers include source file citations
 - [ ] No requirement contradicts stated non-goals
-- [ ] Scope is bounded â€” no open-ended requirements
+- [ ] Scope is bounded - no open-ended requirements
 - [ ] `checkpoint.md` updated with completion status
 
 ## Customization Points
@@ -155,9 +155,10 @@ Transforms vague feature requests, bug reports, or ticket descriptions into prec
 |-------|---------------|---------|
 | Tier 1 universal questions | `agent1_problem_decomposer_custom_client_context.md` | Standard scope/platform/compat questions |
 | Tier 2 context questions | `agent1_problem_decomposer_custom_client_context.md` | Based on repo type detection |
-| Domain-specific terminology | Onboarding answers â†’ Domain model | Generic software terms |
+| Domain-specific terminology | Onboarding answers -> Domain model | Generic software terms |
 | Self-resolution search patterns | `agent1_problem_decomposer_custom_client_context.md` | Config files, test fixtures, docs |
 | Max clarification rounds | `agent1_problem_decomposer_custom_client_context.md` | 2 rounds |
 | Sensible defaults (brands, platforms) | Onboarding answers | All brands, all platforms |
-| Compliance-driven questions | Onboarding answers â†’ Compliance field | None |
+| Compliance-driven questions | Onboarding answers -> Compliance field | None |
+
 

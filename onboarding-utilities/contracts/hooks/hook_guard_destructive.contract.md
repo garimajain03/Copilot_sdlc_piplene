@@ -1,4 +1,4 @@
-# Contract: Hook — Guard Destructive Commands
+﻿# Contract: Hook - Guard Destructive Commands
 
 | Field | Value |
 |-------|-------|
@@ -22,12 +22,12 @@ Intercepts terminal/execute tool invocations and blocks commands that could caus
 
 | Pattern Category | Examples | Severity |
 |------------------|----------|----------|
-| Recursive deletion of critical paths | `rm -rf /`, `rm -rf ~`, `rm -rf .git` | Critical — always block |
-| Force push to protected branches | `git push --force main`, `git push -f origin main` | Critical — always block |
-| Hard reset | `git reset --hard` on shared branches | High — block with override |
-| Database destruction | `DROP DATABASE`, `DROP TABLE` | Critical — always block |
-| Package registry publish | `npm publish`, `pip upload` | High — require confirmation |
-| System modification | `chmod -R 777 /`, `chown -R` on system paths | Critical — always block |
+| Recursive deletion of critical paths | `rm -rf /`, `rm -rf ~`, `rm -rf .git` | Critical - always block |
+| Force push to protected branches | `git push --force main`, `git push -f origin main` | Critical - always block |
+| Hard reset | `git reset --hard` on shared branches | High - block with override |
+| Database destruction | `DROP DATABASE`, `DROP TABLE` | Critical - always block |
+| Package registry publish | `npm publish`, `pip upload` | High - require confirmation |
+| System modification | `chmod -R 777 /`, `chown -R` on system paths | Critical - always block |
 
 ### Allow Patterns
 
@@ -41,14 +41,15 @@ Intercepts terminal/execute tool invocations and blocks commands that could caus
 
 | Code | Meaning | Agent Behavior |
 |------|---------|----------------|
-| `0` | Command is safe — proceed | Agent executes normally |
-| `2` | Command is blocked — error fed to agent | Agent receives error message, must choose alternative |
+| `0` | Command is safe - proceed | Agent executes normally |
+| `2` | Command is blocked - error fed to agent | Agent receives error message, must choose alternative |
 
 ## Customization Points
 
 | Point | How Customized | Default |
 |-------|---------------|---------|
-| Protected paths | Onboarding answers → Agent Guardrails | `/`, `~`, `.git` |
-| Protected branches | Onboarding answers → Default Branch | `main`, `master` |
+| Protected paths | Onboarding answers -> Agent Guardrails | `/`, `~`, `.git` |
+| Protected branches | Onboarding answers -> Default Branch | `main`, `master` |
 | Additional block patterns | `hook_guard_destructive_custom.md` | None |
 | Allow-list patterns | `hook_guard_destructive_custom.md` | Standard cleanup |
+

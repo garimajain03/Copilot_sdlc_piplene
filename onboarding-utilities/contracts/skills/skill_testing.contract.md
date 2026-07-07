@@ -1,4 +1,4 @@
-# Contract: Skill — Testing
+﻿# Contract: Skill - Testing
 
 | Field | Value |
 |-------|-------|
@@ -33,18 +33,19 @@ Provides stack-specific testing conventions, patterns, and best practices. Loade
 
 ## Testing Principles (Universal)
 
-1. **Deterministic** — No real network, time, or external services
-2. **Behavior-driven** — Test what it does, not how it does it
-3. **Isolated** — Each test independent of others
-4. **Readable** — Test names describe expected behavior
-5. **Maintainable** — No over-mocking, no brittle selectors
+1. **Deterministic** - No real network, time, or external services
+2. **Behavior-driven** - Test what it does, not how it does it
+3. **Isolated** - Each test independent of others
+4. **Readable** - Test names describe expected behavior
+5. **Maintainable** - No over-mocking, no brittle selectors
 
 ## Customization Points
 
 | Point | How Customized | Default |
 |-------|---------------|---------|
 | Test runner | Auto-detected | Jest |
-| Coverage threshold | Onboarding answers → QA Coverage | 80% |
+| Coverage threshold | Onboarding answers -> QA Coverage | 80% |
 | Test file location | Auto-detected | Co-located or `__tests__/` |
 | Mock patterns | Auto-detected | Project-specific |
 | Custom testing skills | `skill_testing_custom.md` | None |
+

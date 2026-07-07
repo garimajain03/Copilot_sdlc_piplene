@@ -1,4 +1,4 @@
-﻿# SDLC Pipeline Bundle â€” Copilot Instructions
+﻿# SDLC Pipeline Bundle - Copilot Instructions
 
 ## Overview
 
@@ -26,16 +26,16 @@ This repository is a **standalone SDLC Pipeline Bundle** (`github-copilot-sdlc-t
 ### Connector Integration Modes
 
 Each external platform (Jira, Confluence, GitHub/GitLab) can be integrated via:
-- **MCP (Model Context Protocol)** â€” generates `.mcp.json` with server definitions
-- **API-based Connector Skills** â€” generates SKILL.md files with CLI commands
+- **MCP (Model Context Protocol)** - generates `.mcp.json` with server definitions
+- **API-based Connector Skills** - generates SKILL.md files with CLI commands
 
 The Preflight Agent asks which mode to use per platform. The Pipeline Generator only generates Connector Skills for platforms where API-based integration was selected.
 
 ### Workspace Structure
 
 Two modes supported:
-- **Default** â€” Single Agents repository with Git submodules for development repos
-- **Custom** â€” Customer-defined repository layout
+- **Default** - Single Agents repository with Git submodules for development repos
+- **Custom** - Customer-defined repository layout
 
 ### Cross-Platform Support
 
@@ -70,4 +70,5 @@ All generated artifacts support both macOS and Windows:
 |-------|------|---------|
 | SDLC Preflight Agent | `.github/agents/sdlc-preflight.agent.md` | Validates onboarding, configures connectors (MCP/API), sets up workspace, scans repos, generates cross-platform setup |
 | SDLC Pipeline Generator | `.github/agents/sdlc-pipeline-generator.agent.md` | Generates customer-specific agents from contracts, reuses existing agents, generates cross-platform hooks |
+
 

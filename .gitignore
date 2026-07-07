@@ -2,6 +2,10 @@
 .env
 data/
 repos/
+.github/sdlc-pipeline/
+.github/instructions/
+outputs/
+.sdlc-pipeline/
 .sdlc-preflight/
 __pycache__/
 *.pyc

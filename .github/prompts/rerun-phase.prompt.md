@@ -1,5 +1,5 @@
 ﻿---
-description: "Re-run a specific phase of the SDLC Pipeline with feedback â€” provide the phase name and your feedback"
+description: "Re-run a specific phase of the SDLC Pipeline with feedback. Provide the phase name and your feedback."
 mode: "agent"
 tools:
   - execute
@@ -18,9 +18,9 @@ Re-run a specific phase of the SDLC Pipeline with user feedback.
 
 Provide the phase to re-run and your feedback. Examples:
 
-- "Phase 4 Code Scan â€” scan repo-X with deeper analysis for testing patterns"
-- "Phase 4 Agent Generation â€” regenerate Agent 3b with stricter type checking"
-- "Phase 6 Hook Generation â€” add custom pre-commit hook for formatting"
+- "Phase 4 Code Scan: scan repo-X with deeper analysis for testing patterns"
+- "Phase 4 Agent Generation: regenerate Agent 3b with stricter type checking"
+- "Phase 6 Hook Generation: add custom pre-commit hook for formatting"
 
 ## Instructions
 

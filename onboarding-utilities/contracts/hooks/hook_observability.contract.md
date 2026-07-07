@@ -1,4 +1,4 @@
-# Contract: Hook — Observability Process Lifecycle
+﻿# Contract: Hook - Observability Process Lifecycle
 
 | Field | Value |
 |-------|-------|
@@ -13,13 +13,13 @@ Manages local telemetry infrastructure processes (OpenTelemetry Collector and Pr
 
 ## Key Outcomes
 
-1. **[OUTCOME-START]** — On `SessionStart`, ensure OTel Collector and Prometheus are running; start them if not
-2. **[OUTCOME-HEALTH]** — Verify backends are healthy via HTTP health-check endpoints before proceeding
-3. **[OUTCOME-STOP]** — On `Stop`, gracefully shut down telemetry backends if no other pipeline is active
-4. **[OUTCOME-IDEMPOTENT]** — Starting already-running processes is a no-op; stopping already-stopped processes is safe
-5. **[OUTCOME-PERSIST]** — PID files and logs persist across hook invocations for process tracking
+1. **[OUTCOME-START]** - On `SessionStart`, ensure OTel Collector and Prometheus are running; start them if not
+2. **[OUTCOME-HEALTH]** - Verify backends are healthy via HTTP health-check endpoints before proceeding
+3. **[OUTCOME-STOP]** - On `Stop`, gracefully shut down telemetry backends if no other pipeline is active
+4. **[OUTCOME-IDEMPOTENT]** - Starting already-running processes is a no-op; stopping already-stopped processes is safe
+5. **[OUTCOME-PERSIST]** - PID files and logs persist across hook invocations for process tracking
 
-## Responsibility Boundary (CRITICAL — NO DUPLICATION)
+## Responsibility Boundary (CRITICAL - NO DUPLICATION)
 
 This hook is ONLY responsible for:
 - Starting/stopping OTel Collector and Prometheus binary processes
@@ -56,7 +56,7 @@ All telemetry/metrics logic belongs EXCLUSIVELY in the `otel_telemetry` hook.
 | `otelcol-contrib` | OpenTelemetry Collector | GitHub Releases (open-telemetry/opentelemetry-collector-releases) | `scripts/install-observability.sh` |
 | `prometheus` | Metrics storage and query | GitHub Releases (prometheus/prometheus) | `scripts/install-observability.sh` |
 
-Binaries are installed to `<project_root>/observability/.bin/` — no sudo required.
+Binaries are installed to `<project_root>/observability/.bin/` - no sudo required.
 
 ### Configuration Files
 
@@ -88,11 +88,11 @@ Binaries are installed to `<project_root>/observability/.bin/` — no sudo requi
 
 1. Create required directories (`.pids/`, `.logs/`, `.prom-data/`, `.hook-state/`)
 2. Check if `otelcol-contrib` binary exists at `observability/.bin/otelcol-contrib`
-   - If missing → run `scripts/install-observability.sh --check` to report status
-   - If missing → exit with warning (non-blocking), telemetry degraded
+   - If missing -> run `scripts/install-observability.sh --check` to report status
+   - If missing -> exit with warning (non-blocking), telemetry degraded
 3. Check if processes are already running via PID files
-   - If running → verify health via HTTP endpoints → no-op if healthy
-   - If stale PID → clean up PID file, restart
+   - If running -> verify health via HTTP endpoints -> no-op if healthy
+   - If stale PID -> clean up PID file, restart
 4. Start OTel Collector:
    - Bind to `localhost:4317` (gRPC), `localhost:4318` (HTTP), `localhost:13133` (health)
    - Config: `observability/otel-collector-config.yml`
@@ -110,11 +110,11 @@ Binaries are installed to `<project_root>/observability/.bin/` — no sudo requi
 ### Stop Flow
 
 1. Check if any other pipeline is still active (via `observability/.hook-state/active_feature_id`)
-   - If active pipeline exists → do NOT stop processes
+   - If active pipeline exists -> do NOT stop processes
 2. Read PID files
 3. Send `SIGTERM` to each process
 4. Wait up to 5 seconds for graceful shutdown
-5. If still running after timeout → send `SIGKILL`
+5. If still running after timeout -> send `SIGKILL`
 6. Remove PID files
 7. Clean up hook state files
 
@@ -123,7 +123,7 @@ Binaries are installed to `<project_root>/observability/.bin/` — no sudo requi
 | Code | Meaning | Agent Behavior |
 |------|---------|----------------|
 | `0` | Processes managed successfully | Pipeline proceeds |
-| `1` | Warning — telemetry degraded (binary missing, health check failed) | Pipeline proceeds without telemetry |
+| `1` | Warning - telemetry degraded (binary missing, health check failed) | Pipeline proceeds without telemetry |
 
 ## Cross-Platform Requirements
 
@@ -131,8 +131,8 @@ Binaries are installed to `<project_root>/observability/.bin/` — no sudo requi
 
 | Platform | Binary Extension | Signal | Process Management |
 |----------|-----------------|--------|-------------------|
-| macOS (arm64, amd64) | none | SIGTERM → SIGKILL | kill via PID |
-| Linux (arm64, amd64) | none | SIGTERM → SIGKILL | kill via PID |
+| macOS (arm64, amd64) | none | SIGTERM -> SIGKILL | kill via PID |
+| Linux (arm64, amd64) | none | SIGTERM -> SIGKILL | kill via PID |
 | Windows (amd64) | `.exe` | TerminateProcess | taskkill via PID |
 
 ### Implementation Rules
@@ -143,7 +143,7 @@ Binaries are installed to `<project_root>/observability/.bin/` — no sudo requi
 - Use `os.path.join()` or `pathlib.Path` for all file paths (never hardcode `/` or `\`)
 - PID files use the same format on all platforms (plain text, one PID per file)
 - Process termination:
-  - macOS/Linux: `os.kill(pid, signal.SIGTERM)` → wait → `os.kill(pid, signal.SIGKILL)`
+  - macOS/Linux: `os.kill(pid, signal.SIGTERM)` -> wait -> `os.kill(pid, signal.SIGKILL)`
   - Windows: `subprocess.run(["taskkill", "/F", "/PID", str(pid)])`
 - Health checks use HTTP requests (platform-independent)
 - Binary download URLs resolved per platform:
@@ -162,7 +162,7 @@ PROMETHEUS_BINARY = "prometheus" + (".exe" if IS_WINDOWS else "")
 
 **Binary paths (relative to workspace root):**
 ```python
-WORKSPACE_ROOT = Path(__file__).parent.parent.parent  # .github/hooks/ → workspace root
+WORKSPACE_ROOT = Path(__file__).parent.parent.parent  # .github/hooks/ -> workspace root
 OBSERVABILITY_DIR = WORKSPACE_ROOT / "observability"
 PID_DIR = OBSERVABILITY_DIR / ".pids"
 binary_path = OBSERVABILITY_DIR / ".bin" / OTEL_BINARY
@@ -207,3 +207,4 @@ else:
 | Log retention | Hook config | 3 most recent runs |
 | Health check timeout | Hook config | 3 retries × 2s |
 | Stale PID age | Hook config | 300 seconds |
+

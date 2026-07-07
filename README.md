@@ -1,4 +1,4 @@
-# SDLC Pipeline Bundle — Templatized Agentic Workflow
+﻿# SDLC Pipeline Bundle - Templatized Agentic Workflow
 
 ## Overview
 
@@ -13,28 +13,28 @@ This repository is a **standalone, reusable SDLC Pipeline Bundle** containing **
 │                    SDLC ONBOARDING FLOW                        │
 │                                                                 │
 │  1. Customer fills HTML Wizard (client-onboarding-wizard.html)  │
-│     → Downloads intake-sources.md                               │
+│     -> Downloads intake-sources.md                               │
 │                                                                 │
 │  2. Preflight Agent reads answers                               │
-│     → Asks connector mode per platform (MCP vs API-based)       │
-│     → Configures workspace (submodules or custom layout)        │
-│     → Generates .mcp.json (for MCP platforms)                   │
-│     → Generates setup.sh + setup.ps1 (cross-platform)           │
-│     → Clones & scans repos, generates instructions + index.md   │
-│     → Asks clarification questions if unclear                   │
+│     -> Asks connector mode per platform (MCP vs API-based)       │
+│     -> Configures workspace (submodules or custom layout)        │
+│     -> Generates .mcp.json (for MCP platforms)                   │
+│     -> Generates setup.sh + setup.ps1 (cross-platform)           │
+│     -> Clones & scans repos, generates instructions + index.md   │
+│     -> Asks clarification questions if unclear                   │
 │                                                                 │
 │  3. SDLC Pipeline Generator reads Contracts + answers           │
-│     → Checks for existing agents — reuses and enhances them     │
-│     → Generates Connector Skills only for API-based platforms   │
-│     → Generates agents with full metadata, validation,          │
+│     -> Checks for existing agents - reuses and enhances them     │
+│     -> Generates Connector Skills only for API-based platforms   │
+│     -> Generates agents with full metadata, validation,          │
 │       checkpointing, and completion criteria                    │
-│     → Generates cross-platform Python hook scripts              │
-│     → Includes telemetry hooks & observability setup            │
+│     -> Generates cross-platform Python hook scripts              │
+│     -> Includes telemetry hooks & observability setup            │
 │                                                                 │
 │  4. Customer adds custom context per agent (optional)           │
-│     → <agent>_custom_client_context.md files                    │
+│     -> <agent>_custom_client_context.md files                    │
 │                                                                 │
-│  5. Run Orchestrator → Full SDLC pipeline operational           │
+│  5. Run Orchestrator -> Full SDLC pipeline operational           │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -135,7 +135,7 @@ sdlc-pipeline-bundle/                  ← This standalone repository
 
 1. Clone this repo into your project or as a standalone workspace
 2. Open in VS Code with GitHub Copilot extension
-3. Open `client-onboarding-wizard.html` → fill → download `intake-sources.md`
+3. Open `client-onboarding-wizard.html` -> fill -> download `intake-sources.md`
 4. In Copilot Chat: `@workspace /preflight intake-sources.md`
 5. In Copilot Chat: `@workspace /generate-pipeline intake-sources.md`
 6. Customize per-agent context in `<agent>_custom_client_context.md` files
@@ -156,3 +156,4 @@ sdlc-pipeline-bundle/                  ← This standalone repository
 | Bundle Version | 1.0.0 |
 | Source Pipeline Version | 2.4.0 |
 | Created | 2026-05-31 |
+

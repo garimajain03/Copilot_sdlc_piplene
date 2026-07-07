@@ -1,4 +1,4 @@
-# Contract: Hook — Guard Secrets
+﻿# Contract: Hook - Guard Secrets
 
 | Field | Value |
 |-------|-------|
@@ -49,13 +49,14 @@ Prevents agents from reading, writing, or executing files that contain or may co
 
 | Code | Meaning | Agent Behavior |
 |------|---------|----------------|
-| `0` | No secret files involved — proceed | Normal execution |
+| `0` | No secret files involved - proceed | Normal execution |
 | `2` | Secret file access blocked | Agent receives error, must avoid secrets |
 
 ## Customization Points
 
 | Point | How Customized | Default |
 |-------|---------------|---------|
-| Protected file patterns | Onboarding answers → Security rules | `.env*`, `*.pem`, `*.key` |
+| Protected file patterns | Onboarding answers -> Security rules | `.env*`, `*.pem`, `*.key` |
 | Additional patterns | `hook_guard_secrets_custom.md` | None |
 | Allowed exceptions | `hook_guard_secrets_custom.md` | None (strict by default) |
+

@@ -1,4 +1,4 @@
-# Contract: Orchestrator
+﻿# Contract: Orchestrator
 
 | Field | Value |
 |-------|-------|
@@ -19,12 +19,12 @@ Coordinates the full SDLC pipeline. Accepts tickets or requirements, delegates t
 
 ## Key Outcomes
 
-1. **[OUTCOME-COORDINATE]** — Each agent receives a focused prompt with exactly the context it needs — no more, no less
-2. **[OUTCOME-ISOLATE]** — Each subagent starts with clean context (no conversation history leakage)
-3. **[OUTCOME-ROUTE]** — Pipeline adapts based on ticket classification — agents skipped when not needed
-4. **[OUTCOME-LOOP]** — Clarification and fix loops managed with iteration awareness
-5. **[OUTCOME-TRACK]** — Time and token usage tracked per agent for cost awareness
-6. **[OUTCOME-HUMAN]** — Human approval gates respected at every handoff point
+1. **[OUTCOME-COORDINATE]** - Each agent receives a focused prompt with exactly the context it needs - no more, no less
+2. **[OUTCOME-ISOLATE]** - Each subagent starts with clean context (no conversation history leakage)
+3. **[OUTCOME-ROUTE]** - Pipeline adapts based on ticket classification - agents skipped when not needed
+4. **[OUTCOME-LOOP]** - Clarification and fix loops managed with iteration awareness
+5. **[OUTCOME-TRACK]** - Time and token usage tracked per agent for cost awareness
+6. **[OUTCOME-HUMAN]** - Human approval gates respected at every handoff point
 
 ## Inputs
 
@@ -32,19 +32,19 @@ Coordinates the full SDLC pipeline. Accepts tickets or requirements, delegates t
 |----------|--------|----------|-------------|
 | Ticket ID or requirement file | User | Yes | Entry point for pipeline |
 | `intake-sources.md` | Setup | No | Client configuration (read once at start) |
-| Custom client context | Client | No | `orchestrator_custom_client_context.md` — routing rules, model overrides |
+| Custom client context | Client | No | `orchestrator_custom_client_context.md` - routing rules, model overrides |
 | `index.md` | Preflight | No | Repository catalog and Service Catalogue for routing |
 | `.mcp.json` | Preflight | No | MCP server definitions (if MCP integration selected) |
 | `connector_config.md` | Preflight | No | API-based connector configuration |
 
 ### Input Validation
 
-1. **Ticket ID or requirement file** — Must be non-empty; if ticket ID, must match ticket prefix regex from onboarding
-2. **`intake-sources.md`** — If present, validate against onboarding schema (Organisation, LLM Models, Constraints sections required)
-3. **Custom client context** — If present, validate structure (expected sections: routing rules, model overrides)
-4. **`index.md`** — If present, verify at least one repository is listed
-5. **`.mcp.json`** — If present, validate JSON structure with `mcpServers` key
-6. **`connector_config.md`** — If present, verify at least one connector section exists
+1. **Ticket ID or requirement file** - Must be non-empty; if ticket ID, must match ticket prefix regex from onboarding
+2. **`intake-sources.md`** - If present, validate against onboarding schema (Organisation, LLM Models, Constraints sections required)
+3. **Custom client context** - If present, validate structure (expected sections: routing rules, model overrides)
+4. **`index.md`** - If present, verify at least one repository is listed
+5. **`.mcp.json`** - If present, validate JSON structure with `mcpServers` key
+6. **`connector_config.md`** - If present, verify at least one connector section exists
 
 If validation fails for a required input, **halt and report the error** to the user.
 If validation fails for an optional input, **log a warning** and proceed without it.
@@ -133,7 +133,7 @@ After pipeline completion, validate:
 ### Step 12: Fix Loop
 - **Condition:** Agent 4 produced `fix_request.md` (Critical/High issues)
 - **Action:** Invoke Agent 3c (Fixer) with fix_request. Re-invoke Agent 4. Max 3 iterations
-- **Reasoning:** Fix → verify cycle until clean or max attempts
+- **Reasoning:** Fix -> verify cycle until clean or max attempts
 - **Output:** Fixed code, `fix_manifest.md`
 
 ### Step 13: Run Critic (Agent 5)
@@ -211,12 +211,12 @@ On every run, **FIRST** check for an existing checkpoint:
 
 1. Load checkpoint from `<output_folder>/checkpoint.md` or `.github/sdlc-pipeline/checkpoint_state.json`
 2. If checkpoint exists and `status != "completed"`:
-   - Read `current_step` — resume from this step
-   - Read `completed_agents` — skip already-completed agents
-   - Read `agent_outputs` — verify files still exist (re-run agent if output missing)
-   - Read `routing_decisions` — use same routing (don't re-classify)
-   - Read `errors` — attempt recovery for recoverable errors
-   - Inform user: "Resuming pipeline from Step X. Steps 1–(X-1) already completed."
+   - Read `current_step` - resume from this step
+   - Read `completed_agents` - skip already-completed agents
+   - Read `agent_outputs` - verify files still exist (re-run agent if output missing)
+   - Read `routing_decisions` - use same routing (don't re-classify)
+   - Read `errors` - attempt recovery for recoverable errors
+   - Inform user: "Resuming pipeline from Step X. Steps 1-(X-1) already completed."
 3. If no checkpoint exists or `status == "completed"`:
    - Start fresh from Step 1
 4. If checkpoint is corrupted:
@@ -226,14 +226,14 @@ On every run, **FIRST** check for an existing checkpoint:
 
 When user requests re-run of a specific step or agent:
 
-1. **Validate request** — confirm which step/agent to re-run
-2. **Load checkpoint** — get current pipeline state
-3. **Accept feedback** — collect user feedback for the re-run (e.g., "Use stricter type checking")
-4. **Reset step** — mark the target step as incomplete in checkpoint
-5. **Cascade resets** — mark all downstream steps as incomplete (they depend on re-run output)
-6. **Re-execute** — run the target step with feedback incorporated
-7. **Continue pipeline** — proceed from re-run step through remaining steps
-8. **Update checkpoint** — save new state after re-run
+1. **Validate request** - confirm which step/agent to re-run
+2. **Load checkpoint** - get current pipeline state
+3. **Accept feedback** - collect user feedback for the re-run (e.g., "Use stricter type checking")
+4. **Reset step** - mark the target step as incomplete in checkpoint
+5. **Cascade resets** - mark all downstream steps as incomplete (they depend on re-run output)
+6. **Re-execute** - run the target step with feedback incorporated
+7. **Continue pipeline** - proceed from re-run step through remaining steps
+8. **Update checkpoint** - save new state after re-run
 
 ### Re-run Boundaries
 
@@ -250,13 +250,13 @@ When user requests re-run of a specific step or agent:
 
 When the pipeline reaches completion:
 
-1. **Verify all outputs** — check every expected artifact exists and is valid
-2. **Produce final telemetry** — aggregate all per-agent metrics into pipeline summary
-3. **Archive state** — save final checkpoint with `status: "completed"`
-4. **Generate ship recommendation** — combine Critic's risk assessment with verification results
-5. **Present deliverables** — list all generated artifacts with locations
-6. **Suggest next actions** — based on pipeline results (e.g., "Create PR", "Run integration tests", "Review IaC plan")
-7. **Clean up** — remove temporary files, close telemetry backends if no other pipelines active
+1. **Verify all outputs** - check every expected artifact exists and is valid
+2. **Produce final telemetry** - aggregate all per-agent metrics into pipeline summary
+3. **Archive state** - save final checkpoint with `status: "completed"`
+4. **Generate ship recommendation** - combine Critic's risk assessment with verification results
+5. **Present deliverables** - list all generated artifacts with locations
+6. **Suggest next actions** - based on pipeline results (e.g., "Create PR", "Run integration tests", "Review IaC plan")
+7. **Clean up** - remove temporary files, close telemetry backends if no other pipelines active
 
 ## Conditions & Decision Points
 
@@ -267,7 +267,7 @@ When the pipeline reaches completion:
 | Infrastructure/DevOps change | Route to Agent 8 (skip 3a/3b/3c/6) | IaC-specific pipeline |
 | Clarification needed | Loop Agent 1 ↔ User (max 2) | Resolve ambiguity |
 | Design rejected | Loop Agent 2 ↔ 2a (max 2) | Iterate design |
-| Verification fails | Loop Agent 3c ↔ 4 (max 3) | Fix → verify cycle |
+| Verification fails | Loop Agent 3c ↔ 4 (max 3) | Fix -> verify cycle |
 | Input is raw requirement (no ticket) | Skip Agent 0 | No ticket to analyze |
 | Multi-repo feature | Multi-repo orchestration | Coordinate across repos |
 
@@ -280,11 +280,11 @@ When the pipeline reaches completion:
   - Which input files to read
   - What to produce
   - Constraints and instructions
-- Subagent results returned as text — orchestrator decides next step
+- Subagent results returned as text - orchestrator decides next step
 
 ### Model Selection Priority
 1. Explicit model override (from custom context or user)
-2. Agent-configured model (from contract model_tier → resolved model)
+2. Agent-configured model (from contract model_tier -> resolved model)
 3. Orchestrator default model
 
 ## Tool Categories
@@ -325,23 +325,23 @@ The orchestrator pipeline supports **optional** local telemetry collection via O
 | OTel Collector | `otelcol-contrib` | open-telemetry/opentelemetry-collector-releases | `scripts/install-observability.sh` |
 | Prometheus | `prometheus` | prometheus/prometheus | `scripts/install-observability.sh` |
 
-Binaries are installed to `<project_root>/observability/.bin/` — no sudo required, no Docker dependency.
+Binaries are installed to `<project_root>/observability/.bin/` - no sudo required, no Docker dependency.
 
 ### Lifecycle
 
 ```
-Pipeline Start → SessionStart hook
-  → HC-OBSERVABILITY: start otelcol-contrib + prometheus
-  → HC-OTEL-TELEMETRY: record session baseline
+Pipeline Start -> SessionStart hook
+  -> HC-OBSERVABILITY: start otelcol-contrib + prometheus
+  -> HC-OTEL-TELEMETRY: record session baseline
 
 Agent N invocation:
-  → PreToolUse(runSubagent): snapshot pre-agent metrics
-  → Agent runs...
-  → PostToolUse(runSubagent): compute delta, append telemetry_report.md
+  -> PreToolUse(runSubagent): snapshot pre-agent metrics
+  -> Agent runs...
+  -> PostToolUse(runSubagent): compute delta, append telemetry_report.md
 
-Pipeline End → Stop hook
-  → HC-OTEL-TELEMETRY: write pipeline summary to telemetry_report.md
-  → HC-OBSERVABILITY: stop processes (if no other pipeline active)
+Pipeline End -> Stop hook
+  -> HC-OTEL-TELEMETRY: write pipeline summary to telemetry_report.md
+  -> HC-OBSERVABILITY: stop processes (if no other pipeline active)
 ```
 
 ### Install Scripts (Cross-Platform)
@@ -355,9 +355,9 @@ Pipeline End → Stop hook
 6. Creates config files from templates if not present
 
 Run modes:
-- `scripts/install-observability.sh` — install both binaries
-- `scripts/install-observability.sh --check` — check if binaries are present (no download)
-- `scripts/install-observability.sh --json` — output status as JSON for automation
+- `scripts/install-observability.sh` - install both binaries
+- `scripts/install-observability.sh --check` - check if binaries are present (no download)
+- `scripts/install-observability.sh --json` - output status as JSON for automation
 
 **Windows:** `scripts/install-observability.ps1`
 1. Detects architecture (amd64)
@@ -367,9 +367,9 @@ Run modes:
 5. Creates config files from templates if not present
 
 Run modes:
-- `.\scripts\install-observability.ps1` — install both binaries
-- `.\scripts\install-observability.ps1 -Check` — check if binaries are present
-- `.\scripts\install-observability.ps1 -Json` — output status as JSON for automation
+- `.\scripts\install-observability.ps1` - install both binaries
+- `.\scripts\install-observability.ps1 -Check` - check if binaries are present
+- `.\scripts\install-observability.ps1 -Json` - output status as JSON for automation
 
 ### Configuration
 
@@ -389,8 +389,8 @@ The telemetry report (`<output_folder>/telemetry_report.md`) contains:
 ### Degraded Mode
 
 If observability infrastructure is unavailable (binaries not installed, health checks fail):
-- Pipeline **proceeds normally** — telemetry is never blocking
-- Warning logged: "Telemetry degraded — observability infrastructure not available"
+- Pipeline **proceeds normally** - telemetry is never blocking
+- Warning logged: "Telemetry degraded - observability infrastructure not available"
 - No telemetry report generated
 - All other hooks continue to function
 
@@ -413,7 +413,7 @@ The orchestrator supports three configurable approval gate modes, set via `orche
 | Mode | Behavior | Best For |
 |------|----------|----------|
 | `strict` | Human approval required at every agent handoff | Regulated industries, early adoption |
-| `batch` | Approval required only at phase boundaries (design → implementation, implementation → verification) | Balanced teams |
+| `batch` | Approval required only at phase boundaries (design -> implementation, implementation -> verification) | Balanced teams |
 | `auto` | Automatic progression, human approval only for ship recommendation (Agent 5) and destructive changes | High-trust teams, rapid iteration |
 
 ### Gate Decision Points
@@ -457,18 +457,18 @@ When a feature spans multiple repositories, the orchestrator coordinates cross-r
 
 ### Multi-Repo Workflow
 
-1. **Analyze repo graph** — identify which repos are affected and their dependencies
-2. **Order execution** — topological sort: shared libraries → services → consumers → UI
-3. **Run pipeline per repo** — each repo gets its own agent pipeline (Agents 0-6)
-4. **Cross-repo verification** — after individual pipelines complete:
+1. **Analyze repo graph** - identify which repos are affected and their dependencies
+2. **Order execution** - topological sort: shared libraries -> services -> consumers -> UI
+3. **Run pipeline per repo** - each repo gets its own agent pipeline (Agents 0-6)
+4. **Cross-repo verification** - after individual pipelines complete:
    - Verify API contract compatibility (OpenAPI spec diffing)
    - Verify shared type/schema consistency
    - Run integration test suite (if available)
-5. **Coordinated PR creation** — create linked PRs across repos with:
+5. **Coordinated PR creation** - create linked PRs across repos with:
    - Cross-references (e.g., "Depends on org/shared-lib#42")
    - Merge order instructions
    - Combined changelog entry
-6. **Rollback on partial failure** — if any repo fails:
+6. **Rollback on partial failure** - if any repo fails:
    - Pause all in-progress repos
    - Report failure with blast radius
    - Present options: fix failed repo, rollback completed repos, or proceed with partial delivery
@@ -487,14 +487,15 @@ When a feature spans multiple repositories, the orchestrator coordinates cross-r
 
 | Point | How Customized | Default |
 |-------|---------------|---------|
-| Agent sequence | Onboarding answers → Personas, Complexity | Full pipeline |
-| Model per agent | Onboarding answers → Approved Models | Model tier mapping |
+| Agent sequence | Onboarding answers -> Personas, Complexity | Full pipeline |
+| Model per agent | Onboarding answers -> Approved Models | Model tier mapping |
 | Skip rules | `orchestrator_custom_client_context.md` | Standard complexity-based |
 | Max clarification rounds | `orchestrator_custom_client_context.md` | 2 |
 | Max fix iterations | `orchestrator_custom_client_context.md` | 3 |
-| Observability enabled | Onboarding answers → AI Stack | Optional (disabled if binaries missing) |
+| Observability enabled | Onboarding answers -> AI Stack | Optional (disabled if binaries missing) |
 | Prometheus URL | `PROMETHEUS_URL` env var | `http://localhost:9090` |
 | OTel service name | `OTEL_SERVICE` env var | `copilot-chat` |
 | Model pricing | Env var / file / URL | Built-in defaults |
 | Telemetry report path | Orchestrator output folder | `<output_folder>/telemetry_report.md` |
 | Custom pipeline steps | `orchestrator_custom_client_context.md` | None |
+
