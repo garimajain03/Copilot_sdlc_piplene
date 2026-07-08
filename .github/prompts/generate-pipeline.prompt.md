@@ -1,5 +1,5 @@
 ﻿---
-description: "Run the SDLC Pipeline Generator - generates customer-specific agents, skills, hooks, and orchestrator from contracts into outputs/agents-repo/.github based on workspace mode selected in preflight."
+description: "Run the SDLC Pipeline Generator - generates customer-specific agents, skills, hooks, and orchestrator into outputs/agents-repo/.github, reads shared preflight artifacts from outputs/agents-repo/.github/sdlc-pipeline, and writes runtime-only temporary artifacts to .github/sdlc-pipeline-runtime."
 mode: "agent"
 tools:
   - execute
@@ -42,8 +42,9 @@ The `/preflight` command must have completed successfully first. Required output
 Read and follow the full agent instructions at `.github/agents/sdlc-pipeline-generator.agent.md`.
 
 **Output path rule (MANDATORY):**
-- Do not write generated agents, hooks, skills, docs, or pipeline state into the onboarding repository root `.github/` folder.
-- All generated artifacts must be created only under `outputs/agents-repo/.github/`.
+- Final generated artifacts (agents, hooks, skills, docs) must be created under `outputs/agents-repo/.github/`.
+- Reusable/shared state artifacts consumed by other agents (for example checkpoint_state, preflight_report, onboarding_context, connector_config) must be created under `outputs/agents-repo/.github/sdlc-pipeline/`.
+- Non-reused runtime artifacts (for example generation_report, pipeline_config, runtime scratch files) may be created under `.github/sdlc-pipeline-runtime/`.
 - Use `workspace_mode` from preflight context to resolve repository paths in generated content (default submodules vs custom parallel app repos).
 
 **IMPORTANT - Execution Format:**
@@ -65,5 +66,6 @@ Read and follow the full agent instructions at `.github/agents/sdlc-pipeline-gen
 **Fresh Start:** When running `/generate-pipeline`, always start fresh from Phase 1. Reset any existing generator checkpoint state first.
 
 **On completion:** Display the Next Steps section with instructions on how to use the generated pipeline.
+
 
 

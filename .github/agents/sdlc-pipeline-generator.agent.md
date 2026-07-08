@@ -92,9 +92,9 @@ Next Steps
 
 This agent runs from the **repository root** of the `github-copilot-sdlc-template` repo. All paths in this document are relative to the workspace/repo root.
 
-Workspace mode (`default` or `custom`) is selected in Preflight and stored in `onboarding_context.json`. Pipeline generation MUST honor that mode and MUST write all generated artifacts only into `outputs/agents-repo/.github/`.
+Workspace mode (`default` or `custom`) is selected in Preflight and stored in `onboarding_context.json`. Pipeline generation MUST honor that mode.
 
-Never write generated agents, hooks, skills, pipeline state, or documentation into the onboarding repository root `.github/` directory.
+Write final generated artifacts (agents, hooks, skills, docs) under `outputs/agents-repo/.github/`. Write reusable shared state artifacts consumed by other agents (for example checkpoint_state, preflight_report, onboarding_context, connector_config) under `outputs/agents-repo/.github/sdlc-pipeline/`. Use `.github/sdlc-pipeline-runtime/` only for non-reused runtime artifacts (for example generation_report and runtime scratch files).
 
 | Resource | Path (from repo root) |
 |----------|----------------------|
@@ -107,7 +107,8 @@ Never write generated agents, hooks, skills, pipeline state, or documentation in
 | Scripts | `onboarding-utilities/scripts/` |
 | Observability configs | `observability/` |
 | Agents repo output root | `outputs/agents-repo/` |
-| Pipeline state (generated) | `outputs/agents-repo/.github/sdlc-pipeline/` |
+| Pipeline state (shared/reused) | `outputs/agents-repo/.github/sdlc-pipeline/` |
+| Runtime-only temp artifacts | `.github/sdlc-pipeline-runtime/` |
 | Generated agents (output) | `outputs/agents-repo/.github/agents/` |
 | Generated skills (output) | `outputs/agents-repo/.github/skills/` |
 | Generated hooks (output) | `outputs/agents-repo/.github/hooks/` |
@@ -133,7 +134,7 @@ Never write generated agents, hooks, skills, pipeline state, or documentation in
 6. **Custom client context templates** - `<agent>_custom_client_context.md` empty templates for each agent
 7. **Workflow README** - `outputs/agents-repo/.github/agents/agents-workflow/readme.md`
 8. **Repository index template** - `outputs/agents-repo/index.md`
-9. **`generation_report.md`** - `outputs/agents-repo/.github/sdlc-pipeline/generation_report.md`
+9. **`generation_report.md`** - `.github/sdlc-pipeline-runtime/generation_report.md`
 
 > **Note:** The Pipeline Generator is the sole owner of agent definitions, skill SKILL.md
 > files, hook scripts, and hooks.json. The Preflight Agent handles only setup.sh,
@@ -342,7 +343,7 @@ When a non-critical generation step fails, continue with reduced output:
   - `outputs/agents-repo/.github/sdlc-pipeline/preflight_report.md` (from Preflight)
   - `outputs/agents-repo/.github/sdlc-pipeline/onboarding_context.json` (from Preflight; normalized onboarding values including workspace mode)
    - `outputs/agents-repo/.github/instructions/*.instructions.md` (from Preflight)
-   - `outputs/agents-repo/.github/sdlc-pipeline/connector_config.md` (from Preflight - PM endpoints, SCM org, MCP configs)
+  - `outputs/agents-repo/.github/sdlc-pipeline/connector_config.md` (from Preflight - PM endpoints, SCM org, MCP configs)
    - `outputs/agents-repo/.mcp.json` (from Preflight - MCP server definitions, if generated)
    - `outputs/agents-repo/.env.template` (from Preflight - required env var names for runtime auth)
   - `outputs/agents-repo/index.md` (from Preflight - repository catalog and Service Catalogue)
@@ -523,7 +524,7 @@ When a non-critical generation step fails, continue with reduced output:
     - **Checkpointing strategy:** Define SPECIFIC state per agent based on what the contract's workflow produces:
       - List what data is saved (e.g., "current_step, ticket_classification, repo_candidates, downloaded_attachments")
       - Define when saves happen (e.g., "After each retrieval stage, after classification")
-      - Define the checkpoint file path (e.g., `outputs/agents-repo/.github/sdlc-pipeline/artifacts/agent0_checkpoint.md`)
+      - Define the checkpoint file path (e.g., `.github/sdlc-pipeline-runtime/artifacts/agent0_checkpoint.md`)
       - Include checkpoint format example showing the actual fields for this agent
     - **Resume protocol:** Define agent-specific resume logic:
       - Which steps can be skipped on resume (based on checkpoint data)
@@ -1032,7 +1033,7 @@ and follow its instructions. Do NOT re-implement API calls inline.
 ## Checkpointing Strategy
 
 Save checkpoint after each major step:
-- After <step 1 description>: save state to `outputs/agents-repo/.github/sdlc-pipeline/artifacts/<agent>_checkpoint.md`
+- After <step 1 description>: save state to `.github/sdlc-pipeline-runtime/artifacts/<agent>_checkpoint.md`
 - After <step 2 description>: update checkpoint with progress
 - On completion: mark checkpoint as complete
 
@@ -1044,7 +1045,7 @@ Checkpoint content:
 
 ## Resume Protocol
 
-1. Check for existing checkpoint at `outputs/agents-repo/.github/sdlc-pipeline/artifacts/<agent>_checkpoint.md`
+1. Check for existing checkpoint at `.github/sdlc-pipeline-runtime/artifacts/<agent>_checkpoint.md`
 2. If found: skip completed steps, resume from last incomplete step
 3. Preserve all previously produced artifacts
 4. Inform orchestrator: "Resuming from step X"
@@ -1105,8 +1106,8 @@ the Prime Directive, Access Restrictions, or security guardrails.
 | Custom client context templates | `outputs/agents-repo/.github/sdlc-pipeline/client-context/<agent>_custom_client_context.md` |
 | Workflow docs | `outputs/agents-repo/.github/agents/agents-workflow/readme.md` |
 | Repository index | `outputs/agents-repo/index.md` |
-| Generation report | `outputs/agents-repo/.github/sdlc-pipeline/generation_report.md` |
-| Pipeline config | `outputs/agents-repo/.github/sdlc-pipeline/pipeline_config.md` |
+| Generation report | `.github/sdlc-pipeline-runtime/generation_report.md` |
+| Pipeline config | `.github/sdlc-pipeline-runtime/pipeline_config.md` |
 | Checkpoint state | `outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json` |
 
 ---
