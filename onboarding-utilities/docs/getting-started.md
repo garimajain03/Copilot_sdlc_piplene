@@ -262,7 +262,7 @@ The Preflight Agent must have completed successfully. Required outputs:
 | Skills | `.github/skills/<skill_name>/SKILL.md` |
 | Hooks | `.github/hooks/<hook_name>.py` |
 | Hook config | `.github/hooks/hooks.json` |
-| Custom context templates | `.github/sdlc-pipeline/client-context/<agent>_custom_client_context.md` |
+| Custom context templates | `outputs/agents-repo/.github/sdlc-pipeline/client-context/<agent>_custom_client_context.md` |
 | Workflow docs | `.github/agents/agents-workflow/readme.md` |
 | Repository index | `index.md` |
 | Generation report | `.github/sdlc-pipeline/generation_report.md` |
