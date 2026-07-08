@@ -115,7 +115,7 @@ This repository supports two workspace layouts selected during Phase 3 and store
 | Instruction files (generated) | `outputs/agents-repo/.github/instructions/` |
 | App repos (default mode) | `outputs/agents-repo/repos/` |
 | App repos (custom mode) | `outputs/app-repos/` |
-| Scan results (generated) | `outputs/agents-repo/.github/sdlc-pipeline/scans/` |
+| Scan results (generated) | `.github/sdlc-pipeline-runtime/scans/` |
 
 ## Inputs
 
@@ -546,7 +546,7 @@ When a non-critical step fails, continue with reduced capability:
     Output: JSON scan results
         Run: python3 onboarding-utilities/scripts/repo-scanner.py \
           --repo-path <resolved_app_repo_path_from_workspace_mode>/<repo_name> \
-          --output-dir outputs/agents-repo/.github/sdlc-pipeline/scans \
+          --output-dir .github/sdlc-pipeline-runtime/scans \
            --format both --max-depth 6
     ```
 
@@ -612,7 +612,7 @@ When a non-critical step fails, continue with reduced capability:
 
     ```bash
     python3 onboarding-utilities/scripts/instructions-generator.py \
-      --scan-dir outputs/agents-repo/.github/sdlc-pipeline/scans \
+      --scan-dir .github/sdlc-pipeline-runtime/scans \
       --output-dir outputs/agents-repo/.github/instructions \
       --repos-root <resolved_app_repo_path>
     ```
@@ -842,7 +842,7 @@ All paths are relative to the repository/workspace root.
 | Checkpoint state | `outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json` |
 | Cloned repos (default mode) | `outputs/agents-repo/repos/` |
 | Cloned repos (custom mode) | `outputs/app-repos/` |
-| Scan results (temp) | `outputs/agents-repo/.github/sdlc-pipeline/scans/` |
+| Scan results (temp) | `.github/sdlc-pipeline-runtime/scans/` |
 
 ---
 
@@ -860,7 +860,7 @@ All paths are relative to the repository/workspace root.
 
 ## Custom Client Context
 
-If `preflight_custom_client_context.md` exists at `outputs/agents-repo/.github/sdlc-pipeline/`, load and apply its instructions:
+If `preflight_custom_client_context.md` exists at `.github/sdlc-pipeline-runtime/`, load and apply its instructions:
 - Additional setup steps
 - Custom connector configurations
 - Organization-specific security policies

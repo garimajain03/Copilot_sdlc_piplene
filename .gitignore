@@ -3,6 +3,7 @@
 data/
 repos/
 .github/sdlc-pipeline/
+.github/sdlc-pipeline-runtime/*
 .github/instructions/
 outputs/
 .sdlc-pipeline/

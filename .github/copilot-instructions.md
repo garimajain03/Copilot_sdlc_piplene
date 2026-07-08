@@ -18,7 +18,8 @@ This repository is a **standalone SDLC Pipeline Bundle** (`github-copilot-sdlc-t
 | Observability configs & binaries | `observability/` |
 | Onboarding wizard | `client-onboarding-wizard.html` |
 | Prompt commands | `.github/prompts/` |
-| Pipeline state (generated) | `outputs/agents-repo/.github/sdlc-pipeline/` |
+| Pipeline state (shared/reused) | `outputs/agents-repo/.github/sdlc-pipeline/` |
+| Pipeline runtime temp artifacts | `.github/sdlc-pipeline-runtime/` |
 | Instruction files (generated) | `outputs/agents-repo/.github/instructions/` |
 
 ## Key Concepts
@@ -62,7 +63,7 @@ All generated artifacts support both macOS and Windows:
 - PowerShell scripts: `.\onboarding-utilities\scripts\<script>.ps1` (e.g., `.\onboarding-utilities\scripts\install-observability.ps1`)
 - Contracts: `onboarding-utilities/contracts/` (e.g., `onboarding-utilities/contracts/agent0_ticket_analyzer.contract.md`)
 - Schemas: `schemas/` (e.g., `schemas/onboarding_answers_schema.md`)
-- Generated outputs: `outputs/agents-repo/.github/sdlc-pipeline/`, `outputs/agents-repo/.github/instructions/`, `outputs/agents-repo/.github/hooks/`, `outputs/agents-repo/.github/skills/`
+- Generated outputs: `outputs/agents-repo/.github/sdlc-pipeline/`, `outputs/agents-repo/.github/instructions/`, `outputs/agents-repo/.github/hooks/`, `outputs/agents-repo/.github/skills/`, runtime temp at `.github/sdlc-pipeline-runtime/`
 
 ## Available Agents
 

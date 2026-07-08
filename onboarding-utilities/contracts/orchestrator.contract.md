@@ -209,7 +209,7 @@ After pipeline completion, validate:
 
 On every run, **FIRST** check for an existing checkpoint:
 
-1. Load checkpoint from `<output_folder>/checkpoint.md` or `.github/sdlc-pipeline/checkpoint_state.json`
+1. Load checkpoint from `<output_folder>/checkpoint.md` or `outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json`
 2. If checkpoint exists and `status != "completed"`:
    - Read `current_step` - resume from this step
    - Read `completed_agents` - skip already-completed agents

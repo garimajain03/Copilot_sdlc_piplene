@@ -1,5 +1,5 @@
 ﻿---
-description: "Run the SDLC Preflight Agent - validates onboarding answers, asks workspace mode (Default/Custom), bootstraps selected repository layout, scans repositories, and generates preflight outputs into outputs/agents-repo"
+description: "Run the SDLC Preflight Agent - validates onboarding answers, asks workspace mode (Default/Custom), bootstraps selected repository layout, scans repositories, writes reusable shared artifacts to outputs/agents-repo/.github/sdlc-pipeline, and writes runtime-only temporary artifacts to .github/sdlc-pipeline-runtime"
 mode: "agent"
 tools:
   - execute
@@ -39,8 +39,8 @@ Run the **SDLC Preflight Agent** to prepare a customer's project for the SDLC Pi
 Read and follow the full agent instructions at `.github/agents/sdlc-preflight.agent.md`.
 
 **Output path rule (MANDATORY):**
-- The onboarding repository root `.github/` folder must remain unchanged.
-- All preflight-generated pipeline artifacts must be written in the selected workspace under `outputs/agents-repo` (especially `outputs/agents-repo/.github/...`).
+- Reusable/shared artifacts consumed by other agents must be written under `outputs/agents-repo` (especially `outputs/agents-repo/.github/sdlc-pipeline/` and `outputs/agents-repo/.github/instructions/`).
+- Non-reused runtime artifacts may be written under `.github/sdlc-pipeline-runtime/`.
 
 **IMPORTANT - Execution Format:**
 - You MUST announce each phase with a visible heading before starting it (single separator line above the heading only, no line below)

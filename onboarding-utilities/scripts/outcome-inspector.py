@@ -26,6 +26,7 @@ from pathlib import Path
 
 
 GENERATED_AGENT_PATTERN = re.compile(r"^agent\d+[a-z]?_.*\.md$")
+RUNTIME_STATE_DIR = os.path.join(".github", "sdlc-pipeline-runtime")
 
 
 class Inspector:
@@ -278,9 +279,12 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
     else:
         inspector.warning("completeness", "No client-context directory found")
 
-    # Check generation report
-    report_path = os.path.join(output_dir, ".github", "sdlc-pipeline", "generation_report.md")
-    if not os.path.exists(report_path):
+    # Check generation report in runtime temp folder first, then shared folder.
+    report_candidates = [
+        os.path.join(RUNTIME_STATE_DIR, "generation_report.md"),
+        os.path.join(output_dir, ".github", "sdlc-pipeline", "generation_report.md"),
+    ]
+    if not any(os.path.exists(path) for path in report_candidates):
         inspector.error("completeness", "Missing generation_report.md")
 
     # Validate against contracts if available
