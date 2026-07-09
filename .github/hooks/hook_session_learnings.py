@@ -15,7 +15,7 @@ def main() -> None:
     except json.JSONDecodeError:
         sys.exit(0)
 
-    out_dir = Path(".github") / "sdlc-pipeline"
+    out_dir = Path(".github") / "sdlc-pipeline-runtime"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_file = out_dir / "session_learnings.log"
 

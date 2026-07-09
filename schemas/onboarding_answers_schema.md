@@ -1,4 +1,4 @@
-# Onboarding Answers Schema — SDLC Pipeline Bundle
+﻿# Onboarding Answers Schema - SDLC Pipeline Bundle
 
 > Defines the expected structure of `intake-sources.md` that the Preflight Agent and Pipeline Generator consume.
 
@@ -24,11 +24,11 @@
 | Models | Yes | Specific models for agent frontmatter |
 
 **Model Tier Mapping:**
-- `reasoning` → Best available model (e.g., claude-sonnet-4, GPT-5.3-Codex, etc.)
-- `coding` → Code-optimized model (e.g., claude-sonnet-4, GPT-5.3-Codex, etc.)
-- `fast` → Low-latency model (e.g., claude-haiku, GPT-4o-mini, etc.)
+- `reasoning` -> Best available model (e.g., claude-sonnet-4, GPT-5.3-Codex, etc.)
+- `coding` -> Code-optimized model (e.g., claude-sonnet-4, GPT-5.3-Codex, etc.)
+- `fast` -> Low-latency model (e.g., claude-haiku, GPT-4o-mini, etc.)
 
-### 3. Workflow — Developer (Required)
+### 3. Workflow - Developer (Required)
 
 | Field | Required | Purpose |
 |-------|----------|---------|
@@ -38,7 +38,7 @@
 | Default Branch | Yes | SCM connector configuration |
 | Project Keys | No | Ticket filtering |
 
-### 4. Workflow — QA (Optional)
+### 4. Workflow - QA (Optional)
 
 | Field | Required | Purpose |
 |-------|----------|---------|
@@ -49,7 +49,7 @@
 
 ### 5. Codebase Scan (Auto-detected)
 
-> NOT captured in the wizard — detected by Preflight Agent's codebase scan.
+> NOT captured in the wizard - detected by Preflight Agent's codebase scan.
 
 | Detail | Detection Source | Used By |
 |--------|-----------------|---------|
@@ -98,6 +98,7 @@
 | `setup_mode` | No | `standard` | Controls clarification question depth: `express` (1-2 questions), `standard` (essential questions), `detailed` (full questionnaire) |
 | `approval_mode` | No | `batch` | Approval gate strategy: `strict` (approve every phase), `batch` (approve at design + ship), `auto` (all gates auto-approved) |
 | `dry_run` | No | `false` | If `true`, generate preview report without writing files |
+| `workspace_setup` | No | `default` | Repository layout mode: `default` (Agents Monorepo + submodules) or `custom` (Agents + app repos in parallel) |
 | `include_documentation_agent` | No | `true` | Whether to generate Agent 7 (Documentation Generator) |
 | `include_iac_agent` | No | `false` | Whether to generate Agent 8 (IaC/DevOps Specialist) |
 
@@ -124,6 +125,7 @@ The generator MUST consume onboarding data from a normalized JSON root in additi
 - `ai_stack`
 - `business_context` (if collected)
 - `pipeline` (if collected)
+- `workspace` (resolved from preflight selection: mode and computed paths)
 
 ### Field Coverage Matrix
 
@@ -137,6 +139,7 @@ The generator MUST consume onboarding data from a normalized JSON root in additi
 | Guardrails + PII + quality/security/risk | `constraints.*` | safety constraints and validation logic |
 | Existing agents and files | `ai_stack.existing_agents*` | reuse/deconflict decisions |
 | Business context, goals, complaints/pain points | `business_context.*` | prompt emphasis and requirements framing |
+| Workspace layout selection | `workspace.mode` | repository path resolution and generation target directory |
 
 ### Propagation Rule
 
@@ -144,14 +147,27 @@ Any onboarding value collected by the wizard that can affect generated prompts, 
 
 ## Validation Rules
 
-1. **Organisation.Company** — Must be non-empty
-2. **Approved LLM Models** — At least one provider + model pair
-3. **Workflow.Developer.PM System** — Must be one of: `Jira`, `Linear`, `Azure DevOps`, `GitHub Issues`, `Shortcut`, `None`
-4. **Workflow.Developer.Default Branch** — Must be a valid branch name
-5. **Sources.SCM** — Must be one of: `github`, `gitlab`, `bitbucket`, `azure-devops`
-6. **Constraints.Agent Behavioral Guardrails** — Must be non-empty (at minimum: scope control, security)
-7. **Pipeline.setup_mode** — If present, must be one of: `express`, `standard`, `detailed`
-8. **Pipeline.approval_mode** — If present, must be one of: `strict`, `batch`, `auto`
-9. **Pipeline.dry_run** — If present, must be boolean
-10. **Pipeline.include_documentation_agent** — If present, must be boolean
-11. **Pipeline.include_iac_agent** — If present, must be boolean
+1. **Organisation.Company** - Must be non-empty
+2. **Approved LLM Models** - At least one provider + model pair
+3. **Workflow.Developer.PM System** - Must be one of: `Jira`, `Linear`, `Azure DevOps`, `GitHub Issues`, `Shortcut`, `None`
+4. **Workflow.Developer.Default Branch** - Must be a valid branch name
+5. **Sources.SCM** - Must be one of: `github`, `gitlab`, `bitbucket`, `azure-devops`
+6. **Constraints.Agent Behavioral Guardrails** - Must be non-empty (at minimum: scope control, security)
+7. **Pipeline.setup_mode** - If present, must be one of: `express`, `standard`, `detailed`
+8. **Pipeline.approval_mode** - If present, must be one of: `strict`, `batch`, `auto`
+9. **Pipeline.dry_run** - If present, must be boolean
+10. **Pipeline.workspace_setup** - If present, must be one of: `default`, `custom`
+11. **Pipeline.include_documentation_agent** - If present, must be boolean
+12. **Pipeline.include_iac_agent** - If present, must be boolean
+
+## Workspace Mode Rules
+
+1. `default` and `custom` repository layouts are mutually exclusive in a single run.
+2. Preflight MUST capture the selected mode and write it into `onboarding_context.json` under `workspace.mode`.
+3. Preflight MUST write resolved paths under `workspace.paths`:
+	- `agents_repo`
+	- `generated_github`
+	- `app_repos`
+4. Pipeline Generator MUST consume `workspace.mode` + `workspace.paths` and generate all artifacts in `workspace.paths.generated_github`.
+5. Root onboarding repository `.github` MUST NOT be used as generation output for customer artifacts.
+

@@ -1,4 +1,4 @@
-# Contract Schema — SDLC Pipeline Bundle
+﻿# Contract Schema - SDLC Pipeline Bundle
 
 > Defines the required structure for all Agent, Skill, and Hook contracts.
 > Contracts are the reusable, tools-agnostic blueprints that the Pipeline Generator uses to produce customer-specific agent definitions.
@@ -15,13 +15,13 @@ Every agent contract MUST contain the following sections in order:
 | `agent_name` | String | Yes | Human-readable name |
 | `pipeline_position` | Number | Yes | Order in pipeline (0-6, with sub-positions like 2a, 3a) |
 | `version` | SemVer | Yes | Contract version |
-| `model_tier` | Enum | Yes | `reasoning` / `coding` / `fast` — resolved to specific model at generation time |
+| `model_tier` | Enum | Yes | `reasoning` / `coding` / `fast` - resolved to specific model at generation time |
 | `argument_hint` | String | Yes | Brief description of expected agent arguments/inputs |
 
 ### 2. Role & Prime Directive
 
 - **Role:** One-paragraph summary of what this agent does
-- **Prime Directive:** Single imperative sentence — the agent's north star
+- **Prime Directive:** Single imperative sentence - the agent's north star
 
 ### 3. Key Outcomes
 
@@ -29,8 +29,8 @@ What this agent MUST achieve (not how). List of outcome statements:
 
 ```markdown
 ## Key Outcomes
-1. [OUTCOME-1] — Description
-2. [OUTCOME-2] — Description
+1. [OUTCOME-1] - Description
+2. [OUTCOME-2] - Description
 ```
 
 ### 4. Inputs
@@ -87,7 +87,7 @@ Explicit branching logic:
 
 ### 8. Tool Categories
 
-NOT specific tools — categories of capabilities needed:
+NOT specific tools - categories of capabilities needed:
 
 | Category | Purpose | Examples |
 |----------|---------|----------|
@@ -176,7 +176,7 @@ Where hooks should fire, including full hook configuration:
 |-------|------|----------|
 | `contract_id` | String | Yes |
 | `skill_name` | String | Yes |
-| `category` | Enum | Yes — `ticket_management`, `scm`, `design`, `testing`, `observability` |
+| `category` | Enum | Yes - `ticket_management`, `scm`, `design`, `testing`, `observability` |
 | `version` | SemVer | Yes |
 
 Sections: Role, Capabilities (abstract), Commands (generic), Input/Output, Customization Points.
@@ -189,7 +189,7 @@ Sections: Role, Capabilities (abstract), Commands (generic), Input/Output, Custo
 |-------|------|----------|
 | `contract_id` | String | Yes |
 | `hook_name` | String | Yes |
-| `event` | Enum | Yes — `pre_tool_use`, `post_tool_use`, `session_start`, `session_stop`, `user_prompt` |
+| `event` | Enum | Yes - `pre_tool_use`, `post_tool_use`, `session_start`, `session_stop`, `user_prompt` |
 | `version` | SemVer | Yes |
 
 Sections: Purpose, Trigger Conditions, Guard Logic, Exit Codes, Customization Points.
@@ -200,6 +200,7 @@ Sections: Purpose, Trigger Conditions, Guard Logic, Exit Codes, Customization Po
 
 | Code | Meaning |
 |------|---------|
-| `0` | Passed — proceed normally |
-| `1` | Error — log but don't block |
-| `2` | Blocked — stop tool execution, feed error to agent |
+| `0` | Passed - proceed normally |
+| `1` | Error - log but don't block |
+| `2` | Blocked - stop tool execution, feed error to agent |
+

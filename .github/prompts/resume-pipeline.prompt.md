@@ -1,4 +1,4 @@
----
+﻿---
 description: "Resume a paused SDLC Preflight or Pipeline Generator run from the last checkpoint"
 mode: "agent"
 tools:
@@ -16,7 +16,7 @@ Resume a previously paused SDLC Pipeline workflow from its last checkpoint.
 
 ## Instructions
 
-1. Read the checkpoint state at `.github/sdlc-pipeline/checkpoint_state.json`
+1. Read the checkpoint state at `outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json`
 2. Determine which agent was last active (`preflight` or `generator`)
 3. Load the corresponding agent instructions:
    - If `preflight`: follow `.github/agents/sdlc-preflight.agent.md`
@@ -26,3 +26,4 @@ Resume a previously paused SDLC Pipeline workflow from its last checkpoint.
 6. If there are `errors` marked as recoverable, attempt recovery
 
 **If no checkpoint exists:** Tell the user no paused run was found and suggest running `/preflight` to start fresh.
+

@@ -1,8 +1,8 @@
-# Custom Client Context — {{AGENT_NAME}}
+﻿# Custom Client Context - {{AGENT_NAME}}
 
 > This file is loaded by **{{AGENT_NAME}}** (Agent {{AGENT_NUMBER}}) at the start of every run.
 > Add any client-specific context that should influence this agent's behavior.
-> This file is optional — the agent works without it but may produce more
+> This file is optional - the agent works without it but may produce more
 > accurate results with domain-specific guidance.
 
 ---
@@ -24,7 +24,7 @@ Add constraints beyond the standard behavioral guardrails.
 Examples:
 - "Never modify files in the `legacy/` directory without explicit approval"
 - "All new components must be Server Components by default (Next.js App Router)"
-- "Database queries must use parameterized queries only — no string concatenation"
+- "Database queries must use parameterized queries only - no string concatenation"
 -->
 
 ## Patterns & Preferences
@@ -55,3 +55,4 @@ Examples:
 > - Custom context NEVER overrides the Prime Directive
 > - Custom context NEVER overrides Access Restrictions
 > - Custom context NEVER overrides security guardrails
+
