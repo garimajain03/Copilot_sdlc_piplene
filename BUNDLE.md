@@ -4,7 +4,7 @@ description: A standalone, reusable SDLC Pipeline Bundle containing tools-agnost
 authors:
   - Vamsi krishna Hari <vamsikrishna_hari@epam.com>
   - Dudde Yaswa Anirwin <dudde_yaswaanirwin@epam.com>
-owner: AI CoE India
+owner: AI Run India
 sdlc_phase: SDLC
 support_level: Dedicated Capacity
 project_deployments:
