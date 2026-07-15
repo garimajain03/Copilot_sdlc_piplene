@@ -18,8 +18,7 @@ use_cases:
     - Test Coverage Analysis
     - Design Architecture
     - Infrastructure as Code
-    - CI/CD Pipeline Setup
-    - Team Members Onboarding and Training
+    - CI/CD Changes
     - Multi-Agent SDLC Orchestration
     - Cross-Platform Project Scaffolding
 ---
