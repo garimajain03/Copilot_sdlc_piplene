@@ -22,15 +22,44 @@ Exit codes:
 """
 
 import argparse
-import fcntl
 import json
 import os
 import sys
 from datetime import datetime, timezone
 
+try:
+    import fcntl  # type: ignore
+except ImportError:  # pragma: no cover - exercised on Windows only
+    fcntl = None
+    import msvcrt  # type: ignore
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _lock_shared(file_obj) -> None:
+    if fcntl is not None:
+        fcntl.flock(file_obj.fileno(), fcntl.LOCK_SH)
+        return
+    file_obj.seek(0)
+    msvcrt.locking(file_obj.fileno(), msvcrt.LK_RLCK, 1)
+
+
+def _lock_exclusive(file_obj) -> None:
+    if fcntl is not None:
+        fcntl.flock(file_obj.fileno(), fcntl.LOCK_EX)
+        return
+    file_obj.seek(0)
+    msvcrt.locking(file_obj.fileno(), msvcrt.LK_LOCK, 1)
+
+
+def _unlock(file_obj) -> None:
+    if fcntl is not None:
+        fcntl.flock(file_obj.fileno(), fcntl.LOCK_UN)
+        return
+    file_obj.seek(0)
+    msvcrt.locking(file_obj.fileno(), msvcrt.LK_UNLCK, 1)
 
 
 def load_state(state_file: str) -> dict:
@@ -38,11 +67,11 @@ def load_state(state_file: str) -> dict:
     if os.path.exists(state_file):
         try:
             with open(state_file, "r", encoding="utf-8") as f:
-                fcntl.flock(f.fileno(), fcntl.LOCK_SH)
+                _lock_shared(f)
                 try:
                     return json.load(f)
                 finally:
-                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                    _unlock(f)
         except (json.JSONDecodeError, IOError):
             pass
 
@@ -59,11 +88,11 @@ def save_state(state_file: str, state: dict):
     state["updated_at"] = utc_now()
     os.makedirs(os.path.dirname(state_file) or ".", exist_ok=True)
     with open(state_file, "w", encoding="utf-8") as f:
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        _lock_exclusive(f)
         try:
             json.dump(state, f, indent=2)
         finally:
-            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+            _unlock(f)
 
 
 def cmd_save(args):

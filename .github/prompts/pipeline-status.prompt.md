@@ -11,7 +11,7 @@ Show the current status of the SDLC Pipeline workflow.
 
 ## Instructions
 
-1. Read `outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json`
+1. Read `.github/sdlc-pipeline/checkpoint_state.json`
 2. Display a summary:
    - **Active agent:** preflight or generator
    - **Completed phases:** list with timestamps

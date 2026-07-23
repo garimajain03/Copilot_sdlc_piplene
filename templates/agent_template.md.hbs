@@ -31,28 +31,32 @@ hooks:
   PreToolUse:
     {{#each HOOKS_PRE_TOOL_USE}}
     - type: command
-      command: "{{this}}"
+      command: "{{this.command}}"
+      timeout: {{this.timeout}}
     {{/each}}
   {{/if}}
   {{#if HOOKS_POST_TOOL_USE}}
   PostToolUse:
     {{#each HOOKS_POST_TOOL_USE}}
     - type: command
-      command: "{{this}}"
+      command: "{{this.command}}"
+      timeout: {{this.timeout}}
     {{/each}}
   {{/if}}
   {{#if HOOKS_SESSION_START}}
   SessionStart:
     {{#each HOOKS_SESSION_START}}
     - type: command
-      command: "{{this}}"
+      command: "{{this.command}}"
+      timeout: {{this.timeout}}
     {{/each}}
   {{/if}}
   {{#if HOOKS_STOP}}
   Stop:
     {{#each HOOKS_STOP}}
     - type: command
-      command: "{{this}}"
+      command: "{{this.command}}"
+      timeout: {{this.timeout}}
     {{/each}}
   {{/if}}
 {{/if}}
@@ -164,7 +168,7 @@ and follow its instructions. Do NOT re-implement API calls inline.
 
 ## Custom Client Context
 
-If the file `{{AGENT_SLUG}}_custom_client_context.md` exists at `outputs/agents-repo/.github/sdlc-pipeline/client-context/`,
+If the file `{{AGENT_SLUG}}_custom_client_context.md` exists at `.github/sdlc-pipeline/client-context/`,
 read it at the start of this run and apply its instructions throughout.
 
 Custom client context takes precedence over default behavior but NEVER overrides
@@ -194,10 +198,10 @@ Reference: `.github/hooks/hooks.json` for full hook configuration.
 | `MODEL_TIER` | Contract → model_tier | e.g., "reasoning" |
 | `TOOLS` | Contract tool_categories → resolved to platform tools | e.g., ["execute", "read", "edit"] |
 | `INCLUDE_HOOKS_FRONTMATTER` | Generated boolean: include `hooks:` only when agent has at least one hook | Prevents empty/duplicate hook blocks |
-| `HOOKS_PRE_TOOL_USE` | Hook commands triggered before tool execution | e.g., ["python3 .github/hooks/guard_destructive.py", "python3 .github/hooks/guard_secrets.py"] |
-| `HOOKS_POST_TOOL_USE` | Hook commands triggered after tool execution | e.g., ["python3 .github/hooks/lint_on_save.py"] |
-| `HOOKS_SESSION_START` | Hook commands triggered at session start | e.g., ["python3 .github/hooks/observability.py", "python3 .github/hooks/otel_telemetry.py"] |
-| `HOOKS_STOP` | Hook commands triggered at session end | e.g., ["python3 .github/hooks/session_learnings.py", "python3 .github/hooks/otel_telemetry.py"] |
+| `HOOKS_PRE_TOOL_USE` | Hook command objects triggered before tool execution | e.g., [{command: "python .github/hooks/guard-destructive-commands.py", timeout: 10}] |
+| `HOOKS_POST_TOOL_USE` | Hook command objects triggered after tool execution | e.g., [{command: "python .github/hooks/otel-hook.py", timeout: 30}] |
+| `HOOKS_SESSION_START` | Hook command objects triggered at session start | e.g., [{command: "python .github/hooks/observability-hook.py", timeout: 30}] |
+| `HOOKS_STOP` | Hook command objects triggered at session end | e.g., [{command: "python .github/hooks/otel-hook.py", timeout: 15}] |
 | `ROLE_FROM_CONTRACT` | Contract → Role section (verbatim) | Full role paragraph from contract |
 | `PRIME_DIRECTIVE_FROM_CONTRACT` | Contract → Prime Directive (verbatim) | Exact quote from contract |
 | `CUSTOMER_GUARDRAILS` | Onboarding answers → Agent Behavioral Guardrails | Customer's specific guardrails list |

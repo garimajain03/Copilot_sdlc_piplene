@@ -18,8 +18,7 @@ This repository is a **standalone SDLC Pipeline Bundle** (`github-copilot-sdlc-t
 | Observability configs & binaries | `observability/` |
 | Onboarding wizard | `client-onboarding-wizard.html` |
 | Prompt commands | `.github/prompts/` |
-| Pipeline state (shared/reused) | `outputs/agents-repo/.github/sdlc-pipeline/` |
-| Pipeline runtime temp artifacts | `.github/sdlc-pipeline-runtime/` |
+| Pipeline state (generated) | `.github/sdlc-pipeline/` |
 | Instruction files (generated) | `outputs/agents-repo/.github/instructions/` |
 
 ## Key Concepts
@@ -30,7 +29,7 @@ Each external platform (Jira, Confluence, GitHub/GitLab) can be integrated via:
 - **MCP (Model Context Protocol)** - generates `.mcp.json` with server definitions
 - **API-based Connector Skills** - generates SKILL.md files with CLI commands
 
-The Preflight Agent asks which mode to use per platform. The Pipeline Generator only generates Connector Skills for platforms where API-based integration was selected.
+The Preflight Agent resolves connector mode from `intake-sources.md`, generates connector artifacts (skills, API implementations, `.mcp.json`) and handles connector authentication guidance/token collection. The Pipeline Generator reuses these preflight-generated connector skills and does not regenerate duplicates.
 
 ### Workspace Structure
 
@@ -63,7 +62,7 @@ All generated artifacts support both macOS and Windows:
 - PowerShell scripts: `.\onboarding-utilities\scripts\<script>.ps1` (e.g., `.\onboarding-utilities\scripts\install-observability.ps1`)
 - Contracts: `onboarding-utilities/contracts/` (e.g., `onboarding-utilities/contracts/agent0_ticket_analyzer.contract.md`)
 - Schemas: `schemas/` (e.g., `schemas/onboarding_answers_schema.md`)
-- Generated outputs: `outputs/agents-repo/.github/sdlc-pipeline/`, `outputs/agents-repo/.github/instructions/`, `outputs/agents-repo/.github/hooks/`, `outputs/agents-repo/.github/skills/`, runtime temp at `.github/sdlc-pipeline-runtime/`
+- Generated outputs: `.github/sdlc-pipeline/`, `outputs/agents-repo/.github/instructions/`, `outputs/agents-repo/.github/hooks/`, `outputs/agents-repo/.github/skills/`, `.github/skills/`
 
 ## Available Agents
 

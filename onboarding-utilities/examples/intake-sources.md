@@ -25,6 +25,7 @@ _Generated: 29 May 2026_
 ### Developer
 - PM System: Jira
 - Jira URL: https://myorg.atlassian.net
+- PM Integration Mode: mcp
 - Ticket Prefix: ILO, TRX
 - Default Branch: main
 - Project Keys: _(not provided)_
@@ -58,7 +59,9 @@ _Generated: 29 May 2026_
 
 ## Sources
 - **Confluence:** https://myorg.atlassian.net/ - spaces: ARCH, ENG
+- **Confluence Integration Mode:** mcp
 - **SCM:** github - org/workspace: _(not provided)_
+- **SCM Integration Mode:** api
 - **Docs strategy:** Confluence crawl
 
 ---

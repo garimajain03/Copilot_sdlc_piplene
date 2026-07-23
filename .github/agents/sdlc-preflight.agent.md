@@ -38,6 +38,26 @@ For each phase, follow this exact order:
 
 Do NOT perform phase work before printing its phase heading.
 Do NOT print a phase completion line after starting the next phase.
+Do NOT batch phase updates at the end. Print each phase heading and completion immediately in real time.
+
+### Phase Status Line (MANDATORY)
+
+Use exactly one status line per phase at minimum:
+
+```
+Phase Status: in_progress|completed|blocked - <brief reason>
+```
+
+Minimum per-phase output pattern:
+
+1. `Phase N: <Phase Name>`
+2. `Phase Status: in_progress - <what is starting>`
+3. Execute phase work
+4. `Phase Status: completed - <what finished>` OR `Phase Status: blocked - <why paused>`
+
+Styling requirements (MANDATORY):
+- Render line 1 as a markdown heading: `## Phase N: <Phase Name>`
+- Use `✅` for completed status and `⏸️` for blocked status in line 4.
 
 ### Phase Announcement (before starting each phase)
 
@@ -45,10 +65,22 @@ Do NOT print a phase completion line after starting the next phase.
 Phase Number: Phase Name
 ```
 
+Preferred rendering:
+
+```markdown
+## Phase N: <Phase Name>
+```
+
 ### Phase Completion (after finishing each phase)
 
 ```
 Phase Complete: brief summary of what was done
+```
+
+Preferred rendering:
+
+```markdown
+Phase Status: completed - ✅ <brief summary>
 ```
 
 ### Phase Sequence (execute ALL in order, never skip unless resuming from checkpoint)
@@ -67,7 +99,7 @@ Phase Complete: brief summary of what was done
 ### Fresh Start vs Resume
 
 - If the user explicitly runs `/preflight` (not `/resume-pipeline`), **start fresh from Phase 1**
-- Reset the checkpoint state: `python3 onboarding-utilities/scripts/checkpoint-manager.py reset --agent preflight --state-file outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json`
+- Reset the checkpoint state: `python3 onboarding-utilities/scripts/checkpoint-manager.py reset --agent preflight --state-file .github/sdlc-pipeline/checkpoint_state.json`
 - Only resume from checkpoint when explicitly asked to resume or when running `/resume-pipeline`
 
 ### Next Steps Output (MANDATORY at end)
@@ -82,14 +114,34 @@ Next Steps
   - `outputs/agents-repo/index.md` - Repository Service Catalogue
   - `outputs/agents-repo/.github/instructions/` - Per-repo instruction files
   - `outputs/agents-repo/setup.sh` / `outputs/agents-repo/setup.ps1` - Setup scripts
-  - `outputs/agents-repo/.env.template` - Environment variables template
+  - `outputs/agents-repo/.github/skills/` and `.github/skills/` - Preflight-generated connector skills
+  - `outputs/agents-repo/.github/skills/<api-skill>/` and `.github/skills/<api-skill>/` - API connector bundles (if API connectors selected)
+  - `.github/sdlc-pipeline/mcp_auth_instructions.md` / `api_auth_instructions.md` - Connector auth instructions
 
-2. Copy `.env.template` to `.env` and fill in your tokens/credentials
+2. Complete connector authentication:
+  - MCP OAuth connectors: finish OAuth flow and resume
+  - MCP token connectors: update token variables referenced in `.mcp.json`
+  - API connectors: run secure token collection to populate encrypted env values
 
 3. Run the Pipeline Generator:
    > `/generate-pipeline`
-   This will generate your SDLC agents, skills, hooks, and orchestrator.
+   This will generate your SDLC agents, hooks, and orchestrator, and reuse connector skills from preflight.
 ```
+
+### Phase Summary (MANDATORY on completion or pause)
+
+When the run completes OR pauses early, print a compact phase ledger before "Next Steps":
+
+```
+Phase Summary
+1. Phase 1: completed
+2. Phase 2: blocked (missing API token)
+3. Phase 3: pending
+...
+10. Phase 10: pending
+```
+
+If paused, clearly state that remaining phases were not executed yet.
 
 ---
 
@@ -111,11 +163,11 @@ This repository supports two workspace layouts selected during Phase 3 and store
 | Observability configs | `observability/` |
 | Workspace output root (generated) | `outputs/` |
 | Agents repo (generated) | `outputs/agents-repo/` |
-| Pipeline state (generated) | `outputs/agents-repo/.github/sdlc-pipeline/` |
+| Pipeline state (generated) | `.github/sdlc-pipeline/` |
 | Instruction files (generated) | `outputs/agents-repo/.github/instructions/` |
 | App repos (default mode) | `outputs/agents-repo/repos/` |
 | App repos (custom mode) | `outputs/app-repos/` |
-| Scan results (generated) | `.github/sdlc-pipeline-runtime/scans/` |
+| Scan results (generated) | `.github/sdlc-pipeline/scans/` |
 
 ## Inputs
 
@@ -126,22 +178,26 @@ This repository supports two workspace layouts selected during Phase 3 and store
 
 1. **`outputs/agents-repo/setup.sh`** - Generated setup script for macOS (tool installation, workspace config, submodule init, validation)
 2. **`outputs/agents-repo/setup.ps1`** - Generated setup script for Windows (same capabilities as `setup.sh`)
-3. **`outputs/agents-repo/.github/sdlc-pipeline/connector_config.md`** - Connector configuration (PM type, SCM type, endpoints, MCP server configs) - **no auth tokens**
+3. **`.github/sdlc-pipeline/connector_config.md`** - Connector configuration (PM type, SCM type, endpoints, MCP server configs) - **no auth tokens**
 4. **`outputs/agents-repo/.mcp.json`** - MCP server configuration (generated when user selects MCP integration for any platform)
 5. **`outputs/agents-repo/.env.template`** - Template listing required environment variables for runtime auth (e.g., `JIRA_TOKEN=`, `GITHUB_TOKEN=`)
-6. **`outputs/agents-repo/.github/sdlc-pipeline/codebase_scan_results.md`** - Auto-detected codebase characteristics
+6. **`.github/sdlc-pipeline/codebase_scan_results.md`** - Auto-detected codebase characteristics
 7. **`outputs/agents-repo/.github/instructions/<repo>.instructions.md`** - Per-repository instruction files (structure, deps, patterns, conventions)
 8. **`outputs/agents-repo/index.md`** - Central repository catalog with Service Catalogue (incrementally maintained)
-9. **`outputs/agents-repo/.github/sdlc-pipeline/preflight_report.md`** - Validation results, warnings, and recommendations
-10. **`outputs/agents-repo/.github/sdlc-pipeline/onboarding_context.json`** - Normalized onboarding context extracted from intake answers (including `workspace_mode` and resolved repository paths)
-11. **Clarification questions** (if information is missing or unclear)
+9. **`.github/sdlc-pipeline/preflight_report.md`** - Validation results, warnings, and recommendations
+10. **`.github/sdlc-pipeline/onboarding_context.json`** - Normalized onboarding context extracted from intake answers (including `workspace_mode` and resolved repository paths)
+11. **`outputs/agents-repo/.github/skills/<skill>/SKILL.md`** and **`.github/skills/<skill>/SKILL.md`** - Connector skills generated during Preflight (API and MCP connector-aware)
+12. **`outputs/agents-repo/.github/skills/<api-skill>/{README.md,package.json,config.js,index.js,.gitignore}`** and mirrored root `.github/skills/<api-skill>/...` - Template-based API connector bundle (for API-selected platforms)
+13. **`.github/sdlc-pipeline/mcp_auth_instructions.md`** - MCP authentication instructions (OAuth/token guidance)
+14. **`.github/sdlc-pipeline/api_auth_instructions.md`** - API token setup instructions and secure collection commands
+15. **Clarification questions** (if information is missing or unclear)
 
-> **Note:** Connector SKILL.md files, hook scripts, hooks.json, and agent definitions are
-> generated by the **SDLC Pipeline Generator**, not the Preflight Agent.
+> **Note:** Connector SKILL.md files and API connector bundles are generated by
+> the **SDLC Preflight Agent** and treated as reusable onboarding artifacts. The Pipeline
+> Generator must reuse them and must not regenerate duplicates.
 >
-> **Auth is NOT performed during onboarding.** Preflight only identifies which connectors
-> are needed and generates configuration (endpoints, project keys, MCP server definitions).
-> Developers provide auth tokens at runtime via environment variables or OS keychain.
+> Connector authentication is performed during onboarding using secure token collection
+> for API connectors and explicit MCP auth instructions for MCP connectors.
 
 ---
 
@@ -189,20 +245,20 @@ Use `checkpoint-manager.py` to persist state between runs:
 # Save checkpoint after completing a phase
 python3 onboarding-utilities/scripts/checkpoint-manager.py save \
   --agent preflight --phase "Phase 2: Codebase Scan" --status completed \
-  --state-file outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json
+  --state-file .github/sdlc-pipeline/checkpoint_state.json
 
 # Load checkpoint on resume
 python3 onboarding-utilities/scripts/checkpoint-manager.py load \
-  --agent preflight --state-file outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json
+  --agent preflight --state-file .github/sdlc-pipeline/checkpoint_state.json
 
 # Record customer feedback for re-run
 python3 onboarding-utilities/scripts/checkpoint-manager.py feedback \
   --agent preflight --feedback "Re-scan repo X with deeper analysis" \
-  --phase "Phase 3: Smart Code Scan" --state-file outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json
+  --phase "Phase 3: Smart Code Scan" --state-file .github/sdlc-pipeline/checkpoint_state.json
 
 # Reset for clean re-run
 python3 onboarding-utilities/scripts/checkpoint-manager.py reset \
-  --agent preflight --state-file outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json
+  --agent preflight --state-file .github/sdlc-pipeline/checkpoint_state.json
 ```
 
 ### Resume Behavior
@@ -270,15 +326,19 @@ When a non-critical step fails, continue with reduced capability:
 
 1. **Check for checkpoint** - load existing state if available
 2. **Read** `intake-sources.md`
-3. **Validate** against the onboarding schema (`schemas/onboarding_answers_schema.md`):
+3. **Treat `intake-sources.md` as read-only (STRICT):**
+  - MUST NOT edit, rewrite, normalize, or overwrite `intake-sources.md`
+  - MUST use exactly what is present in `intake-sources.md` as the source of truth
+  - If values are missing or ambiguous, ask clarifications and store resolved values in generated outputs (for example onboarding context), not by modifying intake
+4. **Validate** against the onboarding schema (`schemas/onboarding_answers_schema.md`):
    - Organisation.Company is non-empty
    - At least one LLM provider + model specified
-   - PM System is valid (Jira, Linear, Azure DevOps, GitHub Issues, Shortcut, or None)
+  - PM System is valid (Jira, Linear, Azure DevOps, GitHub Issues, Shortcut, Other, or None)
    - Default Branch is specified
    - SCM provider is valid
    - Agent Behavioral Guardrails are non-empty
-4. **Identify gaps** - fields marked "not provided", "not set", or empty
-5. **Build normalized onboarding context** and write `outputs/agents-repo/.github/sdlc-pipeline/onboarding_context.json` with:
+5. **Identify gaps** - fields marked "not provided", "not set", or empty
+6. **Build normalized onboarding context** and write `.github/sdlc-pipeline/onboarding_context.json` with:
   - `industry_domain`
   - `business_context`
   - `intake_sources`
@@ -290,11 +350,11 @@ When a non-critical step fails, continue with reduced capability:
   - `behavioral_guardrails`
   - Prefer explicit values from `intake-sources.md` (including fields captured by `client-onboarding-wizard-new.html`).
   - If a field is missing, store an empty string or empty list and mark it for clarification.
-6. **Ask clarification questions** for any REQUIRED field that is missing or ambiguous:
+7. **Ask clarification questions** for any REQUIRED field that is missing or ambiguous:
    - Use `vscode/askQuestions` to collect answers
    - Do NOT assume or guess - always ask
    - Group related questions together (max 5 questions per round)
-7. **Save checkpoint** for Phase 1
+8. **Save checkpoint** for Phase 1
 
 ### Phase 2: Connector Configuration
 
@@ -308,6 +368,7 @@ When a non-critical step fails, continue with reduced capability:
 
   **Required extraction behavior:**
   - Parse connector mode directly from `intake-sources.md` sections/rows that mention integration mode for each platform.
+  - If `PM/Requirements System` is `Other`, read `PM/Requirements Name` from intake and use that exact name as the PM connector platform label (do not normalize to the literal word `other`).
   - Treat any explicit value matching MCP (for example: `MCP`, `mcp`, `Model Context Protocol`) as MCP.
   - Treat any explicit value matching API-based (for example: `API`, `API-based`, `Connector Skill`) as API-based.
   - Build a resolved map in memory before asking anything:
@@ -330,44 +391,86 @@ When a non-critical step fails, continue with reduced capability:
   - Never ask a platform connector question if that platform already has a resolved mode in `intake-sources.md`.
   - Ask only for platforms that are unresolved after parsing.
 
-9. **Based on resolved selections, generate the appropriate integration configuration:**
+9. **Generate connector artifacts immediately in Preflight** (connector mode is fully onboarding-driven):
 
-   - **If MCP is selected** for a platform:
-     - Generate `.mcp.json` with the MCP server definition for that platform
-     - Do NOT generate Connector Skill configuration for that platform
-   - **If API-based Connector Skill is selected** for a platform:
-     - Generate connector configuration in `connector_config.md`
-     - Do NOT generate MCP configuration for that platform
-   - **If both are explicitly requested** (rare):
-     - Generate both `.mcp.json` entry and Connector Skill configuration
-
-10. **Generate `.mcp.json`** (if any MCP selections were made):
-
-   ```json
-   {
-     "mcpServers": {
-       "atlassian": {
-         "command": "npx",
-         "args": ["-y", "@anthropic/mcp-atlassian"],
-         "env": {
-           "ATLASSIAN_URL": "<customer_jira_url>",
-           "ATLASSIAN_TOKEN": "${ATLASSIAN_TOKEN}"
-         }
-       },
-       "github": {
-         "command": "npx",
-         "args": ["-y", "@anthropic/mcp-github"],
-         "env": {
-           "GITHUB_TOKEN": "${GITHUB_TOKEN}"
-         }
-       }
-     }
-   }
+   ```bash
+   python3 onboarding-utilities/scripts/connector-bootstrap.py generate \
+     --intake intake-sources.md \
+     --output-root outputs/agents-repo
    ```
 
-   Only include servers for platforms where MCP was selected.
+   This MUST generate all required connector artifacts without waiting for `/generate-pipeline`:
+   - `.mcp.json` entries for MCP-selected platforms only
+   - `connector_config.md` and `connector_inventory.json`
+  - Connector skills in both `outputs/agents-repo/.github/skills/` and `.github/skills/` for API and MCP selections
+  - API connector bundles in `outputs/agents-repo/.github/skills/<api-skill>/` and `.github/skills/<api-skill>/` for API selections
+   - MCP/API auth instruction files in `.github/sdlc-pipeline/`
 
-11. **Save checkpoint** for Phase 2
+10. **Handle MCP authentication requirements and pause when required:**
+
+   - Detect MCP auth mechanism from generated connector inventory (`oauth` or `token`)
+   - If OAuth is required for any selected MCP connector:
+     - Present generated OAuth instructions from `mcp_auth_instructions.md`
+     - Pause onboarding and ask the user to resume after completing OAuth
+   - If token auth is required for any selected MCP connector:
+     - Present generated token update instructions from `mcp_auth_instructions.md`
+     - Pause onboarding and ask the user to resume after setting required token variables
+
+11. **Handle API connector authentication with instructions-first pause/resume:**
+
+   - Check whether token values are available through either:
+    - encrypted values in root `.env.encrypted` (preferred)
+    - fallback values in root `.env` (supported for resume readiness)
+   - If token is unavailable, provide token creation guidance from `api_auth_instructions.md`
+   - Provide the secure collection command the user can run in terminal:
+
+     ```bash
+     python onboarding-utilities/scripts/connector-bootstrap.py collect-token \
+       --connector <platform> \
+       --output-root outputs/agents-repo
+     ```
+
+   - For users who opened only `outputs/agents-repo` in a new VS Code window, also provide this equivalent command:
+
+     ```bash
+     python ../../onboarding-utilities/scripts/connector-bootstrap.py collect-token \
+       --connector <platform> \
+       --output-root .
+     ```
+
+   - Store encrypted token values only (for example `JIRA_TOKEN_ENC`) and never write plaintext credentials to generated files.
+
+  Collection UX rules (mandatory):
+  - Do NOT claim token collection succeeded unless verification confirms readiness.
+  - Token values themselves MUST be entered only through secure terminal prompt (`getpass`) and NEVER in chat questions.
+  - If user chooses not to run collection immediately, pause with explicit resume instructions.
+  - Always print a clear “Authentication Required” block with exact next steps and `/resume-pipeline` guidance.
+
+12. **Run mandatory auth readiness verification (API and MCP):**
+
+   ```bash
+   python onboarding-utilities/scripts/connector-bootstrap.py verify-auth \
+     --output-root outputs/agents-repo \
+     --allow-dotenv-fallback \
+     --fail-on-missing
+   ```
+
+   Enforcement rules:
+   - If verification returns blocked, Phase 2 MUST NOT be marked completed.
+  - For API connectors with missing tokens, present `api_auth_instructions.md` and pause.
+  - When API tokens are missing, explicitly list each missing required token variable name from `api_missing_tokens[].required_env` in the Phase 2 response.
+   - If user asks to continue immediately, they may run `collect-token` manually and then `/resume-pipeline`.
+   - If user has already added tokens to `.env` or `.env.encrypted`, `/resume-pipeline` must re-run verification and proceed when clear.
+   - For MCP OAuth connectors, present `mcp_auth_instructions.md`, save checkpoint with status `paused`, and ask the user to run `/resume-pipeline` after OAuth completion.
+   - For MCP token connectors with unresolved placeholders in `.mcp.json`, present `mcp_auth_instructions.md`, save checkpoint with status `paused`, and ask the user to run `/resume-pipeline` after setting tokens.
+   - Save checkpoint `last_data` with verification details (`api_missing_tokens`, `mcp_oauth_pending`, `mcp_token_pending`) before pausing.
+   - Phase 2 may report completed only when `verify-auth` returns `blocked: false`.
+
+  Required resume wording when paused at this gate:
+  - Do NOT say "continue from Phase 3" immediately.
+  - Say: "Run /resume-pipeline to re-run Phase 2 auth verification. If verification passes, preflight will continue to Phase 3."
+
+13. **Save checkpoint** for Phase 2 only after `verify-auth` returns `status: ok`
 
 ### Phase 3: Customer Workspace Setup
 
@@ -444,7 +547,7 @@ When a non-critical step fails, continue with reduced capability:
     f. **Include submodule commands in setup scripts** (`setup.sh` and `setup.ps1`):
        - `git submodule add <url> repos/<name>` for each repository
        - `git submodule init`
-       - `git submodule update --init --recursive`
+       - `git submodule update --init` (non-recursive; avoid failing on nested submodule metadata inside app repos)
        - Validate submodule configuration with `git submodule status`
 
 #### Custom Workspace Flow
@@ -504,16 +607,12 @@ When a non-critical step fails, continue with reduced capability:
 
 17. **Save checkpoint** for Phase 4 with the validated repo list
 
-### Phase 5: Create SCM Connector & Clone Repositories
+### Phase 5: Clone Repositories
 
-18. **Generate SCM connector FIRST** based on onboarding answers and Phase 2 selection:
-    - If API-based connector was selected for SCM:
-      - Identify SCM provider (GitHub, GitLab, Bitbucket, Azure DevOps)
-      - Generate the `SKILL.md` for the SCM connector (from `SC-SCM` contract)
-      - Generate setup script for SCM authentication
-    - If MCP was selected for SCM:
-      - Ensure `.mcp.json` includes the SCM MCP server definition
-      - Skip SCM Connector Skill generation
+18. **Reuse connector artifacts generated in Phase 2**:
+    - Use `connector_inventory.json` as the source of truth for selected connector types and auth modes
+    - Do NOT regenerate connector skills in this phase
+    - Ensure clone strategy aligns with resolved SCM connector mode (MCP or API)
 
 19. **Clone repositories** using `scm-bootstrap.py`:
 
@@ -546,7 +645,7 @@ When a non-critical step fails, continue with reduced capability:
     Output: JSON scan results
         Run: python3 onboarding-utilities/scripts/repo-scanner.py \
           --repo-path <resolved_app_repo_path_from_workspace_mode>/<repo_name> \
-          --output-dir .github/sdlc-pipeline-runtime/scans \
+          --output-dir .github/sdlc-pipeline/scans \
            --format both --max-depth 6
     ```
 
@@ -612,7 +711,7 @@ When a non-critical step fails, continue with reduced capability:
 
     ```bash
     python3 onboarding-utilities/scripts/instructions-generator.py \
-      --scan-dir .github/sdlc-pipeline-runtime/scans \
+      --scan-dir .github/sdlc-pipeline/scans \
       --output-dir outputs/agents-repo/.github/instructions \
       --repos-root <resolved_app_repo_path>
     ```
@@ -652,6 +751,12 @@ When a non-critical step fails, continue with reduced capability:
 
 ### Phase 8: Generate Setup Scripts & Connector Configuration
 
+Reference-first setup generation policy (MANDATORY):
+- `outputs/agents-repo/setup.sh` MUST be generated by adapting `templates/setup_template.sh.hbs` (do not synthesize a minimal ad-hoc script).
+- `outputs/agents-repo/setup.ps1` MUST be generated by adapting `templates/setup_template.ps1.hbs` (do not synthesize a minimal ad-hoc script).
+- Preserve all core capabilities from the templates: prerequisite checks/installation, submodule handling, observability install + config copy, `.env` creation, and validation checks.
+- Generated setup scripts MUST resolve observability installer from `.github/scripts/install-observability.(sh|ps1)` first, then fallback locations.
+
 31. **Generate `connector_config.md`** - connector configuration based on onboarding answers and Phase 2 connector selections:
     - **Ticket connector config** (if API-based selected for Jira):
       - PM type (Jira, Linear, Azure DevOps, GitHub Issues, Shortcut)
@@ -668,21 +773,20 @@ When a non-critical step fails, continue with reduced capability:
     - **MCP server definitions** (if customer uses MCPs - reference `.mcp.json`):
       - Server name, transport type, command/URL
 
-32. **Generate `.env.template`** - lists all required environment variables for runtime auth:
+32. **Generate `.env.template`** - lists all required environment variables for runtime auth and encrypted token variables:
     ```
     # Ticket Connector (Jira)
-    JIRA_TOKEN=
+  JIRA_TOKEN_ENC=
     JIRA_BASE_URL=https://myorg.atlassian.net
 
     # SCM Connector (GitHub)
-    GITHUB_TOKEN=
+  GITHUB_TOKEN_ENC=
 
     # Design Connector (Figma) - optional
-    # FIGMA_TOKEN=
+  # FIGMA_TOKEN_ENC=
     ```
-    > **Auth is NOT performed during onboarding.** Developers fill in `.env` from
-    > `.env.template` when they run the SDLC pipeline. Tokens are never stored in
-    > generated files or committed to source control.
+  > API token collection is performed during onboarding using secure collection.
+  > Plaintext tokens MUST NEVER be stored in generated files.
 
 33. **Generate `setup.sh`** - macOS/Linux setup script:
     - **Prerequisite checks** - verify required CLIs are installed (gh, jira-cli, node, python3, git, etc.)
@@ -697,6 +801,8 @@ When a non-critical step fails, continue with reduced capability:
     - **Copy `.env.template`** to `.env` if `.env` doesn't exist
     - Add `.env` to `.gitignore`
     - **Validation checks** - verify workspace setup, submodule status, tool availability
+    - **Output path constraint (MANDATORY):** write only to `outputs/agents-repo/setup.sh`.
+      MUST NOT generate `setup.sh` in any other directory.
 
 34. **Generate `setup.ps1`** - Windows PowerShell setup script:
     - **Prerequisite checks** - verify required CLIs (gh, node, python3, git, etc.)
@@ -710,10 +816,12 @@ When a non-critical step fails, continue with reduced capability:
     - **Copy `.env.template`** to `.env` if `.env` doesn't exist
     - Add `.env` to `.gitignore`
     - **Validation checks** - verify workspace setup, submodule status, tool availability
+    - **Output path constraint (MANDATORY):** write only to `outputs/agents-repo/setup.ps1`.
+      MUST NOT generate `setup.ps1` in any other directory.
 
-> **Note:** Connector SKILL.md files, hook scripts, and hooks.json are generated by the
-> **SDLC Pipeline Generator** (not Preflight). Preflight only generates connector
-> configuration and environment templates - **no authentication is performed**.
+> **Note:** Connector SKILL.md files and API connector bundles are generated by
+> **Preflight**. The Pipeline Generator must reuse those artifacts and must not regenerate
+> duplicates. Hook scripts and hooks.json remain Generator-owned.
 
 35. **Save checkpoint** for Phase 8
 
@@ -727,7 +835,7 @@ When a non-critical step fails, continue with reduced capability:
 
     - **On Windows:**
       ```powershell
-      .\onboarding-utilities\output_repos\agents-repo\setup.ps1
+      .\outputs\agents-repo\setup.ps1
       ```
 
     - **On macOS/Linux:**
@@ -742,6 +850,7 @@ When a non-critical step fails, continue with reduced capability:
     - Observability binaries downloaded (if enabled)
 
 38. **Handle installation failures:**
+  - If `outputs/agents-repo/setup.ps1` (Windows) or `outputs/agents-repo/setup.sh` (macOS/Linux) is missing, treat as a blocking preflight error and regenerate setup scripts before continuing.
     - If any tool fails to install -> report to customer with manual installation instructions
     - If submodule init fails -> ask customer to verify repository access/credentials
     - Do NOT block on optional tools (observability) - report as warning
@@ -766,7 +875,7 @@ When a non-critical step fails, continue with reduced capability:
     - Re-run inspection after fixes to confirm resolution
     - Maximum 2 fix-and-recheck cycles - after that, report remaining issues
 
-42. **Write** `outputs/agents-repo/.github/sdlc-pipeline/preflight_report.md` summarizing:
+42. **Write** `.github/sdlc-pipeline/preflight_report.md` summarizing:
     - Validation status (all required fields pass or fail)
     - Connector configuration (MCP vs API-based per platform)
     - Workspace structure (default with submodules or custom)
@@ -781,8 +890,8 @@ When a non-critical step fails, continue with reduced capability:
     - Warnings (e.g., "No linter detected - lint-on-save hook will be disabled")
     - **Next Steps** (MANDATORY - always include):
       1. Review generated files
-      2. Fill in `.env` from `.env.template`
-      3. Run `/generate-pipeline` to create agents, skills, hooks, and orchestrator
+      2. Complete connector authentication (`mcp_auth_instructions.md` / `api_auth_instructions.md`)
+      3. Run `/generate-pipeline` to create agents, hooks, and orchestrator (reusing preflight connector skills)
 
 43. **Display Next Steps** to the customer (see Execution Format section above)
 
@@ -830,29 +939,36 @@ All paths are relative to the repository/workspace root.
 | `setup.sh` | `outputs/agents-repo/setup.sh` |
 | `setup.ps1` | `outputs/agents-repo/setup.ps1` |
 | `.mcp.json` | `outputs/agents-repo/.mcp.json` (if MCP selected) |
-| `connector_config.md` | `outputs/agents-repo/.github/sdlc-pipeline/connector_config.md` |
+| `connector_config.md` | `.github/sdlc-pipeline/connector_config.md` |
+| `connector_inventory.json` | `.github/sdlc-pipeline/connector_inventory.json` |
+| `mcp_auth_instructions.md` | `.github/sdlc-pipeline/mcp_auth_instructions.md` (if MCP selected) |
+| `api_auth_instructions.md` | `.github/sdlc-pipeline/api_auth_instructions.md` (if API connectors selected) |
 | `.env.template` | `outputs/agents-repo/.env.template` |
+| `.env.encrypted` | `.env.encrypted` (if API token collection completed) |
+| Connector skills | `outputs/agents-repo/.github/skills/<skill>/SKILL.md` and `.github/skills/<skill>/SKILL.md` |
+| API connector bundles | `outputs/agents-repo/.github/skills/<api-skill>/{README.md,package.json,config.js,index.js,.gitignore}` and mirrored `.github/skills/<api-skill>/...` |
 | `index.md` | `outputs/agents-repo/index.md` |
 | `copilot-instructions.md` | `outputs/agents-repo/.github/copilot-instructions.md` (merged, all repos) |
 | Per-repo copilot-instructions | `<resolved_app_repo_path>/<repo-name>/.github/copilot-instructions.md` (per scanned repo) |
 | Instruction files | `outputs/agents-repo/.github/instructions/<repo>.instructions.md` |
-| `codebase_scan_results.md` | `outputs/agents-repo/.github/sdlc-pipeline/codebase_scan_results.md` |
-| `preflight_report.md` | `outputs/agents-repo/.github/sdlc-pipeline/preflight_report.md` |
+| `codebase_scan_results.md` | `.github/sdlc-pipeline/codebase_scan_results.md` |
+| `preflight_report.md` | `.github/sdlc-pipeline/preflight_report.md` |
 | `.gitmodules` | `outputs/agents-repo/.gitmodules` (default mode only) |
-| Checkpoint state | `outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json` |
+| Checkpoint state | `.github/sdlc-pipeline/checkpoint_state.json` |
 | Cloned repos (default mode) | `outputs/agents-repo/repos/` |
 | Cloned repos (custom mode) | `outputs/app-repos/` |
-| Scan results (temp) | `.github/sdlc-pipeline-runtime/scans/` |
+| Scan results (temp) | `.github/sdlc-pipeline/scans/` |
 
 ---
 
 ## Security Rules
 
 - NEVER store credentials or auth tokens in generated files
-- NEVER prompt for tokens during onboarding - auth happens at runtime
-- `.env.template` contains only placeholder variable names (e.g., `JIRA_TOKEN=`), never actual values
+- NEVER store plaintext credentials or auth tokens in generated files
+- API token collection during onboarding is allowed only through secure encrypted storage flow
+- `.env.template` contains placeholder variable names for encrypted values (e.g., `JIRA_TOKEN_ENC=`), never actual values
 - All generated `.env` files must be added to `.gitignore`
-- Generated setup scripts must NOT prompt for secrets - only check tool installation
+- Generated setup scripts may invoke secure token collection commands but must never echo tokens
 - NEVER echo tokens/secrets to terminal output
 - Cloned repos in `outputs/` should be added to `.gitignore`
 
@@ -860,10 +976,11 @@ All paths are relative to the repository/workspace root.
 
 ## Custom Client Context
 
-If `preflight_custom_client_context.md` exists at `.github/sdlc-pipeline-runtime/`, load and apply its instructions:
+If `preflight_custom_client_context.md` exists at `.github/sdlc-pipeline/`, load and apply its instructions:
 - Additional setup steps
 - Custom connector configurations
 - Organization-specific security policies
 - Infrastructure requirements
+
 
 

@@ -33,7 +33,9 @@
 | Field | Required | Purpose |
 |-------|----------|---------|
 | PM System | Yes | Determines ticket connector skill |
+| PM/Requirements Name | Yes (if PM = Other) | Exact connector platform label for custom PM tool |
 | PM URL | Yes (if PM ≠ None) | Connector configuration |
+| PM Integration Mode | Yes (if PM ≠ None) | Determines MCP vs API connector generation in preflight |
 | Ticket Prefix | No | Ticket detection regex |
 | Default Branch | Yes | SCM connector configuration |
 | Project Keys | No | Ticket filtering |
@@ -68,7 +70,9 @@
 | Field | Required | Purpose |
 |-------|----------|---------|
 | Confluence/Wiki URL | No | Ticket connector enrichment |
+| Confluence Integration Mode | No | Determines MCP vs API mode for knowledge connector |
 | SCM provider | Yes | SCM connector skill |
+| SCM Integration Mode | Yes | Determines MCP vs API connector generation in preflight |
 | SCM org/workspace | No | Connector configuration |
 | Docs strategy | No | Knowledge retrieval approach |
 
@@ -149,7 +153,7 @@ Any onboarding value collected by the wizard that can affect generated prompts, 
 
 1. **Organisation.Company** - Must be non-empty
 2. **Approved LLM Models** - At least one provider + model pair
-3. **Workflow.Developer.PM System** - Must be one of: `Jira`, `Linear`, `Azure DevOps`, `GitHub Issues`, `Shortcut`, `None`
+3. **Workflow.Developer.PM System** - Must be one of: `Jira`, `Linear`, `Azure DevOps`, `GitHub Issues`, `Shortcut`, `Other`, `None`
 4. **Workflow.Developer.Default Branch** - Must be a valid branch name
 5. **Sources.SCM** - Must be one of: `github`, `gitlab`, `bitbucket`, `azure-devops`
 6. **Constraints.Agent Behavioral Guardrails** - Must be non-empty (at minimum: scope control, security)
@@ -159,6 +163,10 @@ Any onboarding value collected by the wizard that can affect generated prompts, 
 10. **Pipeline.workspace_setup** - If present, must be one of: `default`, `custom`
 11. **Pipeline.include_documentation_agent** - If present, must be boolean
 12. **Pipeline.include_iac_agent** - If present, must be boolean
+13. **Workflow.Developer.PM Integration Mode** - If present, must be one of: `mcp`, `api`
+14. **Sources.SCM Integration Mode** - If present, must be one of: `mcp`, `api`
+15. **Sources.Confluence Integration Mode** - If present, must be one of: `mcp`, `api`
+16. **Workflow.Developer.PM/Requirements Name** - Required when PM System is `Other`; must be preserved exactly in generated intake and preflight connector resolution
 
 ## Workspace Mode Rules
 

@@ -3,6 +3,12 @@
 > Template for generating customer-specific Python hook scripts.
 > All hooks are written in Python for cross-platform compatibility (macOS, Linux, Windows).
 > Variables in `{{VARIABLE}}` are replaced during generation.
+>
+> IMPORTANT:
+> - This generic template is for lightweight guard-style hooks.
+> - For `observability-hook.py`, `otel-hook.py`, telemetry utilities, and artifact publish/failure helpers,
+>   reuse the reference implementations under `onboarding-utilities/scripts/`.
+> - Do NOT dynamically generate those complex hooks from this template.
 
 ```python
 #!/usr/bin/env python3
@@ -84,6 +90,7 @@ def main():
     {{GUARD_LOGIC}}
 
     # Default: allow
+    print(json.dumps({"continue": True}))
     sys.exit(0)
 
 

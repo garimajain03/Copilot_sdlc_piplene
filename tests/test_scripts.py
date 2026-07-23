@@ -347,6 +347,425 @@ class TestRepoScanner(unittest.TestCase):
 
 
 # =============================================================================
+# connector-bootstrap.py tests
+# =============================================================================
+class TestConnectorBootstrap(unittest.TestCase):
+    """Tests for connector-bootstrap.py"""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.intake_path = os.path.join(self.tmpdir, "intake-sources.md")
+        self.output_root = os.path.join(self.tmpdir, "outputs", "agents-repo")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _load_connector_bootstrap(self):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "connector_bootstrap",
+            os.path.join(SCRIPTS_DIR, "connector-bootstrap.py")
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _write_intake(self, content: str):
+        with open(self.intake_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+    def test_generate_creates_mcp_and_api_artifacts(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: mcp
+- SCM System: github
+- SCM Integration Mode: api
+- Confluence URL: https://myorg.atlassian.net/wiki
+"""
+        )
+
+        result = mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+
+        self.assertEqual(result["status"], "ok")
+        self.assertTrue(result["mcp_generated"])
+        self.assertGreaterEqual(len(result["skills"]), 2)
+        self.assertGreaterEqual(len(result["implementations"]), 1)
+
+        mcp_path = os.path.join(self.output_root, ".mcp.json")
+        self.assertTrue(os.path.exists(mcp_path))
+        with open(mcp_path, "r", encoding="utf-8") as f:
+            mcp_json = json.load(f)
+        self.assertIn("mcpServers", mcp_json)
+        self.assertGreater(len(mcp_json["mcpServers"].keys()), 0)
+
+        inv_path = os.path.join(self.tmpdir, ".github", "sdlc-pipeline", "connector_inventory.json")
+        self.assertTrue(os.path.exists(inv_path))
+
+        cfg_path = os.path.join(self.tmpdir, ".github", "sdlc-pipeline", "connector_config.md")
+        self.assertTrue(os.path.exists(cfg_path))
+
+        api_skill_dir = Path(self.output_root) / ".github" / "skills" / "github-connector"
+        self.assertTrue((api_skill_dir / "SKILL.md").exists())
+        self.assertTrue((api_skill_dir / "README.md").exists())
+        self.assertTrue((api_skill_dir / "package.json").exists())
+        self.assertTrue((api_skill_dir / "config.js").exists())
+        self.assertTrue((api_skill_dir / "index.js").exists())
+        self.assertTrue((api_skill_dir / ".gitignore").exists())
+
+        root_api_skill_dir = Path(self.tmpdir) / ".github" / "skills" / "github-connector"
+        self.assertTrue((root_api_skill_dir / "SKILL.md").exists())
+        self.assertTrue((root_api_skill_dir / "README.md").exists())
+        self.assertTrue((root_api_skill_dir / "package.json").exists())
+        self.assertTrue((root_api_skill_dir / "config.js").exists())
+        self.assertTrue((root_api_skill_dir / "index.js").exists())
+        self.assertTrue((root_api_skill_dir / ".gitignore").exists())
+
+        self.assertTrue((Path(self.tmpdir) / ".env").exists())
+        self.assertTrue((Path(self.tmpdir) / ".env.encrypted").exists())
+
+    def test_parse_intake_markdown_extracts_modes(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """## SDLC Tools
+- PM/Requirements System: Linear
+- PM Tool URL: https://linear.app/acme
+- PM Integration Mode: api
+- SCM System: gitlab
+- SCM Integration Mode: mcp
+- Confluence URL: https://acme.atlassian.net/wiki
+"""
+        )
+
+        values = mod.parse_intake_markdown(Path(self.intake_path))
+        self.assertEqual(values["pm_system"], "Linear")
+        self.assertEqual(values["pm_mode"], "api")
+        self.assertEqual(values["scm_system"], "gitlab")
+        self.assertEqual(values["scm_mode"], "mcp")
+
+    def test_resolve_connectors_deduplicates(self):
+        mod = self._load_connector_bootstrap()
+        values = {
+            "pm_system": "Jira",
+            "pm_url": "https://myorg.atlassian.net",
+            "pm_mode": "mcp",
+            "scm_system": "github",
+            "scm_mode": "mcp",
+            "confluence_url": "https://myorg.atlassian.net/wiki",
+        }
+        specs = mod.resolve_connectors(values)
+        pairs = {(s.platform, s.category) for s in specs}
+        self.assertIn(("jira", "pm"), pairs)
+        self.assertIn(("confluence", "knowledge"), pairs)
+        self.assertIn(("github", "scm"), pairs)
+
+    def test_verify_auth_blocks_when_api_token_missing(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: api
+- SCM System: gitlab
+- SCM Integration Mode: api
+"""
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        result = mod.verify_auth(Path(self.output_root))
+
+        self.assertEqual(result["status"], "blocked")
+        missing = {item["required_env"] for item in result["api_missing_tokens"]}
+        self.assertIn("JIRA_TOKEN_ENC", missing)
+        self.assertIn("GITLAB_TOKEN_ENC", missing)
+
+    def test_verify_auth_passes_when_api_tokens_present(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: api
+- SCM System: gitlab
+- SCM Integration Mode: api
+"""
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        mod._upsert_env_file(Path(self.tmpdir) / ".env.encrypted", "JIRA_TOKEN_ENC", "enc-jira")
+        mod._upsert_env_file(Path(self.tmpdir) / ".env.encrypted", "GITLAB_TOKEN_ENC", "enc-gitlab")
+
+        result = mod.verify_auth(Path(self.output_root))
+
+        self.assertEqual(result["status"], "ok")
+        self.assertFalse(result["blocked"])
+
+    def test_verify_auth_allows_dotenv_fallback_when_enabled(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: api
+- SCM System: gitlab
+- SCM Integration Mode: api
+"""
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        dotenv_path = Path(self.tmpdir) / ".env"
+        dotenv_path.parent.mkdir(parents=True, exist_ok=True)
+        dotenv_path.write_text("JIRA_TOKEN=jira-plain\nGITLAB_TOKEN=gitlab-plain\n", encoding="utf-8")
+
+        result = mod.verify_auth(Path(self.output_root), allow_dotenv_fallback=True)
+
+        self.assertEqual(result["status"], "ok")
+        self.assertFalse(result["blocked"])
+        self.assertEqual(result["summary"]["api_satisfied_via_dotenv"], 2)
+
+    def test_verify_auth_blocks_without_dotenv_fallback(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: api
+- SCM System: gitlab
+- SCM Integration Mode: api
+"""
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        dotenv_path = Path(self.tmpdir) / ".env"
+        dotenv_path.parent.mkdir(parents=True, exist_ok=True)
+        dotenv_path.write_text("JIRA_TOKEN=jira-plain\nGITLAB_TOKEN=gitlab-plain\n", encoding="utf-8")
+
+        result = mod.verify_auth(Path(self.output_root), allow_dotenv_fallback=False)
+
+        self.assertEqual(result["status"], "blocked")
+        self.assertTrue(result["blocked"])
+
+    def test_verify_auth_require_dotenv_tokens_blocks_then_passes(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: api
+- SCM System: gitlab
+- SCM Integration Mode: api
+"""
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        mod._upsert_env_file(Path(self.tmpdir) / ".env.encrypted", "JIRA_TOKEN_ENC", "enc-jira")
+        mod._upsert_env_file(Path(self.tmpdir) / ".env.encrypted", "GITLAB_TOKEN_ENC", "enc-gitlab")
+
+        blocked = mod.verify_auth(Path(self.output_root), require_dotenv_tokens=True)
+        self.assertEqual(blocked["status"], "blocked")
+        self.assertTrue(blocked["blocked"])
+        self.assertEqual(blocked["summary"]["api_missing_dotenv_tokens"], 2)
+
+        dotenv_path = Path(self.tmpdir) / ".env"
+        dotenv_path.parent.mkdir(parents=True, exist_ok=True)
+        dotenv_path.write_text("JIRA_TOKEN=jira-plain\nGITLAB_TOKEN=gitlab-plain\n", encoding="utf-8")
+
+        ok = mod.verify_auth(Path(self.output_root), require_dotenv_tokens=True)
+        self.assertEqual(ok["status"], "ok")
+        self.assertFalse(ok["blocked"])
+        self.assertEqual(ok["summary"]["api_missing_dotenv_tokens"], 0)
+
+    def test_verify_auth_detects_mcp_oauth_and_token_placeholders(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: mcp
+- SCM System: github
+- SCM Integration Mode: mcp
+- Confluence URL: https://myorg.atlassian.net/wiki
+- Confluence Integration Mode: mcp
+"""
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        result = mod.verify_auth(Path(self.output_root))
+
+        self.assertEqual(result["status"], "blocked")
+        self.assertIn("github", result["mcp_oauth_pending"])
+        self.assertEqual(result["summary"]["mcp_oauth_completed"], 0)
+        platforms = {item["platform"] for item in result["mcp_token_pending"]}
+        self.assertIn("jira", platforms)
+        self.assertIn("confluence", platforms)
+
+    def test_mark_oauth_complete_removes_oauth_pending(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: mcp
+- SCM System: github
+- SCM Integration Mode: mcp
+"""
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        before = mod.verify_auth(Path(self.output_root))
+        self.assertIn("github", before["mcp_oauth_pending"])
+
+        mark_result = mod.mark_oauth_complete("github", Path(self.output_root))
+        self.assertEqual(mark_result["status"], "ok")
+
+        after = mod.verify_auth(Path(self.output_root))
+        self.assertNotIn("github", after["mcp_oauth_pending"])
+        completed = {item["platform"] for item in after["mcp_oauth_completed"]}
+        self.assertIn("github", completed)
+        self.assertEqual(after["summary"]["mcp_oauth_completed"], 1)
+
+    def test_generate_and_verify_mixed_modes(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: api
+- SCM System: gitlab
+- SCM Integration Mode: mcp
+"""
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        mod._upsert_env_file(Path(self.tmpdir) / ".env.encrypted", "JIRA_TOKEN_ENC", "enc-jira")
+
+        result = mod.verify_auth(Path(self.output_root))
+
+        self.assertTrue(result["blocked"])
+        self.assertEqual(len(result["api_missing_tokens"]), 0)
+        self.assertGreaterEqual(len(result["mcp_token_pending"]), 1)
+
+    def test_generate_prunes_stale_connector_artifacts(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: api
+- SCM System: gitlab
+- SCM Integration Mode: api
+"""
+        )
+
+        # Seed stale artifacts from an older run.
+        stale_skill = Path(self.output_root) / ".github" / "skills" / "other-connector" / "SKILL.md"
+        stale_impl = Path(self.output_root) / ".github" / "connectors" / "other_api_connector.py"
+        stale_mcp_json = Path(self.output_root) / ".mcp.json"
+        stale_mcp_auth = Path(self.output_root) / ".github" / "sdlc-pipeline" / "mcp_auth_instructions.md"
+        stale_skill.parent.mkdir(parents=True, exist_ok=True)
+        stale_impl.parent.mkdir(parents=True, exist_ok=True)
+        stale_mcp_auth.parent.mkdir(parents=True, exist_ok=True)
+        stale_skill.write_text("stale", encoding="utf-8")
+        stale_impl.write_text("stale", encoding="utf-8")
+        stale_mcp_json.write_text("{}", encoding="utf-8")
+        stale_mcp_auth.write_text("stale", encoding="utf-8")
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+
+        self.assertFalse(stale_skill.exists())
+        self.assertFalse(stale_impl.exists())
+        self.assertFalse(stale_mcp_json.exists())
+        self.assertFalse(stale_mcp_auth.exists())
+
+    def test_generate_with_pm_other_name_uses_custom_platform_name(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Other
+- PM/Requirements Name: GitLab
+- PM Tool URL: https://custom.pm.example/api
+- PM Integration Mode: api
+- SCM System: gitlab
+- SCM Integration Mode: api
+"""
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        result = mod.verify_auth(Path(self.output_root))
+
+        missing = {item["required_env"] for item in result["api_missing_tokens"]}
+        self.assertIn("GITLAB_TOKEN_ENC", missing)
+
+    def test_resolve_connectors_skips_pm_none(self):
+        mod = self._load_connector_bootstrap()
+        values = {
+            "pm_system": "None",
+            "pm_url": "https://should-not-be-used.example",
+            "pm_mode": "api",
+            "scm_system": "gitlab",
+            "scm_mode": "api",
+            "confluence_url": "",
+        }
+
+        specs = mod.resolve_connectors(values)
+        platforms = {s.platform for s in specs}
+        self.assertNotIn("none", platforms)
+        self.assertNotIn("", platforms)
+        self.assertIn("gitlab", platforms)
+
+    def test_generate_with_pm_other_uses_other_token_env(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Other
+- PM Tool URL: https://custom.pm.example/api
+- PM Integration Mode: api
+- SCM System: gitlab
+- SCM Integration Mode: api
+"""
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        result = mod.verify_auth(Path(self.output_root))
+
+        missing = {item["required_env"] for item in result["api_missing_tokens"]}
+        self.assertIn("OTHER_TOKEN_ENC", missing)
+        self.assertIn("GITLAB_TOKEN_ENC", missing)
+
+    def test_verify_auth_from_agents_repo_context_reuses_parent_env(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: api
+"""
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        mod._upsert_env_file(Path(self.tmpdir) / ".env.encrypted", "JIRA_TOKEN_ENC", "enc-jira")
+
+        with patch.object(mod.Path, "cwd", return_value=Path(self.output_root)):
+            result = mod.verify_auth(Path("."), allow_dotenv_fallback=False)
+
+        self.assertEqual(result["status"], "ok")
+        self.assertFalse(result["blocked"])
+
+    def test_api_auth_instructions_dedupe_duplicate_platform_blocks(self):
+        mod = self._load_connector_bootstrap()
+        connectors = [
+            mod.ConnectorSpec("gitlab", "pm", "api", "token", "https://gitlab.example/api/v4"),
+            mod.ConnectorSpec("gitlab", "scm", "api", "token", "https://gitlab.example/api/v4"),
+        ]
+
+        rendered = mod._render_api_auth_instructions(connectors)
+        self.assertEqual(rendered.count("- gitlab:"), 1)
+
+
+# =============================================================================
 # instructions-generator.py tests
 # =============================================================================
 class TestInstructionsGenerator(unittest.TestCase):

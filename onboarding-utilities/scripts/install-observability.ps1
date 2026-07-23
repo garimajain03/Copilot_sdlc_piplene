@@ -51,11 +51,19 @@ function Download-File {
     )
     Write-Info "Downloading: $Url"
     $ProgressPreference = 'SilentlyContinue'
-    try {
-        Invoke-WebRequest -Uri $Url -OutFile $Destination -UseBasicParsing -MaximumRetryCount 3
-    } catch {
-        Write-Err "Download failed: $_"
-        throw
+    $retries = 3
+    for ($i = 1; $i -le $retries; $i++) {
+        try {
+            Invoke-WebRequest -Uri $Url -OutFile $Destination -UseBasicParsing
+            return
+        } catch {
+            if ($i -eq $retries) {
+                Write-Err "Download failed: $_"
+                throw
+            }
+            Write-Warn "Retry $i/$retries..."
+            Start-Sleep -Seconds 2
+        }
     }
 }
 
@@ -190,7 +198,7 @@ if (-not $otelcolRunning) {
         Set-Content -Path $otelcolPidFile -Value $otelProc.Id
         Write-Info "OTel Collector started (PID $($otelProc.Id))"
     } else {
-        Write-Warn "OTel Collector config not found at $OtelConfig — skipping start"
+        Write-Warn "OTel Collector config not found at $OtelConfig - skipping start"
     }
 }
 
@@ -218,7 +226,7 @@ if (-not $promRunning) {
         Set-Content -Path $promPidFile -Value $promProc.Id
         Write-Info "Prometheus started (PID $($promProc.Id))"
     } else {
-        Write-Warn "Prometheus config not found at $PromConfig — skipping start"
+        Write-Warn "Prometheus config not found at $PromConfig - skipping start"
     }
 }
 

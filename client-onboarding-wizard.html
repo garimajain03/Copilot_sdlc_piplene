@@ -358,6 +358,7 @@
       <div class="sub-fields-title">Confluence config</div>
       <div class="field"><label>Project spaces to crawl <span class="req">*</span> <span class="opt">comma-separated space keys</span></label><input type="text" id="confluence-spaces" placeholder="e.g. ENG, ARCH, PLAT, SEC" oninput="saveProgress()" /><p class="hint">Agent prioritises pages tagged: architecture, standards, ADR, onboarding, runbook, security.</p></div>
       <div class="field"><label>Confluence base URL</label><input type="url" id="confluence-url" placeholder="https://yourcompany.atlassian.net/wiki" oninput="saveProgress()" /></div>
+      <div class="field"><label>Confluence integration mode</label><select id="confluence-integration-mode" onchange="saveProgress()"><option value="">Select...</option><option value="mcp">MCP</option><option value="api">API-based connector</option></select></div>
       <div class="field"><label>Specific high-value pages <span class="opt">optional — one URL or title per line</span></label><textarea id="confluence-pages" placeholder="e.g.&#10;https://yourcompany.atlassian.net/wiki/spaces/ARCH/pages/123&#10;API Design Guidelines"></textarea></div>
     </div>
   </div>
@@ -419,6 +420,7 @@
     <div class="ctx-block" id="ctx-pm-other">
       <div class="sub-fields">
         <div class="sub-fields-title">Other PM tool config</div>
+        <div class="field"><label>PM/Requirements Name <span class="req">*</span></label><input type="text" id="pm-other-name" placeholder="e.g. YouTrack, Shortcut Enterprise" oninput="saveProgress()" /></div>
         <div class="field"><label>Tool URL <span class="req">*</span></label><input type="url" id="pm-other-url" placeholder="https://..." oninput="saveProgress()" /></div>
         <div class="field"><label>Integration mode <span class="req">*</span></label><select id="pm-other-integration-mode" onchange="saveProgress()"><option value="">Select…</option><option value="mcp">MCP</option><option value="api">API-based connector</option></select></div>
       </div>
@@ -1081,6 +1083,7 @@ function v(id)   { const el = document.getElementById(id); if (!el || inClosedCt
 
 function collectData() {
   const pmSystem = v('pm-system');
+  const pmOtherName = pmSystem === 'Other' ? v('pm-other-name') : '';
   const pmToolUrl = pmSystem === 'Jira' ? v('jira-url')
     : pmSystem === 'Azure DevOps' ? v('ado-url')
     : pmSystem === 'Linear' ? v('linear-url')
@@ -1103,13 +1106,13 @@ function collectData() {
       compliance: chk('compliance-grid'),
     },
     workflow: {
-      dev: { pm_system: pmSystem, pm_tool_url: pmToolUrl, pm_integration_mode: pmIntegrationMode,
+      dev: { pm_system: pmSystem, pm_other_name: pmOtherName, pm_tool_url: pmToolUrl, pm_integration_mode: pmIntegrationMode,
         scm: { system: v('scm-system'), github: { url: v('github-enterprise-url'), group: v('github-org'), repos: v('github-repos'), integration_mode: v('github-integration-mode') }, gitlab: { url: v('gitlab-url'), group: v('gitlab-group'), repos: v('gitlab-repos'), integration_mode: v('gitlab-integration-mode') }, bitbucket: { workspace: v('bitbucket-workspace'), url: v('bitbucket-url'), repos: v('bitbucket-repos'), integration_mode: v('bitbucket-integration-mode') }, azure_repos: { org: v('azure-repos-org'), project: v('azure-repos-project'), repos: v('azure-repos-list'), integration_mode: v('azure-repos-integration-mode') }, other: { name: v('scm-other-name'), url: v('scm-other-url'), integration_mode: v('scm-other-integration-mode') } } },
       ba:  { req_format: v('ba-req-format'), req_format_custom: v('ba-req-format-custom-desc'), bdd_framework: v('bdd-framework'), bdd_framework_other: v('bdd-framework-other-text'), dor: v('ba-dor'), dor_url: v('ba-dor-url'), signoff: v('ba-signoff') },
       qa:  { test_mgmt_system: v('test-mgmt-system'), test_mgmt_other: v('test-mgmt-other-name'), sample_test_case_format: v('sample-test-case-format'), automation_exists: v('qa-automation-exists'), automation_scope: chk('qa-automation-scope'), prog_languages: chk('qa-prog-lang-grid'), prog_lang_other: v('qa-prog-lang-other-text'), ui_frameworks: chk('qa-ui-framework-grid'), ui_framework_other: v('qa-ui-framework-other-text'), api_frameworks: chk('qa-api-framework-grid'), api_framework_other: v('qa-api-framework-other-text'), reporting_tools: chk('qa-reporting-grid'), reporting_other: v('qa-reporting-other-text') },
     },
     sources: {
-      confluence: { base_url: v('confluence-url'), space_keys: v('confluence-spaces'), specific_pages: v('confluence-pages') },
+      confluence: { base_url: v('confluence-url'), integration_mode: v('confluence-integration-mode'), space_keys: v('confluence-spaces'), specific_pages: v('confluence-pages') },
       has_documents: v('has-documents'), other_links: v('other-links'), uploaded_files: uploadedFiles.map(f => f.name),
     },
     constraints: {
@@ -1165,7 +1168,7 @@ function restoreData(d) {
   if (dev.pm_system === 'Azure DevOps') { sv('ado-url', dev.pm_tool_url || dev.ado_url); sv('ado-integration-mode', dev.pm_integration_mode); }
   if (dev.pm_system === 'Linear') { sv('linear-url', dev.pm_tool_url); sv('linear-integration-mode', dev.pm_integration_mode); }
   if (dev.pm_system === 'GitHub Issues') { sv('github-issues-url', dev.pm_tool_url); sv('github-issues-integration-mode', dev.pm_integration_mode); }
-  if (dev.pm_system === 'Other') { sv('pm-other-url', dev.pm_tool_url || dev.pm_other_url); sv('pm-other-integration-mode', dev.pm_integration_mode); }
+  if (dev.pm_system === 'Other') { sv('pm-other-name', dev.pm_other_name || dev.pm_name); sv('pm-other-url', dev.pm_tool_url || dev.pm_other_url); sv('pm-other-integration-mode', dev.pm_integration_mode); }
   const scm = dev.scm || {};
   sv('scm-system', scm.system); onScmSystem(scm.system || '');
   sv('github-enterprise-url', scm.github?.url || scm.github?.enterprise_url); sv('github-org', scm.github?.group || scm.github?.org); sv('github-repos', scm.github?.repos); sv('github-integration-mode', scm.github?.integration_mode);
@@ -1196,6 +1199,7 @@ function restoreData(d) {
 
   sv('confluence-spaces', s.confluence?.space_keys);
   sv('confluence-url', s.confluence?.base_url);
+  sv('confluence-integration-mode', s.confluence?.integration_mode);
   sv('confluence-pages', s.confluence?.specific_pages);
   sv('has-documents', s.has_documents); onHasDocs(s.has_documents || ''); sv('other-links', s.other_links);
 
@@ -1331,7 +1335,8 @@ function buildMarkdown() {
   }
 
   // Developer workflow section (always shown)
-  let wfSection = `\n### Developer Tools\n- PM/Requirements System: ${none(wf.dev?.pm_system)}\n- PM Tool URL: ${none(wf.dev?.pm_tool_url)}\n- PM Integration Mode: ${none(wf.dev?.pm_integration_mode)}\n${scmSection}`;
+  const pmNameLine = wf.dev?.pm_system === 'Other' ? `- PM/Requirements Name: ${none(wf.dev?.pm_other_name)}\n` : '';
+  let wfSection = `\n### Developer Tools\n- PM/Requirements System: ${none(wf.dev?.pm_system)}\n${pmNameLine}- PM Tool URL: ${none(wf.dev?.pm_tool_url)}\n- PM Integration Mode: ${none(wf.dev?.pm_integration_mode)}\n${scmSection}`;
 
   // QA workflow section (always shown)
   const qa = wf.qa || {};
@@ -1355,7 +1360,7 @@ function buildMarkdown() {
   const docLinks = (s.other_links || '').split('\n').map(v => v.trim()).filter(Boolean);
 
   // Sources section
-  let sourcesSection = `## Knowledge Sources\n- **Confluence URL:** ${none(s.confluence?.base_url)}\n- **Confluence Spaces:** ${none(s.confluence?.space_keys)}\n- **Specific Confluence pages:**\n${s.confluence?.specific_pages ? s.confluence.specific_pages.split('\n').filter(Boolean).map(p => `  - ${p.trim()}`).join('\n') : '  - _(not provided)_'}\n`;
+  let sourcesSection = `## Knowledge Sources\n- **Confluence URL:** ${none(s.confluence?.base_url)}\n- **Confluence Integration Mode:** ${none(s.confluence?.integration_mode)}\n- **Confluence Spaces:** ${none(s.confluence?.space_keys)}\n- **Specific Confluence pages:**\n${s.confluence?.specific_pages ? s.confluence.specific_pages.split('\n').filter(Boolean).map(p => `  - ${p.trim()}`).join('\n') : '  - _(not provided)_'}\n`;
   sourcesSection += `- **Docs strategy:** ${s.has_documents === 'yes' ? 'Specific links/files provided' : s.has_documents === 'no' ? 'Confluence crawl' : s.has_documents === 'both' ? 'Both specific docs and Confluence' : '_(not specified)_'}\n`;
   sourcesSection += `- **Document links:**\n${docLinks.length ? list(docLinks) : '  - _(not provided)_'}\n`;
 

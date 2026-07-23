@@ -22,18 +22,19 @@ Run the **SDLC Pipeline Generator** to create customer-specific SDLC agents from
 4. Asks clarification questions about tools, ways of working, and standards
 5. Maps contract model tiers (reasoning/coding/fast) to customer's approved models
 6. Generates agent definitions (`outputs/agents-repo/.github/agents/agent<N>_<name>.md`) with full metadata, inputs/outputs, validation, checkpointing, hooks, connector integration, and completion criteria
-7. Generates connector skill definitions only for API-based platforms (`outputs/agents-repo/.github/skills/<skill>/SKILL.md`)
+7. Reuses connector skills generated during preflight (`outputs/agents-repo/.github/skills/<skill>/SKILL.md` and `.github/skills/<skill>/SKILL.md`) and only regenerates if missing
 8. Generates cross-platform hook scripts (`outputs/agents-repo/.github/hooks/<hook>.py`) and `hooks.json`
 9. Creates custom client context templates for each agent
-10. Generates workflow README and repository index
-11. Self-validates all outputs against contracts via `onboarding-utilities/scripts/outcome-inspector.py`
+10. Generates workflow README, repository index, and PR reporting artifacts (`PR.md` and `pr_creation_report.md`)
+11. Reuses reference implementations for observability/telemetry hooks and utilities from `onboarding-utilities/scripts/` (without modifying those source files)
+12. Self-validates all outputs against contracts via `onboarding-utilities/scripts/outcome-inspector.py`
 
 ## Prerequisites
 
 The `/preflight` command must have completed successfully first. Required outputs:
 
-- `outputs/agents-repo/.github/sdlc-pipeline/preflight_report.md`
-- `outputs/agents-repo/.github/sdlc-pipeline/codebase_scan_results.md`
+- `.github/sdlc-pipeline/preflight_report.md`
+- `.github/sdlc-pipeline/codebase_scan_results.md`
 - `outputs/agents-repo/.github/instructions/*.instructions.md`
 - `outputs/agents-repo/index.md` (repository catalog with Service Catalogue)
 
@@ -54,6 +55,15 @@ Read and follow the full agent instructions at `.github/agents/sdlc-pipeline-gen
 - Generated Inputs/Outputs tables MUST list the EXACT artifacts from each contract (not generic placeholders)
 - Generated Quality Checklists MUST include full descriptive text from contract Key Outcomes
 - The Orchestrator MUST include pipeline sequence, routing table, finalization protocol, and re-run boundaries from its contract
+- Sub-agent generation framework MUST remain artifact-agnostic (agents/hooks/skills/docs/future artifact types)
+
+**Telemetry + Hooks - CRITICAL:**
+- Generated orchestrator frontmatter MUST include lifecycle hooks for `SessionStart`, `PreToolUse`, `PostToolUse`, and `Stop` exactly once each.
+- Each hook entry MUST include `type`, `command`, and `timeout`.
+- `observability-hook.py` is responsible only for observability process lifecycle (start/stop/health checks), not telemetry accounting.
+- `otel-hook.py` is responsible only for telemetry/cost/reporting (`telemetry_report.md`, `cost_report.md`) and hook output debug context.
+- Generated hooks MUST emit hook output JSON so "Hook Output" appears in debug logs.
+- Complex observability/telemetry hooks and helper scripts MUST be copied/adapted from references in `onboarding-utilities/scripts/`; do not regenerate from scratch.
 
 **Start by verifying** the preflight outputs exist. If they don't, tell the user to run `/preflight` first.
 

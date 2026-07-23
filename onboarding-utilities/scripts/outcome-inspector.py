@@ -20,6 +20,7 @@ Exit codes:
 import argparse
 import json
 import os
+import py_compile
 import re
 import sys
 from pathlib import Path
@@ -27,6 +28,50 @@ from pathlib import Path
 
 GENERATED_AGENT_PATTERN = re.compile(r"^agent\d+[a-z]?_.*\.md$")
 RUNTIME_STATE_DIR = os.path.join(".github", "sdlc-pipeline-runtime")
+PLACEHOLDER_SIGNATURES = [
+    "The following workflow logic is applied exactly from the contract:",
+    "Pipeline sequence, routing table, and finalization protocol from contract:",
+    "Key Outcomes to satisfy:",
+]
+
+
+def _resolve_repo_root(output_dir: str) -> Path:
+    out = Path(output_dir).resolve()
+    if out.name == "agents-repo" and out.parent.name == "outputs":
+        return out.parent.parent
+    return Path.cwd().resolve()
+
+
+def _pipeline_dirs(output_dir: str) -> tuple[Path, Path]:
+    repo_root = _resolve_repo_root(output_dir)
+    root_pipeline = repo_root / ".github" / "sdlc-pipeline"
+    legacy_pipeline = Path(output_dir).resolve() / ".github" / "sdlc-pipeline"
+    return root_pipeline, legacy_pipeline
+
+
+def _is_empty_section(content: str, section_name: str) -> bool:
+    """Return True when a section exists but has no substantive body before next heading."""
+    marker = f"## {section_name}"
+    idx = content.find(marker)
+    if idx == -1:
+        return False
+
+    tail = content[idx + len(marker):]
+    lines = tail.splitlines()
+    body_lines = []
+    for line in lines:
+        if line.strip().startswith("## "):
+            break
+        body_lines.append(line)
+
+    for line in body_lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped in ("---", "|", "|-", "|--", "|---"):
+            continue
+        return False
+    return True
 
 
 class Inspector:
@@ -81,15 +126,19 @@ class Inspector:
 def inspect_preflight(output_dir: str, inspector: Inspector):
     """Inspect Preflight Agent outputs."""
 
+    root_pipeline, legacy_pipeline = _pipeline_dirs(output_dir)
+    repo_root = _resolve_repo_root(output_dir)
+
     # Check required files exist
     required_files = {
         "setup.sh": "Setup script",
+        "setup.ps1": "Windows setup script",
         "preflight_report.md": "Preflight report",
         "codebase_scan_results.md": "Codebase scan results",
     }
 
-    # Look in sdlc-pipeline subdir too
-    search_dirs = [output_dir, os.path.join(output_dir, ".github", "sdlc-pipeline")]
+    # Look in root pipeline state first, then legacy output-side path.
+    search_dirs = [output_dir, str(root_pipeline), str(legacy_pipeline)]
 
     for filename, desc in required_files.items():
         found = False
@@ -99,6 +148,27 @@ def inspect_preflight(output_dir: str, inspector: Inspector):
                 break
         if not found:
             inspector.error("completeness", f"Missing required file: {filename} ({desc})")
+
+    # Enforce setup scripts are generated only in output_dir (no duplicates elsewhere).
+    expected_setup_paths = {
+        "setup.sh": Path(output_dir).resolve() / "setup.sh",
+        "setup.ps1": Path(output_dir).resolve() / "setup.ps1",
+    }
+    duplicate_candidates = [
+        repo_root / "setup.sh",
+        repo_root / "setup.ps1",
+        repo_root / ".github" / "setup.sh",
+        repo_root / ".github" / "setup.ps1",
+    ]
+    for candidate in duplicate_candidates:
+        name = candidate.name
+        expected = expected_setup_paths.get(name)
+        if expected and candidate.exists() and candidate.resolve() != expected:
+            inspector.error(
+                "consistency",
+                f"Duplicate setup script found outside outputs/agents-repo: {candidate}",
+                str(candidate),
+            )
 
     # Check setup.sh is not empty and has shebang
     setup_path = os.path.join(output_dir, "setup.sh")
@@ -113,6 +183,26 @@ def inspect_preflight(output_dir: str, inspector: Inspector):
             inspector.warning("security", "setup.sh may not protect secret input (no read -rs found)", "setup.sh")
         if ".env" in content and ".gitignore" not in content:
             inspector.warning("security", "setup.sh creates .env but may not add to .gitignore", "setup.sh")
+        if "install-observability.sh" not in content:
+            inspector.error("quality", "setup.sh missing observability installer integration", "setup.sh")
+        if ".github/scripts/install-observability.sh" not in content and "scripts/install-observability.sh" not in content:
+            inspector.warning("quality", "setup.sh should resolve generated .github/scripts/install-observability.sh path", "setup.sh")
+
+    # Check setup.ps1 basic quality
+    setup_ps1_path = os.path.join(output_dir, "setup.ps1")
+    if os.path.exists(setup_ps1_path):
+        with open(setup_ps1_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        if not content.strip():
+            inspector.error("quality", "setup.ps1 is empty", "setup.ps1")
+        if "[CmdletBinding()]" not in content:
+            inspector.warning("quality", "setup.ps1 missing CmdletBinding declaration", "setup.ps1")
+        if "Copy-Item \".env.template\" \".env\"" in content and "Test-Path \".env.template\"" not in content:
+            inspector.warning("quality", "setup.ps1 copies .env.template without existence check", "setup.ps1")
+        if "install-observability.ps1" not in content:
+            inspector.error("quality", "setup.ps1 missing observability installer integration", "setup.ps1")
+        if ".github\\scripts\\install-observability.ps1" not in content and "scripts\\install-observability.ps1" not in content:
+            inspector.warning("quality", "setup.ps1 should resolve generated .github/scripts/install-observability.ps1 path", "setup.ps1")
 
     # Check hooks.json
     hooks_path = os.path.join(output_dir, ".github", "hooks", "hooks.json")
@@ -165,6 +255,14 @@ def inspect_preflight(output_dir: str, inspector: Inspector):
 def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector):
     """Inspect Pipeline Generator outputs against contracts."""
 
+    root_pipeline, legacy_pipeline = _pipeline_dirs(output_dir)
+    if legacy_pipeline.exists():
+        inspector.error(
+            "consistency",
+            "Legacy pipeline state directory exists at outputs/agents-repo/.github/sdlc-pipeline; pipeline state must be under root .github/sdlc-pipeline",
+            str(legacy_pipeline),
+        )
+
     # Check agent files exist for each contract
     agents_dir = os.path.join(output_dir, ".github", "agents")
     if not os.path.isdir(agents_dir):
@@ -181,6 +279,95 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
     if len(agent_files) == 0:
         inspector.error("completeness", "No generated pipeline agents found (agent*.md / orchestrator.md)")
         return
+
+    pr_reviewer = os.path.join(agents_dir, "pr-review-fixer.md")
+    if not os.path.exists(pr_reviewer):
+        inspector.error("completeness", "Missing PR review utility agent file: pr-review-fixer.md", pr_reviewer)
+
+    pipeline_preflight = os.path.join(output_dir, ".github", "scripts", "pipeline-preflight.py")
+    if not os.path.exists(pipeline_preflight):
+        inspector.error(
+            "completeness",
+            "Missing required pipeline preflight script: .github/scripts/pipeline-preflight.py",
+            pipeline_preflight,
+        )
+    else:
+        try:
+            with open(pipeline_preflight, "r", encoding="utf-8") as pf:
+                preflight_content = pf.read()
+            if "parents[4]" in preflight_content:
+                inspector.error(
+                    "consistency",
+                    "pipeline-preflight.py uses fragile root resolution (parents[4]); use parents[2] for .github/scripts location",
+                    pipeline_preflight,
+                )
+            required_runtime_tokens = ["feature_id", "outputs", "checkpoint.md", "orchestration_tracker.md"]
+            for token in required_runtime_tokens:
+                if token not in preflight_content:
+                    inspector.error(
+                        "consistency",
+                        f"pipeline-preflight.py missing runtime initialization token: {token}",
+                        pipeline_preflight,
+                    )
+        except OSError:
+            pass
+
+    # Ensure generated observability installers are full reference implementations (not stubs).
+    installers = {
+        ".github/scripts/install-observability.sh": [
+            "opentelemetry-collector-releases/releases/download",
+            "prometheus/releases/download",
+            "otelcol-contrib",
+            "prometheus",
+        ],
+        ".github/scripts/install-observability.ps1": [
+            "opentelemetry-collector-releases/releases/download",
+            "prometheus/releases/download",
+            "otelcol-contrib.exe",
+            "prometheus.exe",
+        ],
+    }
+    placeholder_markers = [
+        "placeholder",
+        "predownloaded binaries",
+        "external installer flows",
+        "use onboarding-utilities/scripts/install-observability",
+    ]
+    for rel_path, required_tokens in installers.items():
+        full_path = os.path.join(output_dir, *rel_path.split("/"))
+        if not os.path.exists(full_path):
+            inspector.error("completeness", f"Missing required installer script: {rel_path}", rel_path)
+            continue
+        try:
+            with open(full_path, "r", encoding="utf-8") as f:
+                installer_content = f.read()
+        except OSError:
+            inspector.error("quality", f"Unable to read installer script: {rel_path}", rel_path)
+            continue
+
+        if len(installer_content.strip()) < 800:
+            inspector.error(
+                "quality",
+                f"Installer script appears too short to be a full implementation: {rel_path}",
+                rel_path,
+            )
+
+        lowered = installer_content.lower()
+        for marker in placeholder_markers:
+            if marker in lowered:
+                inspector.error(
+                    "quality",
+                    f"Installer script contains placeholder/stub marker '{marker}': {rel_path}",
+                    rel_path,
+                )
+
+        for token in required_tokens:
+            if token not in installer_content:
+                inspector.error(
+                    "consistency",
+                    f"Installer script missing required download/runtime token '{token}': {rel_path}",
+                    rel_path,
+                )
 
     # Check orchestrator exists
     orch_files = [f for f in agent_files if "orchestrator" in f.lower()]
@@ -215,6 +402,14 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
         with open(filepath, "r", encoding="utf-8") as f:
             content = f.read()
 
+        for signature in PLACEHOLDER_SIGNATURES:
+            if signature in content:
+                inspector.error("quality", f"Generated artifact contains placeholder signature: {signature}", agent_file)
+
+        for section in ["Role", "Inputs", "Outputs", "Instructions", "Quality Checklist", "Access Restrictions"]:
+            if _is_empty_section(content, section):
+                inspector.error("quality", f"Section is empty: {section}", agent_file)
+
         for section in required_sections:
             if section not in content:
                 inspector.error("consistency", f"Missing section: {section}", agent_file)
@@ -227,6 +422,13 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
 
         if "python3 .github/hooks/" in content:
             inspector.warning("cross_platform", "Hook commands use python3; consider portable python command for Windows", agent_file)
+
+        if "outputs/agents-repo/.github/sdlc-pipeline/" in content:
+            inspector.error(
+                "consistency",
+                "Generated agent contains legacy pipeline-state path outputs/agents-repo/.github/sdlc-pipeline/",
+                agent_file,
+            )
 
         # Detect obvious duplicate top-level headings.
         top_headings = re.findall(r"^##\s+(.+?)\s*$", content, flags=re.MULTILINE)
@@ -242,6 +444,14 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
         # Frontmatter hook shape checks: worker agents vs orchestrator.
         parts = content.split("---", 2)
         fm = parts[1] if len(parts) >= 3 else ""
+
+        # Guard malformed quote usage for argument hint keys in frontmatter.
+        for line in fm.splitlines():
+            l = line.strip()
+            if l.startswith("argument-hint:") or l.startswith("argumentHint:"):
+                if l.count('"') % 2 != 0:
+                    inspector.error("frontmatter", "Malformed quoted string in argument hint", agent_file)
+
         if agent_file == "orchestrator.md":
             if "agents:" not in fm:
                 inspector.error("frontmatter", "Orchestrator missing 'agents' list in frontmatter", agent_file)
@@ -251,6 +461,26 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
                     inspector.error("frontmatter", f"Orchestrator missing hook event: {ev.rstrip(':')}", agent_file)
             if fm.count("SessionStart:") > 1 or fm.count("PreToolUse:") > 1 or fm.count("PostToolUse:") > 1 or fm.count("Stop:") > 1:
                 inspector.error("frontmatter", "Orchestrator has duplicate hook event blocks", agent_file)
+            if "otel-hook.py" not in fm:
+                inspector.error("frontmatter", "Orchestrator frontmatter must include otel-hook.py", agent_file)
+            if "observability-hook.py" not in fm:
+                inspector.error("frontmatter", "Orchestrator frontmatter must include observability-hook.py", agent_file)
+            if "session-learnings.py" in fm:
+                inspector.error("frontmatter", "Orchestrator must not use session-learnings.py in frontmatter hooks", agent_file)
+            command_entries = len(re.findall(r"-\s+type:\s+command", fm))
+            timeout_entries = len(re.findall(r"\n\s*timeout:\s*\d+", fm))
+            if command_entries > 0 and timeout_entries < command_entries:
+                inspector.error("frontmatter", "Orchestrator hook entries must include timeout for every command", agent_file)
+            if "PR.md" not in content:
+                inspector.error("consistency", "Orchestrator must include PR.md output artifact", agent_file)
+            if "pr_creation_report.md" not in content:
+                inspector.error("consistency", "Orchestrator must include pr_creation_report.md output artifact", agent_file)
+            if "telemetry_report.md" not in content:
+                inspector.error("consistency", "Orchestrator must include telemetry_report.md output artifact", agent_file)
+            if "cost_report.md" not in content:
+                inspector.error("consistency", "Orchestrator must include cost_report.md output artifact", agent_file)
+            if "outputs/<FEATURE_ID>/" not in content and "outputs/<feature_id>/" not in content and "outputs/{feature_id}/" not in content:
+                inspector.warning("consistency", "Orchestrator should explicitly document outputs/<FEATURE_ID>/ runtime artifact path", agent_file)
         else:
             if "PreToolUse:" not in fm:
                 inspector.error("frontmatter", "Worker agent missing PreToolUse hook block", agent_file)
@@ -260,8 +490,8 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
                 inspector.warning("frontmatter", "Worker agent missing 'argument-hint' key", agent_file)
 
     # Check custom client context templates
-    context_dir = os.path.join(output_dir, ".github", "sdlc-pipeline", "client-context")
-    if os.path.isdir(context_dir):
+    context_dir = root_pipeline / "client-context"
+    if context_dir.is_dir():
         context_files = [f for f in os.listdir(context_dir) if f.endswith("_custom_client_context.md")]
         if len(context_files) < 8:
             inspector.warning("completeness",
@@ -279,10 +509,10 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
     else:
         inspector.warning("completeness", "No client-context directory found")
 
-    # Check generation report in runtime temp folder first, then shared folder.
+    # Check generation report at root pipeline location; allow runtime fallback for compatibility.
     report_candidates = [
-        os.path.join(RUNTIME_STATE_DIR, "generation_report.md"),
-        os.path.join(output_dir, ".github", "sdlc-pipeline", "generation_report.md"),
+        str(root_pipeline / "generation_report.md"),
+        str(_resolve_repo_root(output_dir) / RUNTIME_STATE_DIR / "generation_report.md"),
     ]
     if not any(os.path.exists(path) for path in report_candidates):
         inspector.error("completeness", "Missing generation_report.md")
@@ -352,15 +582,142 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
                         script = hook.get("script", hook.get("path", ""))
                         if script:
                             scripts.append(Path(script).name)
+            forbidden_aliases = {"hook_observability.py", "hook_otel_telemetry.py"}
+            alias_hits = sorted(set(scripts).intersection(forbidden_aliases))
+            if alias_hits:
+                inspector.error(
+                    "consistency",
+                    f"hooks.json references legacy alias hook names: {', '.join(alias_hits)}; use observability-hook.py and otel-hook.py",
+                    "hooks.json",
+                )
             has_prefixed = any(name.startswith("hook_") for name in scripts)
             has_plain = any(not name.startswith("hook_") for name in scripts)
             if has_prefixed and has_plain:
                 inspector.error("consistency", "hooks.json mixes prefixed and non-prefixed hook script naming", "hooks.json")
 
+            # Telemetry hook quality checks (dynamic paths + compatibility)
+            telemetry_scripts = [
+                ".github/hooks/otel-hook.py",
+                ".github/hooks/hook_otel_telemetry.py",
+            ]
+            for rel in telemetry_scripts:
+                tpath = os.path.join(output_dir, rel)
+                if not os.path.exists(tpath):
+                    continue
+                try:
+                    with open(tpath, "r", encoding="utf-8") as tf:
+                        tcontent = tf.read()
+                except OSError:
+                    continue
+
+                # Block delivery if telemetry hook has Python syntax errors.
+                try:
+                    py_compile.compile(tpath, doraise=True)
+                except py_compile.PyCompileError as exc:
+                    msg = str(exc)
+                    inspector.error(
+                        "quality",
+                        f"Telemetry hook contains Python syntax errors: {msg.splitlines()[-1] if msg else 'compile failed'}",
+                        rel,
+                    )
+                    # Skip text-based checks when file is syntactically invalid.
+                    continue
+
+                # Guard against hardcoded feature folder names in telemetry output paths.
+                if re.search(r"\bEPMINAI-\d+\b", tcontent):
+                    inspector.error(
+                        "consistency",
+                        "Telemetry hook contains hardcoded feature id; output path must be dynamic outputs/<FEATURE_ID>",
+                        rel,
+                    )
+
+                # Ensure markdown telemetry writes are UTF-8 safe on Windows.
+                has_utf8_header_write = bool(
+                    re.search(r"telemetry_file\.write_text\(\s*header\s*,\s*encoding=['\"]utf-8['\"]\s*\)", tcontent)
+                )
+                has_utf8_append = bool(
+                    re.search(r"with\s+open\(\s*telemetry_file\s*,\s*['\"]a['\"]\s*,\s*encoding=['\"]utf-8['\"]\s*\)", tcontent)
+                )
+                if not has_utf8_header_write or not has_utf8_append:
+                    inspector.error(
+                        "consistency",
+                        "Telemetry markdown writes must use explicit UTF-8 encoding for both header and append",
+                        rel,
+                    )
+
+                # Ensure feature-id parser has explicit guard against infra folder names.
+                if "NON_FEATURE_DIR_NAMES" not in tcontent or "agents-repo" not in tcontent:
+                    inspector.error(
+                        "consistency",
+                        "Telemetry hook must reject infra folder names (for example agents-repo) as feature IDs",
+                        rel,
+                    )
+                if "_is_valid_feature_id" not in tcontent:
+                    inspector.error(
+                        "consistency",
+                        "Telemetry hook must validate feature IDs before resolving output paths",
+                        rel,
+                    )
+
+                # Guard against brittle workspace root resolution in generated telemetry hooks.
+                if "parents[3]" in tcontent:
+                    inspector.error(
+                        "consistency",
+                        "Telemetry hook uses fragile WORKSPACE_ROOT resolution (parents[3]); use Path(__file__).resolve().parents[2]",
+                        rel,
+                    )
+
+                # Ensure event key compatibility parsing exists.
+                has_event = "event" in tcontent
+                has_hook_event = "hookEventName" in tcontent
+                has_event_name = "eventName" in tcontent
+                if not (has_event and has_hook_event and has_event_name):
+                    inspector.warning(
+                        "quality",
+                        "Telemetry hook should support event/eventName/hookEventName payload variants",
+                        rel,
+                    )
+
+                # Ensure tool compatibility for both runSubagent and agent variants.
+                if "runSubagent" not in tcontent or "agent" not in tcontent:
+                    inspector.warning(
+                        "quality",
+                        "Telemetry hook should support both toolName variants: runSubagent and agent",
+                        rel,
+                    )
+
+                if "hookSpecificOutput" not in tcontent or "hookEventName" not in tcontent:
+                    inspector.warning(
+                        "quality",
+                        "Telemetry hook should emit hookSpecificOutput with hookEventName for debug Hook Output visibility",
+                        rel,
+                    )
+
+                # Generated repo should include pricing file so telemetry cost works standalone.
+                pricing_path = os.path.join(output_dir, "observability", "model-pricing.json")
+                if not os.path.exists(pricing_path):
+                    inspector.error(
+                        "completeness",
+                        "Missing observability/model-pricing.json in generated repo; telemetry cost report will not work in standalone agents-repo",
+                        "observability/model-pricing.json",
+                    )
+
             # Detect duplicate hook files present on disk with both naming families.
             hooks_dir = os.path.join(output_dir, ".github", "hooks")
             if os.path.isdir(hooks_dir):
                 disk_files = [f for f in os.listdir(hooks_dir) if f.endswith(".py")]
+                # Block delivery if any generated hook script has Python syntax errors.
+                for hook_file in disk_files:
+                    hook_path = os.path.join(hooks_dir, hook_file)
+                    try:
+                        py_compile.compile(hook_path, doraise=True)
+                    except py_compile.PyCompileError as exc:
+                        msg = str(exc)
+                        inspector.error(
+                            "quality",
+                            f"Hook script contains Python syntax errors: {msg.splitlines()[-1] if msg else 'compile failed'}",
+                            os.path.join(".github", "hooks", hook_file),
+                        )
                 disk_set = set(disk_files)
                 duplicate_aliases = []
                 for f in disk_files:
@@ -371,6 +728,39 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
                 if duplicate_aliases:
                     pairs = [f"{a} <-> {b}" for a, b in duplicate_aliases]
                     inspector.error("consistency", f"Duplicate hook alias families present: {', '.join(pairs)}", ".github/hooks")
+                if "hook_observability.py" in disk_set or "hook_otel_telemetry.py" in disk_set:
+                    inspector.error(
+                        "consistency",
+                        "Legacy alias hooks detected on disk; expected canonical names observability-hook.py and otel-hook.py only",
+                        ".github/hooks",
+                    )
+
+            # Runtime consistency check when telemetry JSON outputs are present.
+            runtime_outputs_root = Path(output_dir) / "outputs"
+            if runtime_outputs_root.is_dir():
+                session_to_features: dict[str, set[str]] = {}
+                for telemetry_json in runtime_outputs_root.glob("*/*_telemetry_report.json"):
+                    try:
+                        with open(telemetry_json, "r", encoding="utf-8") as tf:
+                            report = json.load(tf)
+                    except (OSError, json.JSONDecodeError):
+                        continue
+                    session_id = str(report.get("session_id", "")).strip()
+                    feature_id = str(report.get("feature_id", telemetry_json.parent.name)).strip()
+                    if session_id and feature_id:
+                        session_to_features.setdefault(session_id, set()).add(feature_id)
+
+                mixed = {sid: feats for sid, feats in session_to_features.items() if len(feats) > 1}
+                if mixed:
+                    examples = "; ".join(
+                        f"session={sid} -> {', '.join(sorted(feats))}"
+                        for sid, feats in sorted(mixed.items())
+                    )
+                    inspector.error(
+                        "consistency",
+                        f"Telemetry outputs mix feature folders for a single session: {examples}",
+                        "outputs",
+                    )
         except (json.JSONDecodeError, IOError):
             pass
 

@@ -16,16 +16,19 @@ This repository is a **standalone, reusable SDLC Pipeline Bundle** containing **
 │     -> Downloads intake-sources.md                               │
 │                                                                 │
 │  2. Preflight Agent reads answers                               │
-│     -> Asks connector mode per platform (MCP vs API-based)       │
+│     -> Executes and reports progress phase-by-phase in real time │
+│     -> Resolves connector mode from intake (MCP vs API-based)     │
 │     -> Configures workspace (submodules or custom layout)        │
-│     -> Generates .mcp.json (for MCP platforms)                   │
+│     -> Generates connector skills + API connector code            │
+│     -> Generates .mcp.json (for MCP platforms) + auth guidance    │
+│     -> Verifies connector auth readiness before Phase 2 completes │
 │     -> Generates setup.sh + setup.ps1 (cross-platform)           │
 │     -> Clones & scans repos, generates instructions + index.md   │
 │     -> Asks clarification questions if unclear                   │
 │                                                                 │
 │  3. SDLC Pipeline Generator reads Contracts + answers           │
 │     -> Checks for existing agents - reuses and enhances them     │
-│     -> Generates Connector Skills only for API-based platforms   │
+│     -> Reuses preflight-generated connector skills                │
 │     -> Generates agents with full metadata, validation,          │
 │       checkpointing, and completion criteria                    │
 │     -> Generates cross-platform Python hook scripts              │
@@ -97,6 +100,7 @@ sdlc-pipeline-bundle/                  ← This standalone repository
 │   │   ├── repo-scanner.py
 │   │   ├── instructions-generator.py
 │   │   ├── scm-bootstrap.py
+│   │   ├── connector-bootstrap.py
 │   │   ├── checkpoint-manager.py
 │   │   ├── outcome-inspector.py
 │   │   ├── pipeline-migrator.py           ← Version & migration manager
@@ -148,6 +152,14 @@ sdlc-pipeline-bundle/                  ← This standalone repository
 3. `gh copilot chat "Run the SDLC Preflight Agent on intake-sources.md"`
 4. `gh copilot chat "Run the SDLC Pipeline Generator"`
 5. Review and customize generated agents
+
+## Output Path Policy
+
+- Pipeline state artifacts are written only under `.github/sdlc-pipeline/` at repo root.
+- Runtime temporary artifacts are written only under `.github/sdlc-pipeline-runtime/` at repo root.
+- Generated agents/hooks/instructions are written under `outputs/agents-repo/.github/`.
+- Connector skills are available in both `outputs/agents-repo/.github/skills/` and root `.github/skills/`.
+- `outputs/agents-repo/.github/sdlc-pipeline/` is a legacy location and must not be generated.
 
 ## Versioning
 
