@@ -141,12 +141,15 @@ Ticket/Requirement
 | `documentation_manifest.md` | Agent 7 | Orchestrator | Markdown (docs generated) |
 | `pr_description.md` | Agent 7 | Orchestrator, Human | Markdown (PR body) |
 | `commit_messages.md` | Agent 7 | Orchestrator, Human | Markdown (conventional commits) |
+| `PR.md` | Orchestrator | Human | Markdown (PR/MR creation summary alias for compatibility) |
+| `pr_creation_report.md` | Orchestrator | Human | Markdown (SCM PR/MR creation result with URL/retry guidance) |
 | `iac_manifest.md` | Agent 8 | Verifier, Orchestrator | Markdown (IaC changes summary) |
 | `blast_radius_assessment.md` | Agent 8 | Critic, Human | Markdown (impact analysis) |
 | `rollback_plan.md` | Agent 8 | Human, Orchestrator | Markdown (revert steps) |
 | `iac_plan_output.md` | Agent 8 | Verifier, Human | Markdown (plan/preview output) |
 | `checkpoint.md` | All agents | All agents | Markdown (pipeline state tracking) |
 | `telemetry_report.md` | HC-OTEL-TELEMETRY | Orchestrator, Human | Markdown (per-agent time, tokens, cost) |
+| `cost_report.md` | HC-OTEL-TELEMETRY | Orchestrator, Human | Markdown (per-model and total estimated cost) |
 
 ## Custom Client Context
 
@@ -177,7 +180,7 @@ Agents reference external platforms via one of two modes (determined during Pref
 | Mode | Artifact | Generated When |
 |------|----------|---------------|
 | **MCP** | `.mcp.json` server definitions | User selects MCP for a platform |
-| **API-based Connector Skill** | `.github/skills/<skill>/SKILL.md` | User selects API-based for a platform |
+| **API-based Connector Skill** | `.github/skills/<skill>/SKILL.md` | Preflight after connector mode is resolved from intake |
 
 Agents MUST use the shared integration (MCP or Connector Skill) rather than duplicating connector instructions.
 

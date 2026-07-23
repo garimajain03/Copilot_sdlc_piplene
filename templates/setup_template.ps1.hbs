@@ -58,7 +58,7 @@ Write-Info "Checking prerequisites..."
 $prerequisites = @(
     @{ Name = "git"; WingetId = "Git.Git"; ChocoName = "git" }
     @{ Name = "node"; WingetId = "OpenJS.NodeJS.LTS"; ChocoName = "nodejs-lts" }
-    @{ Name = "python3"; WingetId = "Python.Python.3.12"; ChocoName = "python3" }
+    @{ Name = "python"; WingetId = "Python.Python.3.12"; ChocoName = "python" }
     {{#if SCM_CONNECTOR}}
     @{ Name = "gh"; WingetId = "GitHub.cli"; ChocoName = "gh" }
     {{/if}}
@@ -89,15 +89,41 @@ Write-Info "Configuring workspace..."
 
 Write-Info "Initializing Git submodules..."
 
+# Prevent Windows path-length failures during recursive submodule checkout.
+git config --local core.longpaths true | Out-Null
+try {
+    git config --global core.longpaths true | Out-Null
+} catch {
+    Write-Warn "Could not set global core.longpaths; continuing with local setting"
+}
+
 {{#each SUBMODULES}}
 if (-not (Test-Path "repos/{{this.name}}")) {
-    git submodule add {{this.url}} "repos/{{this.name}}"
-    Write-Success "Added submodule: {{this.name}}"
+    $registered = $false
+    if (Test-Path ".gitmodules") {
+        $registeredPaths = git config --file .gitmodules --get-regexp "submodule\..*\.path" 2>$null
+        if ($LASTEXITCODE -eq 0 -and $registeredPaths -match "repos/{{this.name}}") {
+            $registered = $true
+        }
+    }
+
+    if (-not $registered) {
+        git submodule add {{this.url}} "repos/{{this.name}}"
+        if ($LASTEXITCODE -eq 0) {
+            Write-Success "Added submodule: {{this.name}}"
+        } else {
+            Write-Warn "Could not add submodule {{this.name}}; continuing with existing submodule metadata"
+        }
+    }
 }
 {{/each}}
 
-git submodule init
-git submodule update --init --recursive
+if (Test-Path ".gitmodules") {
+    git submodule sync | Out-Null
+}
+
+# Use non-recursive update to avoid failing on nested/foreign submodule metadata inside app repos.
+git -c core.longpaths=true submodule update --init --jobs 4
 
 # Validate submodule configuration
 $submoduleStatus = git submodule status
@@ -122,37 +148,87 @@ if ($LASTEXITCODE -eq 0) {
 # ─── Observability Stack ─────────────────────────────────────────────────────
 Write-Info "Setting up observability stack..."
 
-$obsCheckScript = Join-Path $ScriptDir "scripts" "install-observability.ps1"
-if (Test-Path $obsCheckScript) {
-    & $obsCheckScript -Check
+# Resolve observability installer from either generated repo or template repo.
+$obsInstallerCandidates = @(
+    (Join-Path $ScriptDir ".github\scripts\install-observability.ps1"),
+    (Join-Path $ScriptDir "scripts\install-observability.ps1"),
+    (Join-Path $ScriptDir "..\..\onboarding-utilities\scripts\install-observability.ps1")
+)
+$obsInstaller = $obsInstallerCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if ($obsInstaller) {
+    & $obsInstaller -Check
     if ($LASTEXITCODE -ne 0) {
         Write-Info "Downloading telemetry binaries (otelcol-contrib + prometheus)..."
-        & $obsCheckScript
+        & $obsInstaller
         if ($LASTEXITCODE -ne 0) {
-            Write-Warn "Observability install failed — telemetry will be degraded"
+            Write-Warn "Observability install failed - telemetry will be degraded"
         }
     } else {
         Write-Success "Observability binaries already installed"
     }
+} else {
+    Write-Warn "install-observability.ps1 not found; skipping observability binary installation"
 }
 
 # Copy config templates
-$projObsDir = Join-Path $ScriptDir "observability"
+$projObsDir = Join-Path $ScriptDir ".github\observability"
 New-Item -ItemType Directory -Force -Path (Join-Path $projObsDir "prometheus") | Out-Null
-if (-not (Test-Path (Join-Path $projObsDir "otel-collector-config.yml"))) {
-    Copy-Item "observability\otel-collector-config.yml" $projObsDir
-    Write-Success "Created otel-collector-config.yml"
+$obsSourceCandidates = @(
+    (Join-Path $ScriptDir ".github\observability"),
+    (Join-Path $ScriptDir "observability"),
+    (Join-Path $ScriptDir "..\..\onboarding-utilities\observability"),
+    (Join-Path $ScriptDir "..\..\observability")
+)
+$obsSourceDir = $null
+foreach ($candidate in $obsSourceCandidates) {
+    if (-not (Test-Path $candidate)) {
+        continue
+    }
+    $hasOtelConfig = Test-Path (Join-Path $candidate "otel-collector-config.yml")
+    $hasPromConfig = Test-Path (Join-Path $candidate "prometheus\prometheus.yml")
+    if ($hasOtelConfig -or $hasPromConfig) {
+        $obsSourceDir = $candidate
+        break
+    }
 }
-if (-not (Test-Path (Join-Path $projObsDir "prometheus" "prometheus.yml"))) {
-    Copy-Item "observability\prometheus\prometheus.yml" (Join-Path $projObsDir "prometheus")
-    Write-Success "Created prometheus.yml"
+if ($obsSourceDir) {
+    $otelSource = Join-Path $obsSourceDir "otel-collector-config.yml"
+    $otelTarget = Join-Path $projObsDir "otel-collector-config.yml"
+    if (-not (Test-Path $otelTarget) -and (Test-Path $otelSource)) {
+        if ([System.StringComparer]::OrdinalIgnoreCase.Equals([System.IO.Path]::GetFullPath($otelSource), [System.IO.Path]::GetFullPath($otelTarget))) {
+            Write-Info "otel-collector-config.yml already in place; skipping copy"
+        } else {
+            Copy-Item $otelSource $otelTarget -ErrorAction SilentlyContinue
+            if (Test-Path $otelTarget) {
+                Write-Success "Created otel-collector-config.yml"
+            }
+        }
+    }
+    $promSource = Join-Path $obsSourceDir "prometheus\prometheus.yml"
+    $promTarget = Join-Path $projObsDir "prometheus\prometheus.yml"
+    if (-not (Test-Path $promTarget) -and (Test-Path $promSource)) {
+        if ([System.StringComparer]::OrdinalIgnoreCase.Equals([System.IO.Path]::GetFullPath($promSource), [System.IO.Path]::GetFullPath($promTarget))) {
+            Write-Info "prometheus.yml already in place; skipping copy"
+        } else {
+            Copy-Item $promSource $promTarget -ErrorAction SilentlyContinue
+            if (Test-Path $promTarget) {
+                Write-Success "Created prometheus.yml"
+            }
+        }
+    }
+} else {
+    Write-Warn "Observability config templates not found; skipping config copy"
 }
 {{/if}}
 
 # ─── Environment Template ────────────────────────────────────────────────────
-if (-not (Test-Path ".env")) {
-    Copy-Item ".env.template" ".env"
-    Write-Success "Created .env from template"
+if (-not (Test-Path ".env") -and (Test-Path ".env.template")) {
+    Copy-Item ".env.template" ".env" -ErrorAction SilentlyContinue
+    if (Test-Path ".env") {
+        Write-Success "Created .env from template"
+    }
+} elseif (-not (Test-Path ".env")) {
+    Write-Warn ".env.template not found; skipping .env creation"
 }
 
 # Ensure .env is in .gitignore

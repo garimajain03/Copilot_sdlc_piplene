@@ -24,6 +24,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -125,6 +126,32 @@ def clone_agents_repo_if_requested(agents_repo_dir: Path, agents_repo_url: str, 
     return "cloned"
 
 
+def ensure_observability_pricing(agents_repo_dir: Path) -> bool:
+    """Ensure generated agents-repo contains model pricing for standalone telemetry reports."""
+    repo_root = Path(__file__).resolve().parents[2]
+    source_candidates = [
+        repo_root / "onboarding-utilities" / "observability" / "model-pricing.json",
+        repo_root / "observability" / "model-pricing.json",
+    ]
+
+    source_file = None
+    for candidate in source_candidates:
+        if candidate.exists():
+            source_file = candidate
+            break
+
+    if source_file is None:
+        return False
+
+    target_dir = agents_repo_dir / "observability"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_file = target_dir / "model-pricing.json"
+    if not target_file.exists():
+        shutil.copy2(source_file, target_file)
+        return True
+    return False
+
+
 def add_submodules(agents_repo_dir: Path, repos_dir: Path, repos: List[Dict[str, str]]) -> List[Dict[str, str]]:
     results: List[Dict[str, str]] = []
     repos_dir.mkdir(parents=True, exist_ok=True)
@@ -216,6 +243,7 @@ def main() -> int:
             agents_repo_url=args.agents_repo_url,
             branch=args.agents_repo_branch,
         )
+        pricing_copied = ensure_observability_pricing(agents_repo_dir)
 
         if args.workspace_mode == "default":
             clone_results = add_submodules(
@@ -247,6 +275,7 @@ def main() -> int:
         payload = {
             "status": "ok",
             "agents_repo_status": agents_repo_status,
+            "observability_pricing": "copied" if pricing_copied else "existing_or_unavailable",
             "layout": layout,
             "repositories": clone_results,
         }

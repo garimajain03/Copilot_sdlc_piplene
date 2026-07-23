@@ -5,8 +5,11 @@ repos/
 .github/sdlc-pipeline/
 .github/sdlc-pipeline-runtime/*
 .github/instructions/
+.github/skills/
 outputs/
 .sdlc-pipeline/
 .sdlc-preflight/
 __pycache__/
+.pytest_cache/
 *.pyc
+.env.encrypted

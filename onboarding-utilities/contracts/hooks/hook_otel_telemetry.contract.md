@@ -207,6 +207,21 @@ VS Code provides hook events in this format:
 If `usage` field is present -> use directly for cost computation.
 If `usage` field is absent -> fall back to Prometheus or estimation.
 
+### Event Compatibility (MANDATORY)
+
+- The hook MUST accept event name from any of these payload keys: `event`, `hookEventName`, `eventName`.
+- The hook MUST process subagent telemetry for both tool name variants: `runSubagent` and `agent`.
+- If payload shape differs, hook must degrade gracefully and continue non-blocking.
+
+### Output Path Resolution (MANDATORY)
+
+- The hook MUST write reports under dynamic run output: `outputs/<FEATURE_ID>/telemetry_report.md` and `outputs/<FEATURE_ID>/cost_report.md`.
+- The hook MUST NOT hardcode ticket/feature folder names.
+- Output folder resolution priority:
+  1. payload output folder field (for example `outputFolder`, `output_folder`, `featureOutputDir`)
+  2. feature id parsed from payload text (`toolInput.prompt`/`toolInput.description` containing `outputs/<FEATURE_ID>`)
+  3. latest folder under `outputs/` as fallback
+
 ### PreToolUse (runSubagent)
 
 1. Extract agent name from `toolInput.prompt` or `toolInput.description`

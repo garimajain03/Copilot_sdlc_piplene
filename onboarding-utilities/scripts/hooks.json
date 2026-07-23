@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/scan-prompt.py",
+        "timeout": 10
+      }
+    ],
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/guard-destructive-commands.py",
+        "timeout": 10
+      },
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/guard-env-files.py",
+        "timeout": 10
+      }
+    ],
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/eslint-on-save.py",
+        "timeout": 60
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/session-learnings-check.py",
+        "timeout": 15
+      }
+    ]
+  }
+}

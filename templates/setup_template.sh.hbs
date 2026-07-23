@@ -99,7 +99,8 @@ fi
 {{/each}}
 
 git submodule init
-git submodule update --init --recursive
+# Use non-recursive update to avoid failing on nested/foreign submodule metadata inside app repos.
+git submodule update --init
 
 # Validate submodule configuration
 if git submodule status; then
@@ -124,30 +125,64 @@ fi
 info "Setting up observability stack..."
 
 # Install OTel Collector + Prometheus binaries
-if ! scripts/install-observability.sh --check >/dev/null 2>&1; then
-  info "Downloading telemetry binaries (otelcol-contrib + prometheus)..."
-  scripts/install-observability.sh || warn "Observability install failed — telemetry will be degraded"
+OBS_INSTALLER=""
+if [ -f "${SCRIPT_DIR}/.github/scripts/install-observability.sh" ]; then
+  OBS_INSTALLER="${SCRIPT_DIR}/.github/scripts/install-observability.sh"
+elif [ -f "${SCRIPT_DIR}/scripts/install-observability.sh" ]; then
+  OBS_INSTALLER="${SCRIPT_DIR}/scripts/install-observability.sh"
+elif [ -f "${SCRIPT_DIR}/../../onboarding-utilities/scripts/install-observability.sh" ]; then
+  OBS_INSTALLER="${SCRIPT_DIR}/../../onboarding-utilities/scripts/install-observability.sh"
+fi
+
+if [ -n "$OBS_INSTALLER" ]; then
+  if ! "$OBS_INSTALLER" --check >/dev/null 2>&1; then
+    info "Downloading telemetry binaries (otelcol-contrib + prometheus)..."
+    "$OBS_INSTALLER" || warn "Observability install failed - telemetry will be degraded"
+  else
+    success "Observability binaries already installed"
+  fi
 else
-  success "Observability binaries already installed"
+  warn "install-observability.sh not found; skipping observability binary installation"
 fi
 
 # Copy config templates to project observability dir
-PROJ_OBS_DIR="${SCRIPT_DIR}/observability"
+PROJ_OBS_DIR="${SCRIPT_DIR}/.github/observability"
 mkdir -p "$PROJ_OBS_DIR/prometheus"
-if [ ! -f "$PROJ_OBS_DIR/otel-collector-config.yml" ]; then
-  cp observability/otel-collector-config.yml "$PROJ_OBS_DIR/"
-  success "Created otel-collector-config.yml"
-fi
-if [ ! -f "$PROJ_OBS_DIR/prometheus/prometheus.yml" ]; then
-  cp observability/prometheus/prometheus.yml "$PROJ_OBS_DIR/prometheus/"
-  success "Created prometheus.yml"
+OBS_SOURCE=""
+for CANDIDATE in \
+  "${SCRIPT_DIR}/.github/observability" \
+  "${SCRIPT_DIR}/observability" \
+  "${SCRIPT_DIR}/../../onboarding-utilities/observability" \
+  "${SCRIPT_DIR}/../../observability"
+do
+  if [ -d "$CANDIDATE" ] && { [ -f "$CANDIDATE/otel-collector-config.yml" ] || [ -f "$CANDIDATE/prometheus/prometheus.yml" ]; }; then
+    OBS_SOURCE="$CANDIDATE"
+    break
+  fi
+done
+
+if [ -n "$OBS_SOURCE" ]; then
+  if [ ! -f "$PROJ_OBS_DIR/otel-collector-config.yml" ] && [ -f "$OBS_SOURCE/otel-collector-config.yml" ]; then
+    cp "$OBS_SOURCE/otel-collector-config.yml" "$PROJ_OBS_DIR/"
+    success "Created otel-collector-config.yml"
+  fi
+  if [ ! -f "$PROJ_OBS_DIR/prometheus/prometheus.yml" ] && [ -f "$OBS_SOURCE/prometheus/prometheus.yml" ]; then
+    cp "$OBS_SOURCE/prometheus/prometheus.yml" "$PROJ_OBS_DIR/prometheus/"
+    success "Created prometheus.yml"
+  fi
+else
+  warn "Observability config templates not found; skipping config copy"
 fi
 {{/if}}
 
 # ─── Environment Template ────────────────────────────────────────────────────
 if [ ! -f ".env" ]; then
-  cp .env.template .env
-  success "Created .env from template"
+  if [ -f ".env.template" ]; then
+    cp .env.template .env
+    success "Created .env from template"
+  else
+    warn ".env.template not found; skipping .env creation"
+  fi
 fi
 
 # Ensure .env is in .gitignore

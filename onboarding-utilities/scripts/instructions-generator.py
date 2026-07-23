@@ -252,6 +252,46 @@ def generate_repo_copilot_instructions(scan: dict) -> str:
     return "\n".join(lines)
 
 
+def generate_merged_copilot_instructions(scans: list[dict]) -> str:
+    """Generate agents-repo .github/copilot-instructions.md merged from all scanned repos."""
+    lines: list[str] = [
+        "# Copilot Instructions - Agents Repo",
+        "",
+        "> Auto-generated from repository scan results across all onboarded repositories.",
+        "",
+        "## Scope",
+        "",
+        "- Use these guidelines when editing generated pipeline assets and cross-repo orchestration files.",
+        "- For repository-specific coding rules, prefer each repo's .github/copilot-instructions.md.",
+        "",
+        "## Onboarded Repositories",
+        "",
+    ]
+
+    for scan in scans:
+        repo = scan.get("repo_name", "unknown")
+        pkg = scan.get("package_info", {})
+        frameworks = pkg.get("detected_frameworks", [])
+        line = f"- {repo}"
+        if frameworks:
+            line += f" - frameworks: {', '.join(frameworks[:4])}"
+        lines.append(line)
+
+    lines.extend(
+        [
+            "",
+            "## Agent Workflow Guidance",
+            "",
+            "- Keep changes scoped and minimal for each requested task.",
+            "- Follow existing project conventions before introducing new patterns.",
+            "- Validate touched areas with available lint/test commands when feasible.",
+            "- Update docs when behavior or workflow changes.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate .github/instructions from repo scans")
     parser.add_argument("--scan-file", help="Path to a single repo scan JSON file")
@@ -276,12 +316,14 @@ def main():
 
     generated = []
     generated_repo_copilot = []
+    loaded_scans = []
     errors = []
 
     for scan_file in scan_files:
         try:
             with open(scan_file, "r", encoding="utf-8") as f:
                 scan = json.load(f)
+            loaded_scans.append(scan)
 
             repo_name = scan.get("repo_name", Path(scan_file).stem.replace("_scan", ""))
             instructions = generate_instructions(scan)
@@ -295,6 +337,9 @@ def main():
 
             if args.repos_root:
                 repo_root = Path(args.repos_root) / repo_name
+                if not repo_root.exists() or not repo_root.is_dir():
+                    # Some scan names include owner/repo while local folder is just repo.
+                    repo_root = Path(args.repos_root) / Path(repo_name).name
                 if repo_root.exists() and repo_root.is_dir():
                     copilot_dir = repo_root / ".github"
                     copilot_dir.mkdir(parents=True, exist_ok=True)
@@ -319,10 +364,19 @@ def main():
             errors.append({"file": scan_file, "error": str(e)})
             print(f"✗ Error processing {scan_file}: {e}", file=sys.stderr)
 
+    merged_copilot_path = ""
+    merged_root = Path(args.output_dir).parent
+    if loaded_scans and merged_root.name == ".github":
+        merged_copilot_path = str(merged_root / "copilot-instructions.md")
+        with open(merged_copilot_path, "w", encoding="utf-8") as f:
+            f.write(generate_merged_copilot_instructions(loaded_scans))
+        print(f"✓ Generated: {merged_copilot_path}", file=sys.stderr)
+
     # Summary
     summary = {
         "generated": generated,
         "generated_repo_copilot_instructions": generated_repo_copilot,
+        "generated_agents_repo_copilot": merged_copilot_path,
         "errors": errors,
     }
     print(json.dumps(summary, indent=2))

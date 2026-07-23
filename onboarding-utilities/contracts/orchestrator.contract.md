@@ -33,6 +33,7 @@ Coordinates the full SDLC pipeline. Accepts tickets or requirements, delegates t
 | Ticket ID or requirement file | User | Yes | Entry point for pipeline |
 | `intake-sources.md` | Setup | No | Client configuration (read once at start) |
 | Custom client context | Client | No | `orchestrator_custom_client_context.md` - routing rules, model overrides |
+| `.github/scripts/pipeline-preflight.py` | Generator | Yes | Pre-run preflight script that validates connector readiness and remote freshness |
 | `index.md` | Preflight | No | Repository catalog and Service Catalogue for routing |
 | `.mcp.json` | Preflight | No | MCP server definitions (if MCP integration selected) |
 | `connector_config.md` | Preflight | No | API-based connector configuration |
@@ -42,9 +43,10 @@ Coordinates the full SDLC pipeline. Accepts tickets or requirements, delegates t
 1. **Ticket ID or requirement file** - Must be non-empty; if ticket ID, must match ticket prefix regex from onboarding
 2. **`intake-sources.md`** - If present, validate against onboarding schema (Organisation, LLM Models, Constraints sections required)
 3. **Custom client context** - If present, validate structure (expected sections: routing rules, model overrides)
-4. **`index.md`** - If present, verify at least one repository is listed
-5. **`.mcp.json`** - If present, validate JSON structure with `mcpServers` key
-6. **`connector_config.md`** - If present, verify at least one connector section exists
+4. **`.github/scripts/pipeline-preflight.py`** - Must exist and be executable via `python`; script must complete successfully before pipeline execution can continue
+5. **`index.md`** - If present, verify at least one repository is listed
+6. **`.mcp.json`** - If present, validate JSON structure with `mcpServers` key
+7. **`connector_config.md`** - If present, verify at least one connector section exists
 
 If validation fails for a required input, **halt and report the error** to the user.
 If validation fails for an optional input, **log a warning** and proceed without it.
@@ -55,7 +57,10 @@ If validation fails for an optional input, **log a warning** and proceed without
 |----------|-------------|--------|-------------|
 | All pipeline artifacts | Human | Markdown | Via delegated agents |
 | Pipeline summary | Human | Terminal output | Agent sequence, timing, recommendation |
+| `PR.md` | Human | Markdown | User-facing PR/MR summary artifact (legacy compatibility alias) |
+| `pr_creation_report.md` | Human | Markdown | SCM PR/MR creation result, URL, and fallback actions if creation fails |
 | `telemetry_report.md` | Human | Markdown | Per-agent time, tokens, cost |
+| `cost_report.md` | Human | Markdown | Cost-focused summary with per-model and total estimated spend |
 | `checkpoint.md` | Self (resume) | Markdown | Pipeline state for resume/re-run |
 | `pipeline_log.md` | Human | Markdown | Full execution log with decisions |
 
@@ -72,7 +77,7 @@ After pipeline completion, validate:
 
 ### Step 1: Initialize Pipeline
 - **Condition:** User provides ticket ID or requirement file
-- **Action:** Set feature_id, create output folder, initialize checkpoint.md. Load custom client context if exists
+- **Action:** Run `.github/scripts/pipeline-preflight.py` before any other step. The preflight run must verify connector readiness and latest remote code state (Agents Repo remote fetch status), then set feature_id, create output folder, initialize checkpoint.md, and load custom client context if exists
 - **Reasoning:** Establish working context before any agent runs
 - **Output:** Output folder, initial checkpoint
 
@@ -151,12 +156,23 @@ After pipeline completion, validate:
 - **Action:** Invoke Agent 8 with: problem_spec, design_spec, ticket_analysis
 - **Output:** `iac_manifest.md`, `blast_radius_assessment.md`, `rollback_plan.md`, `iac_plan_output.md`
 
-### Step 16: Pipeline Summary
+### Step 16: Create Pull Request / Merge Request
+- **Condition:** Verification passed and SCM connector is configured
+- **Action:**
+  - Collect PR title/body from `problem_spec.md`, `pr_description.md`, and ticket reference
+  - Ensure feature branch is pushed and target branch is resolved from onboarding/default branch
+  - Create PR/MR via SCM connector skill (`.github/skills/<scm>-connector/SKILL.md`) using API mode
+  - Always write `pr_creation_report.md` and `PR.md` (same execution result, adapted audience format)
+  - If auto-create fails, include failure reason and exact retry command in both files
+- **Reasoning:** Ticket-driven flow must complete end-to-end by opening reviewable PR/MR, not only generating description artifacts
+- **Output:** `pr_creation_report.md` and `PR.md` (each includes created URL when successful)
+
+### Step 17: Pipeline Summary
 - **Condition:** Pipeline complete
-- **Action:** Report: agents run, time per agent, total tokens, ship recommendation, outstanding risks, documentation generated, IaC changes (if any)
+- **Action:** Report: agents run, time per agent, total tokens, ship recommendation, outstanding risks, PR/MR status (link or failure reason), documentation generated, IaC changes (if any)
 - **Output:** Terminal summary
 
-### Step 17: Finalization
+### Step 18: Finalization
 - **Condition:** Pipeline summary produced
 - **Action:** Execute finalization protocol:
   1. Validate all expected outputs exist and are non-empty
@@ -209,8 +225,9 @@ After pipeline completion, validate:
 
 On every run, **FIRST** check for an existing checkpoint:
 
-1. Load checkpoint from `<output_folder>/checkpoint.md` or `outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json`
+1. Load checkpoint from `<output_folder>/checkpoint.md` or `.github/sdlc-pipeline/checkpoint_state.json`
 2. If checkpoint exists and `status != "completed"`:
+  - Run `.github/scripts/pipeline-preflight.py` before resuming any step
    - Read `current_step` - resume from this step
    - Read `completed_agents` - skip already-completed agents
    - Read `agent_outputs` - verify files still exist (re-run agent if output missing)
@@ -232,8 +249,9 @@ When user requests re-run of a specific step or agent:
 4. **Reset step** - mark the target step as incomplete in checkpoint
 5. **Cascade resets** - mark all downstream steps as incomplete (they depend on re-run output)
 6. **Re-execute** - run the target step with feedback incorporated
-7. **Continue pipeline** - proceed from re-run step through remaining steps
-8. **Update checkpoint** - save new state after re-run
+7. **Re-run pipeline preflight** - execute `.github/scripts/pipeline-preflight.py` before continuing
+8. **Continue pipeline** - proceed from re-run step through remaining steps
+9. **Update checkpoint** - save new state after re-run
 
 ### Re-run Boundaries
 
@@ -255,7 +273,7 @@ When the pipeline reaches completion:
 3. **Archive state** - save final checkpoint with `status: "completed"`
 4. **Generate ship recommendation** - combine Critic's risk assessment with verification results
 5. **Present deliverables** - list all generated artifacts with locations
-6. **Suggest next actions** - based on pipeline results (e.g., "Create PR", "Run integration tests", "Review IaC plan")
+6. **Report PR/MR creation status and suggest next actions** - include created link when successful, otherwise include exact retry command and remediation
 7. **Clean up** - remove temporary files, close telemetry backends if no other pipelines active
 
 ## Conditions & Decision Points
@@ -386,6 +404,11 @@ The telemetry report (`<output_folder>/telemetry_report.md`) contains:
 - Pipeline summary with totals
 - Model usage distribution
 
+The cost report (`<output_folder>/cost_report.md`) contains:
+- Per-model cost breakdown
+- Per-agent cost attribution
+- Total estimated cost with pricing source metadata
+
 ### Degraded Mode
 
 If observability infrastructure is unavailable (binaries not installed, health checks fail):
@@ -393,6 +416,13 @@ If observability infrastructure is unavailable (binaries not installed, health c
 - Warning logged: "Telemetry degraded - observability infrastructure not available"
 - No telemetry report generated
 - All other hooks continue to function
+
+### Hook Output Visibility
+
+All generated telemetry/observability hooks must emit machine-readable hook output to support debug visibility:
+- Success minimum: `{"continue": true}`
+- Include `hookSpecificOutput.hookEventName` and contextual metadata when available
+- For degraded mode, include warning context while remaining non-blocking when contract allows
 
 ## Quality Checklist
 

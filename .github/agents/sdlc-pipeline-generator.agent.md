@@ -38,6 +38,7 @@ For each phase, follow this exact order:
 
 Do NOT perform phase work before printing its phase heading.
 Do NOT print a phase completion line after starting the next phase.
+Do NOT batch phase updates at the end. Print each phase heading and completion immediately in real time.
 
 ### Phase Announcement (before starting each phase)
 
@@ -57,7 +58,7 @@ Phase Complete: brief summary of what was done
 2. Phase 2: Ask Clarification Questions
 3. Phase 3: Resolve Model Mapping
 4. Phase 4: Generate Agents
-5. Phase 5: Generate Connector Skills
+5. Phase 5: Resolve Required Skills (Reuse + Generate Missing)
 6. Phase 6: Generate Hooks
 7. Phase 7: Generate Custom Client Context Templates
 8. Phase 8: Generate Support Files
@@ -66,8 +67,17 @@ Phase Complete: brief summary of what was done
 ### Fresh Start vs Resume
 
 - If the user explicitly runs `/generate-pipeline` (not `/resume-pipeline`), **start fresh from Phase 1**
-- Reset the checkpoint state: `python3 onboarding-utilities/scripts/checkpoint-manager.py reset --agent generator --state-file outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json`
+- Reset the checkpoint state: `python onboarding-utilities/scripts/checkpoint-manager.py reset --agent generator --state-file .github/sdlc-pipeline/checkpoint_state.json`
 - Only resume from checkpoint when explicitly asked to resume or when running `/resume-pipeline`
+- Before any generation work, MUST run these pre-checks:
+  - `python onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root outputs/agents-repo --allow-dotenv-fallback --fail-on-missing`
+    - Purpose: validate connector authentication readiness before generation starts.
+    - Checks performed: missing API token variables, MCP OAuth completion status, and unresolved MCP token placeholders.
+    - Behavior: returns non-zero when `--fail-on-missing` is used and any connector is blocked.
+    - Why mandatory: prevents generating agents/orchestrator that fail at runtime due to incomplete connector auth.
+  - `git fetch --all --prune`
+  - `git submodule foreach --recursive git fetch --all --prune`
+  - If any check fails, stop and present remediation; do not generate files.
 
 ### Next Steps Output (MANDATORY at end)
 
@@ -78,11 +88,16 @@ Pipeline Generation Complete
 Next Steps
 
 1. Review generated agents at `outputs/agents-repo/.github/agents/`
-2. Review generated skills at `outputs/agents-repo/.github/skills/`
+2. Review skills at `outputs/agents-repo/.github/skills/` and `.github/skills/`:
+  - reused preflight-generated connector skills
+  - any newly generated missing required skills for pipeline execution (agent/code/test/docs/ops) when not present in preflight outputs
 3. Review generated hooks at `outputs/agents-repo/.github/hooks/`
-4. Customize agent behavior via `outputs/agents-repo/.github/sdlc-pipeline/client-context/` templates
-5. Ensure `.env` is filled with required tokens
-6. Start the pipeline:
+4. Customize agent behavior via `.github/sdlc-pipeline/client-context/` templates (control-plane state location by design)
+5. Ensure connector authentication artifacts from preflight are complete (`.env.encrypted`, `.mcp.json`)
+6. Validate connector auth readiness before generation by running:
+  `python onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root outputs/agents-repo --fail-on-missing`
+  - If verification is blocked, stop generator execution and instruct the user to complete preflight auth steps first.
+7. Start the pipeline:
    > Provide a ticket reference to the Orchestrator agent
 ```
 
@@ -94,7 +109,10 @@ This agent runs from the **repository root** of the `github-copilot-sdlc-templat
 
 Workspace mode (`default` or `custom`) is selected in Preflight and stored in `onboarding_context.json`. Pipeline generation MUST honor that mode.
 
-Write final generated artifacts (agents, hooks, skills, docs) under `outputs/agents-repo/.github/`. Write reusable shared state artifacts consumed by other agents (for example checkpoint_state, preflight_report, onboarding_context, connector_config) under `outputs/agents-repo/.github/sdlc-pipeline/`. Use `.github/sdlc-pipeline-runtime/` only for non-reused runtime artifacts (for example generation_report and runtime scratch files).
+Generated agents/hooks and merged agents-repo instructions stay under `outputs/agents-repo/.github/`.
+Pipeline state artifacts stay under root `.github/sdlc-pipeline/`.
+Connector skills are reused from preflight and may exist in both `outputs/agents-repo/.github/skills/` and root `.github/skills/`.
+Per-repo `copilot-instructions.md` files are generated in each targeted app repository during preflight.
 
 | Resource | Path (from repo root) |
 |----------|----------------------|
@@ -107,39 +125,41 @@ Write final generated artifacts (agents, hooks, skills, docs) under `outputs/age
 | Scripts | `onboarding-utilities/scripts/` |
 | Observability configs | `observability/` |
 | Agents repo output root | `outputs/agents-repo/` |
-| Pipeline state (shared/reused) | `outputs/agents-repo/.github/sdlc-pipeline/` |
-| Runtime-only temp artifacts | `.github/sdlc-pipeline-runtime/` |
+| Pipeline state (generated) | `.github/sdlc-pipeline/` |
 | Generated agents (output) | `outputs/agents-repo/.github/agents/` |
-| Generated skills (output) | `outputs/agents-repo/.github/skills/` |
+| Generated skills (output) | `outputs/agents-repo/.github/skills/` and `.github/skills/` |
 | Generated hooks (output) | `outputs/agents-repo/.github/hooks/` |
 
 ## Inputs
 
 1. **`intake-sources.md`** - Customer configuration
-2. **`outputs/agents-repo/.github/sdlc-pipeline/codebase_scan_results.md`** - Auto-detected codebase characteristics (from Preflight Agent)
-3. **`outputs/agents-repo/.github/sdlc-pipeline/preflight_report.md`** - Validation results (from Preflight Agent)
+2. **`.github/sdlc-pipeline/codebase_scan_results.md`** - Auto-detected codebase characteristics (from Preflight Agent)
+3. **`.github/sdlc-pipeline/preflight_report.md`** - Validation results (from Preflight Agent)
 4. **`outputs/agents-repo/.github/instructions/*.instructions.md`** - Per-repo instruction files (from Preflight Agent)
-5. **`outputs/agents-repo/.github/sdlc-pipeline/connector_config.md`** - Connector configuration: PM endpoints, SCM org, MCP server definitions (from Preflight Agent)
-6. **`outputs/agents-repo/.env.template`** - Required environment variable names for runtime auth (from Preflight Agent)
-7. **Agent Contracts** - `onboarding-utilities/contracts/` (the reusable blueprints)
-8. **Templates** - `templates/` (generation templates)
+5. **`.github/sdlc-pipeline/connector_config.md`** - Connector configuration: PM endpoints, SCM org, MCP server definitions (from Preflight Agent)
+6. **`.github/sdlc-pipeline/connector_inventory.json`** - Resolved connector modes and auth mechanisms (from Preflight Agent)
+7. **`outputs/agents-repo/.github/skills/`** - Preflight-generated connector skills (reused in generator)
+8. **`outputs/agents-repo/.env.template`** - Required environment variable names for runtime auth (from Preflight Agent)
+9. **Agent Contracts** - `onboarding-utilities/contracts/` (the reusable blueprints)
+10. **Templates** - `templates/` (generation templates)
 
 ## Outputs
 
 1. **Agent definition files** - `outputs/agents-repo/.github/agents/agent_number_name.md` for each pipeline agent
 2. **Orchestrator definition** - `outputs/agents-repo/.github/agents/orchestrator.md`
-3. **Skill definitions** - `outputs/agents-repo/.github/skills/<skill>/SKILL.md`
+3. **Resolved skill definitions (reused + newly generated missing set)** - `outputs/agents-repo/.github/skills/<skill>/SKILL.md`
 4. **Hook scripts** - `outputs/agents-repo/.github/hooks/<hook>.py`
 5. **hooks.json** - Hook registration
 6. **Custom client context templates** - `<agent>_custom_client_context.md` empty templates for each agent
 7. **Workflow README** - `outputs/agents-repo/.github/agents/agents-workflow/readme.md`
 8. **Repository index template** - `outputs/agents-repo/index.md`
-9. **`generation_report.md`** - `.github/sdlc-pipeline-runtime/generation_report.md`
+9. **`generation_report.md`** - `.github/sdlc-pipeline/generation_report.md`
 
-> **Note:** The Pipeline Generator is the sole owner of agent definitions, skill SKILL.md
-> files, hook scripts, and hooks.json. The Preflight Agent handles only setup.sh,
-> connector configuration (endpoints, MCP configs), `.env.template`, scan results, and
-> instruction files. Auth is performed by developers at runtime, not during onboarding.
+> **Note:** The Pipeline Generator owns agent definitions, hook scripts, and hooks.json.
+> Connector skills are generated in Preflight and reused here. During Phase 5, the Generator
+> MUST resolve the full required skill set for the generated pipeline (connector + non-connector
+> workflow skills), reuse existing valid skills first, and generate only the missing required set.
+> The generated/missing set must be recorded in `generation_report.md`.
 
 ---
 
@@ -182,57 +202,89 @@ Proceed with generation? [Yes] [No] [Adjust]
 
 ## Sub-Agent Orchestration
 
-You can spawn sub-agents for parallel independent tasks using `runSubagent`. This enables:
+You can spawn sub-agents for parallel independent tasks using `runSubagent`. The framework MUST stay artifact-agnostic and context-driven. It supports parallel generation and validation for:
 
-1. **Parallel agent generation** - Generate multiple agent definitions simultaneously
-2. **Parallel skill generation** - Generate ticket/SCM/design/testing skills in parallel
-3. **Parallel hook generation** - Generate all hook scripts simultaneously
-4. **Parallel validation** - Validate generated agents against contracts in parallel
+1. **Agents**
+2. **Hooks**
+3. **Skills**
+4. **Documentation artifacts**
+5. **Future artifact types added through generation context**
 
 ### Sub-Agent Spawning Rules
 
 - **ALWAYS** define each sub-agent's task clearly with: objective, inputs, expected output format
 - **NEVER** share mutable state between parallel sub-agents - each gets its own workspace
 - **COLLECT** all sub-agent outputs and merge/write them yourself
-- **HANDLE** sub-agent failures individually - one agent generation failure must NOT block others
+- **HANDLE** sub-agent failures individually - one artifact generation failure must NOT block others
 - **LIMIT** concurrency to at most 5 parallel sub-agents to avoid resource exhaustion
 - **VALIDATE** each sub-agent output against the corresponding contract before accepting it
 
+Dynamic artifact rules:
+- Determine artifact type from generation context (`artifact_type`, required outputs, target path), not hardcoded prompt text.
+- Reuse the same sub-agent workflow shape for every artifact type.
+- Keep artifact-specific behavior in supplied context payload, not in framework instructions.
+- Reuse this same `runSubagent` pattern in Phase 5 (skills resolution + missing skill generation), Phase 6 (hook generation), and Phase 8 (support/docs generation); do not hardcode it only to Phase 4 agent generation.
+
 ### Sub-Agent Task Template
 
-When spawning a sub-agent for agent generation, use this prompt pattern:
+When spawning a sub-agent, use this generic prompt pattern:
 
 ```
-Task: Generate agent definition for <agent_name> from contract <contract_id>
+Task: Generate <artifact_type> artifact <artifact_name> from contract/template context
 Inputs:
-- Contract: <full contract content - MUST include the complete Workflow Logic section>
+- Artifact type: <agent|hook|skill|documentation|other>
+- Contract or reference: <full content or referenced file paths>
+- Output target path: <exact path>
 - Customer config: <relevant onboarding answers>
 - Codebase context: <relevant scan results>
 - Model mapping: <tier -> model>
 - Behavioral guardrails: <customer's guardrails>
-- Hooks config: <hooks.json content - which hooks apply>
+- Hooks config: <hooks.json content - which hooks apply, if relevant>
 - Connector mode: <MCP or API-based per platform>
-Output: Complete agent definition in .agent.md format with:
-- YAML frontmatter (name, description, model, tools, argumentHint, hooks)
-- All required sections from the contract (see Agent Required Sections in Generation Rules)
-- Customer-specific adaptations applied
-- Connector Integration section referencing MCP or Connector Skills
-- Checkpointing/Resume/Re-run protocols SPECIFIC to this agent's workflow
-- Hooks table with full configuration
+Output: Complete artifact at target path with required structure and validations for that artifact type.
 CRITICAL RULES:
-- The Instructions section MUST reproduce ALL steps from the contract's Workflow Logic - every step with condition, action, reasoning, and output
-- The Inputs table MUST list the EXACT artifacts from the contract - never use "Contract-required upstream artifacts"
-- The Outputs table MUST list the EXACT artifacts from the contract - never use "Stage outputs"
-- The Quality Checklist MUST include the full descriptive text from contract Key Outcomes - never use "Address this contract outcome"
-- The Completion Criteria MUST be specific to this agent's outputs
-- NEVER produce generic/boilerplate content that could apply to any agent
+- If artifact type is `agent`, include full workflow logic, exact inputs/outputs, and non-generic quality criteria.
+- If artifact type is `hook`, enforce event compatibility, hook output JSON, and cross-platform behavior.
+- If artifact type is `skill`, enforce concrete command surface (not placeholder commands).
+- If artifact type is `documentation`, enforce ticket/output traceability and path correctness.
+- NEVER produce generic/boilerplate content that could apply to any artifact.
 Constraints:
-- Prime Directive must match contract verbatim
-- All Key Outcomes must be addressable
-- Custom client context loading instruction must be included
-- Do NOT duplicate connector logic - reference shared skills or MCP
-- All sections from "Agent Required Sections" MUST be present
-On failure: Return {"error": "<message>", "agent": "<agent_name>", "recoverable": true}
+- Prime Directive and key outcomes must match source contract where applicable.
+- Do NOT duplicate connector logic - reference shared skills or MCP.
+- For observability/telemetry hooks and related scripts, reuse reference files instead of re-generating logic.
+On failure: Return {"error": "<message>", "artifact_type": "<artifact_type>", "artifact": "<artifact_name>", "recoverable": true}
+```
+
+### Phase 4 Override: Agent Contract Fidelity (MANDATORY)
+
+For **Phase 4 (Generate Agents)**, do not rely only on the generic artifact template above.
+Use this stricter prompt shape for every AC-000..AC-008 and AC-ORCH generation task:
+
+```
+Task: Generate agent definition for <agent_name> from <contract_id>
+Inputs:
+- Full contract content (including Workflow Logic, Inputs, Outputs, Key Outcomes, Access Restrictions)
+- Model mapping (resolved model for this contract tier)
+- Customer onboarding context and guardrails
+- Connector mode and skill references
+- Hook ownership rules for this agent type (worker vs orchestrator)
+- Output target path
+Output:
+- Complete <agent>.md file with fully populated sections from contract-specific content.
+
+Hard requirements:
+- Instructions MUST include concrete workflow steps from contract (conditions/actions/outputs), not placeholders.
+- Inputs/Outputs tables MUST contain exact artifacts from contract.
+- Quality Checklist MUST contain full outcome text from contract (with OUTCOME tags).
+- Completion Criteria MUST be contract-specific and artifact-specific.
+- Orchestrator MUST include full pipeline sequence/routing/finalization/re-run boundaries from AC-ORCH.
+- Orchestrator MUST own telemetry lifecycle hooks and produce telemetry + cost outputs.
+
+Forbidden placeholder signatures (must not appear in final files):
+- "The following workflow logic is applied exactly from the contract:"
+- "Pipeline sequence, routing table, and finalization protocol from contract:"
+- "Key Outcomes to satisfy:"
+- empty section bodies under Role/Inputs/Outputs/Instructions/Quality Checklist/Access Restrictions.
 ```
 
 ---
@@ -247,22 +299,22 @@ Use `checkpoint-manager.py` to persist state between runs:
 
 ```bash
 # Save checkpoint after completing a phase
-python3 onboarding-utilities/scripts/checkpoint-manager.py save \
+python onboarding-utilities/scripts/checkpoint-manager.py save \
   --agent generator --phase "Phase 4: Generate Agents" --status completed \
-  --state-file outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json
+  --state-file .github/sdlc-pipeline/checkpoint_state.json
 
 # Load checkpoint on resume
-python3 onboarding-utilities/scripts/checkpoint-manager.py load \
-  --agent generator --state-file outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json
+python onboarding-utilities/scripts/checkpoint-manager.py load \
+  --agent generator --state-file .github/sdlc-pipeline/checkpoint_state.json
 
 # Record customer feedback for re-run
-python3 onboarding-utilities/scripts/checkpoint-manager.py feedback \
+python onboarding-utilities/scripts/checkpoint-manager.py feedback \
   --agent generator --feedback "Regenerate Agent 3b with stricter type checking" \
-  --phase "Phase 4: Generate Agents" --state-file outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json
+  --phase "Phase 4: Generate Agents" --state-file .github/sdlc-pipeline/checkpoint_state.json
 
 # Reset for clean re-run
-python3 onboarding-utilities/scripts/checkpoint-manager.py reset \
-  --agent generator --state-file outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json
+python onboarding-utilities/scripts/checkpoint-manager.py reset \
+  --agent generator --state-file .github/sdlc-pipeline/checkpoint_state.json
 ```
 
 ### Resume Behavior
@@ -297,7 +349,7 @@ The only time to pause is:
 | Template parse error | Recoverable | Fall back to manual generation without template |
 | Model mapping ambiguity | Recoverable | Ask customer to clarify model preference |
 | Agent generation failure | Recoverable | Retry once, then generate with defaults |
-| Skill generation failure | Recoverable | Retry once, report partial generation |
+| Skill reuse validation failure | Recoverable | Retry once, then generate only the missing required skills |
 | Hook script error | Recoverable | Generate stub with TODO, log warning |
 | Validation failure | Recoverable | Attempt fix, re-validate, report if unfixable |
 | All agents failed | Blocking | Stop workflow, report diagnostic info |
@@ -339,11 +391,13 @@ When a non-critical generation step fails, continue with reduced output:
 
 3. **Read** customer context:
    - `intake-sources.md`
-  - `outputs/agents-repo/.github/sdlc-pipeline/codebase_scan_results.md` (from Preflight)
-  - `outputs/agents-repo/.github/sdlc-pipeline/preflight_report.md` (from Preflight)
-  - `outputs/agents-repo/.github/sdlc-pipeline/onboarding_context.json` (from Preflight; normalized onboarding values including workspace mode)
+  - `.github/sdlc-pipeline/codebase_scan_results.md` (from Preflight)
+  - `.github/sdlc-pipeline/preflight_report.md` (from Preflight)
+  - `.github/sdlc-pipeline/onboarding_context.json` (from Preflight; normalized onboarding values including workspace mode)
    - `outputs/agents-repo/.github/instructions/*.instructions.md` (from Preflight)
-  - `outputs/agents-repo/.github/sdlc-pipeline/connector_config.md` (from Preflight - PM endpoints, SCM org, MCP configs)
+   - `.github/sdlc-pipeline/connector_config.md` (from Preflight - PM endpoints, SCM org, MCP configs)
+  - `.github/sdlc-pipeline/connector_inventory.json` (from Preflight - connector mode/auth source of truth)
+  - `outputs/agents-repo/.github/skills/` (from Preflight - reusable connector skills)
    - `outputs/agents-repo/.mcp.json` (from Preflight - MCP server definitions, if generated)
    - `outputs/agents-repo/.env.template` (from Preflight - required env var names for runtime auth)
   - `outputs/agents-repo/index.md` (from Preflight - repository catalog and Service Catalogue)
@@ -383,9 +437,9 @@ When a non-critical generation step fails, continue with reduced output:
      - Integrate them into the pipeline alongside existing agents
 
 7. **Determine connector integration mode** per platform from Preflight outputs:
-  - Check `outputs/agents-repo/.mcp.json` - platforms configured via MCP
-  - Check `outputs/agents-repo/.github/sdlc-pipeline/connector_config.md` - platforms configured via API-based Connector Skills
-   - Generated agents should reference the appropriate integration (MCP or Skill) per platform
+  - Read `.github/sdlc-pipeline/connector_inventory.json` as source of truth
+  - Use `.mcp.json` and `connector_config.md` for runtime details only
+  - Generated agents should reference the appropriate integration (MCP or preflight-generated skill) per platform
 
 8. **Save checkpoint** for Phase 1
 
@@ -495,8 +549,8 @@ When a non-critical generation step fails, continue with reduced output:
 
     - **Frontmatter (AC-000 through AC-008 worker agents):** MUST include YAML keys in this shape: `name`, `version`, `description`, `argument-hint`, `tools`, `model`, `hooks`.
       - Worker-agent hooks MUST contain **only** `PreToolUse` with these two commands (no duplicates, no additional events):
-        - `python3 .github/hooks/guard-destructive-commands.py`
-        - `python3 .github/hooks/guard-env-files.py`
+        - `python .github/hooks/guard-destructive-commands.py`
+        - `python .github/hooks/guard-env-files.py`
       - Worker agents MUST NOT include `PostToolUse`, `SessionStart`, or `Stop` blocks in frontmatter.
     - **Agent metadata:** Include contract_id, version, pipeline_position, model_tier
     - **argumentHint:** Provide a brief description of expected arguments
@@ -524,7 +578,7 @@ When a non-critical generation step fails, continue with reduced output:
     - **Checkpointing strategy:** Define SPECIFIC state per agent based on what the contract's workflow produces:
       - List what data is saved (e.g., "current_step, ticket_classification, repo_candidates, downloaded_attachments")
       - Define when saves happen (e.g., "After each retrieval stage, after classification")
-      - Define the checkpoint file path (e.g., `.github/sdlc-pipeline-runtime/artifacts/agent0_checkpoint.md`)
+      - Define the checkpoint file path (e.g., `.github/sdlc-pipeline/artifacts/agent0_checkpoint.md`)
       - Include checkpoint format example showing the actual fields for this agent
     - **Resume protocol:** Define agent-specific resume logic:
       - Which steps can be skipped on resume (based on checkpoint data)
@@ -542,7 +596,7 @@ When a non-critical generation step fails, continue with reduced output:
     - **No duplicate sections (MANDATORY):** A generated file must not contain repeated top-level headings for the same section (for example duplicate `## Input Validation` or duplicate `### Output Validation`). If duplicates are produced, merge into a single canonical section.
     - **Access Restrictions:** Copy from contract, adapt paths to customer's project structure
     - **Custom Client Context Loading:** Add instruction to load `<agent_slug>_custom_client_context.md` if it exists (where `<agent_slug>` matches the generated filename stem, e.g., `agent0_ticket_analyzer`).
-    - **Custom context filename normalization (MANDATORY):** If contract examples use short aliases (for example `agent0_custom_client_context.md`), normalize all generated references to slug-based filenames used in `outputs/agents-repo/.github/sdlc-pipeline/client-context/`.
+    - **Custom context filename normalization (MANDATORY):** If contract examples use short aliases (for example `agent0_custom_client_context.md`), normalize all generated references to slug-based filenames used in `.github/sdlc-pipeline/client-context/`.
     - **Hooks:** Add full hooks configuration table (hook ID, event, blocking, purpose) referencing `hooks.json`, while keeping worker-agent frontmatter limited to `PreToolUse` only.
     - **Skill references:** Reference generated skills (shared VCS Connector, PM Connector, or MCP - avoid duplicating connector instructions)
     - **Onboarding context propagation (MANDATORY):** reflect onboarding values in every relevant generated section (inputs, workflow instructions, constraints, connector integration, validation, and examples). Do NOT drop fields that were collected by the onboarding wizard.
@@ -551,7 +605,7 @@ When a non-critical generation step fails, continue with reduced output:
 
     The Orchestrator is the MOST complex agent - it coordinates all others. Its generated file MUST be significantly larger than other agents (typically 200-400 lines). It requires ALL of the following unique content from its contract:
 
-    - **Pipeline Sequence (MANDATORY):** Copy ALL steps (Step 1 through Step 17) from the orchestrator contract's Workflow Logic. Each step must include: condition, action, reasoning, and output. This is the core of the orchestrator and must NOT be abbreviated or genericized.
+    - **Pipeline Sequence (MANDATORY):** Copy ALL steps (Step 1 through Step 18) from the orchestrator contract's Workflow Logic. Each step must include: condition, action, reasoning, and output. This is the core of the orchestrator and must NOT be abbreviated or genericized.
     - **Conditions & Decision Points table (MANDATORY):** Copy the full routing table from the contract showing when to skip agents:
       - Low complexity bug fix -> Skip Agents 2a, 3a, 5
       - Config change -> Skip Agents 2a, 3a, 5, 6, 7
@@ -565,7 +619,7 @@ When a non-critical generation step fails, continue with reduced output:
       3. Archive state with status "completed"
       4. Generate ship recommendation with confidence score
       5. Present deliverables with locations
-      6. Suggest next actions
+      6. Report PR/MR creation status and suggest next actions
       7. Clean up temporary files
     - **Clarification Loop Management:** Max 2 rounds for Agent 1 ↔ User
     - **Design Refinement Loop:** Max 2 iterations for Agent 2 ↔ 2a
@@ -585,10 +639,11 @@ When a non-critical generation step fails, continue with reduced output:
       - `agents` must include all configured worker/utility agents (for example Agentic Flow 0-6, CI/CD Analyzer, Orchestrator Debug Logs Analyst, PR Review Fixer) without duplicates.
       - `model` must be `GPT-5.3-Codex`.
       - `hooks` must include the full set below without duplication:
-        - `SessionStart`: `python3 .github/hooks/observability-hook.py` (timeout 30), `python3 .github/hooks/otel-hook.py` (timeout 15)
-        - `PreToolUse`: `python3 .github/hooks/otel-hook.py` (timeout 15)
-        - `PostToolUse`: `python3 .github/hooks/otel-hook.py` (timeout 30)
-        - `Stop`: `python3 .github/hooks/otel-hook.py` (timeout 15), `python3 .github/hooks/observability-hook.py` (timeout 30)
+        - `SessionStart`: `python .github/hooks/observability-hook.py` (timeout 30), `python .github/hooks/otel-hook.py` (timeout 15)
+        - `PreToolUse`: `python .github/hooks/otel-hook.py` (timeout 15)
+        - `PostToolUse`: `python .github/hooks/otel-hook.py` (timeout 30)
+        - `Stop`: `python .github/hooks/otel-hook.py` (timeout 15), `python .github/hooks/observability-hook.py` (timeout 30)
+      - Each hook command entry in frontmatter must include `type`, `command`, and `timeout`.
       - Orchestrator frontmatter must not contain duplicate hook events or duplicate command entries.
     - **Define orchestrator inputs and outputs clearly** with validation rules (from contract)
     - **Add input validation** (ticket reference format, index.md exists, pipeline config exists)
@@ -596,41 +651,82 @@ When a non-critical generation step fails, continue with reduced output:
     - Include hooks in YAML frontmatter
     - Reference hooks.json for full hook configuration
     - **Telemetry ownership rule:** Keep telemetry collection orchestrator-owned. Do not place `otel_telemetry` on non-orchestrator agents.
+    - **Pipeline preflight integration (MANDATORY):**
+      - Generate `.github/scripts/pipeline-preflight.py` (written under `outputs/agents-repo/.github/scripts/pipeline-preflight.py`).
+      - Script responsibilities MUST include both:
+        1. Connector readiness check via `python ../../onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root . --allow-dotenv-fallback --require-dotenv-tokens --fail-on-missing`
+        2. Remote freshness check via `git fetch --all --prune` and `git submodule foreach --recursive git fetch --all --prune`
+      - If connector readiness fails because tokens are missing, preflight script MUST stop execution before pipeline start, print exact missing token variable names, and instruct the user to provide credentials and rerun `start <ISSUE_ID>`.
+      - Generated orchestrator instructions MUST invoke `.github/scripts/pipeline-preflight.py` before any pipeline run starts, on resume, and before continuing after a rerun request.
+      - If preflight script fails, orchestrator must halt and surface remediation steps.
 
 12. **Save checkpoint** for Phase 4
 
-### Phase 5: Generate Connector Skills
+### Phase 5: Resolve Required Skills (Reuse + Generate Missing)
 
-13. **Read connector configuration** from Preflight output:
-  - Load `outputs/agents-repo/.github/sdlc-pipeline/connector_config.md` (generated by Preflight Agent)
-  - Load `outputs/agents-repo/.mcp.json` (if generated by Preflight Agent)
-    - This contains: PM type & endpoint, SCM provider & org, design tool MCP config, custom MCP servers
-    - Load `.env.template` to verify which environment variables the skills should reference for auth
+13. **Load skill artifacts and contracts:**
+  - `.github/sdlc-pipeline/connector_inventory.json`
+  - `outputs/agents-repo/.github/skills/`
+  - `outputs/agents-repo/.mcp.json` (if MCP selected)
+  - `onboarding-utilities/contracts/skills/` (required skill contracts)
 
-14. **For each skill contract**, generate a customer-specific SKILL.md at `outputs/agents-repo/.github/skills/<skill>/SKILL.md`:
+14. **Build required skill set for this run:**
+  - Derive required skills from generated agents/orchestrator responsibilities, workflow steps, and connector modes
+  - Include preflight connector skills as part of the required set
+  - Include non-connector skills required for code/agent workflows (for example: testing, documentation, CI/CD, IaC), when referenced by contracts or generated agent behavior
 
-    **Only generate Connector Skills for platforms where API-based integration was selected.**
-    Do NOT generate Connector Skills for platforms using MCP.
+15. **Reuse existing valid skills first:**
+  - Do NOT regenerate skills if `outputs/agents-repo/.github/skills/` already contains valid `SKILL.md` files
+  - Reference existing skill paths when building agent connector integration sections
+  - Validate each skill directory contains `SKILL.md`
 
-    Spawn sub-agents for parallel skill generation:
-    - **Ticket Connector** (from `SC-TICKET`) - only if API-based selected for Jira/PM
-    - **SCM Connector** (from `SC-SCM`) - only if API-based selected for GitHub/GitLab
-    - **Design Connector** (from `SC-DESIGN`, if applicable) - uses MCP config from `connector_config.md`
-    - **Testing Skill** (from `SC-TEST`) - always generated (uses test runner/framework from codebase scan)
+16. **Generate all missing required skills:**
+  - If required skills are missing, generate only the missing set using existing contracts/templates
+  - Never regenerate or overwrite valid preflight-generated skills
+  - Never generate unrelated skills that are not required for the current pipeline run
+  - Spawn sub-agents for missing skill generation in parallel by connector (one sub-agent per missing required skill)
+  - If no required skills are missing, skip sub-agent spawning and proceed with reuse-only resolution
 
-    Each sub-agent:
-    - Reads the corresponding skill contract
-    - Reads the relevant section of `connector_config.md` for endpoints, project keys, MCP definitions
-    - Adapts to customer's tool choice (e.g., Jira vs Linear, GitHub vs GitLab)
-    - References environment variables from `.env.template` for auth (e.g., `$JIRA_TOKEN`, `$GITHUB_TOKEN`)
-    - Generates the SKILL.md with proper CLI commands, error handling, and auth-via-env-var instructions
-    - **Does NOT embed or prompt for actual credentials** - skills read tokens from environment at runtime
+17. **Generation report note for missing-skill completion:**
+  - Write a clear note in `generation_report.md` listing which required skills were generated because they were missing from available preflight/runtime skill outputs
+  - Never generate duplicate skill directories when a preflight-generated skill already exists
 
-15. **Save checkpoint** for Phase 5
+18. **Save checkpoint** for Phase 5
 
 ### Phase 6: Generate Hooks
 
-16. **For each hook contract**, generate a **cross-platform** customer-specific hook script:
+16. **For each hook contract**, generate a **cross-platform** customer-specific hook script.
+
+    Reference-first generation policy (MANDATORY):
+    - Do NOT dynamically synthesize complex observability/telemetry implementations from contract text.
+    - Reuse these reference implementations as source-of-truth by copying/adapting only required project-specific parameters:
+      - `onboarding-utilities/scripts/observability-hook.py`
+      - `onboarding-utilities/scripts/otel-hook.py`
+      - `onboarding-utilities/scripts/hook-failure-report.py`
+      - `onboarding-utilities/scripts/publish-artifacts.py`
+      - `onboarding-utilities/scripts/guard-env-files.py`
+      - `onboarding-utilities/scripts/guard-destructive-commands (1).py` (rename output to `guard-destructive-commands.py`)
+      - `onboarding-utilities/scripts/start.sh`
+      - `onboarding-utilities/scripts/start.ps1`
+      - `onboarding-utilities/scripts/status.sh`
+      - `onboarding-utilities/scripts/status.ps1`
+      - `onboarding-utilities/scripts/stop.sh`
+      - `onboarding-utilities/scripts/stop.ps1`
+      - `onboarding-utilities/scripts/install-observability.sh`
+      - `onboarding-utilities/scripts/install-observability.ps1`
+      - `onboarding-utilities/observability/otel-collector-config.yml`
+      - `onboarding-utilities/observability/prometheus/prometheus.yml`
+
+    Installer copy rule (MANDATORY):
+    - Generate `outputs/agents-repo/.github/scripts/install-observability.sh` by copying the full reference implementation from `onboarding-utilities/scripts/install-observability.sh`.
+    - Generate `outputs/agents-repo/.github/scripts/install-observability.ps1` by copying the full reference implementation from `onboarding-utilities/scripts/install-observability.ps1`.
+    - Do NOT emit stub/placeholder wrappers for installer scripts.
+    - Generated installer scripts MUST contain real binary download + extraction + verification logic for OTel Collector and Prometheus.
+
+    Read-only rule:
+    - Treat these reference files as read-only templates.
+    - Do NOT modify reference files in the template repository.
+    - Generate outputs by copying from references and applying minimal parameterization only where required.
 
     Spawn sub-agents for parallel hook generation:
     - **Guard Destructive:** Configure protected paths and branches from onboarding answers
@@ -656,17 +752,30 @@ When a non-critical generation step fails, continue with reduced output:
     - The `otel-hook.py` command is attached ONLY to the Orchestrator (`PreToolUse`, `PostToolUse`, `SessionStart`, `Stop`).
     - Non-orchestrator agents MUST NOT include `otel-hook.py` in frontmatter.
     - Use exactly one hook script naming family in a run. Do NOT generate duplicate alias scripts for the same responsibility.
+    - Canonical hook names are REQUIRED: `observability-hook.py` and `otel-hook.py`. Do NOT emit legacy aliases such as `hook_observability.py` or `hook_otel_telemetry.py`.
     - Reuse the existing `otel-hook.py` behavior and filtering (`tool_name == "runSubagent"`) instead of generating project-specific telemetry logic.
+    - `otel-hook.py` MUST accept both `toolName=runSubagent` and `toolName=agent` for PreToolUse/PostToolUse processing.
+    - `otel-hook.py` MUST accept event name from any of: `event`, `hookEventName`, `eventName`.
+    - `otel-hook.py` MUST compute `WORKSPACE_ROOT` from the hook location as `Path(__file__).resolve().parents[2]` (for `.github/hooks/otel-hook.py`) and MUST NOT use brittle parent depth assumptions like `parents[3]`.
+    - `otel-hook.py` MUST write reports to dynamic `outputs/<FEATURE_ID>/telemetry_report.md` and `outputs/<FEATURE_ID>/cost_report.md` (resolved from payload/checkpoint/latest output dir fallback).
+    - `otel-hook.py` MUST NOT contain hardcoded feature folder names (for example `EPMINAI-2413`).
+    - If pricing file is not found, `otel-hook.py` must still emit telemetry with zero-cost fallback and continue non-blocking.
     - **Model pricing:** The `otel_telemetry` hook MUST load pricing from `observability/model-pricing.json` - NEVER hardcode prices in the script. Use the pricing file resolution order from the contract (env var -> file path -> URL -> default file).
     - **Cost output:** Write cost estimates to a separate `cost_report.md` file (in addition to `telemetry_report.md`).
     - **Cost visibility:** The hook MUST print a one-line cost summary to stdout after each agent completes (so cost appears in the chat/output):
       `[TELEMETRY] Agent: <name> | Model: <model> | Tokens: <total> | Cost: $<amount> | Time: <seconds>s`
+    - **Hook output visibility:** Both hooks MUST emit structured JSON hook output on success and failure:
+      - `{"continue": true}` minimum on success
+      - Include `hookSpecificOutput.hookEventName` and `hookSpecificOutput.additionalContext` for debug visibility
+      - On failure/degraded mode, include `[FAILED]` context but remain non-blocking where contract requires
+    - Missing Hook Output in debug logs is a release blocker for generated hooks.
     - **Token source priority:** Extract tokens from the hook event payload's `usage` field FIRST (primary source). Fall back to Prometheus query only if `usage` is absent. This ensures cost works even without OTel Collector running.
 
     **CRITICAL implementation patterns for generated hooks:**
 
     **`otel-hook.py` MUST use this pricing access pattern:**
     ```python
+    WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
     PRICING_FILE = WORKSPACE_ROOT / "observability" / "model-pricing.json"
 
     def load_pricing() -> dict:
@@ -683,6 +792,13 @@ When a non-critical generation step fails, continue with reduced output:
     ```
     The keys are `input_per_1m_tokens` and `output_per_1m_tokens` - NOT `input_per_1m` or `input`.
     The pricing dict is nested under `"models"` key - MUST use `pricing.get("models", pricing)`.
+    Extract model in this precedence order: `usage.model` -> payload `model` -> `toolInput.model` -> `default`.
+
+    **`otel-hook.py` dynamic output resolution (MANDATORY):**
+    - Resolve output folder from payload keys first (`outputFolder`, `output_folder`, `featureOutputDir`).
+    - If missing, parse feature id from `toolInput.prompt` or `toolInput.description` (pattern: `outputs/<FEATURE_ID>`).
+    - If still missing, fall back to latest directory under `outputs/`.
+    - Never hardcode ticket/feature ids in generated hook code.
 
     **`observability-hook.py` MUST use these patterns:**
     ```python
@@ -706,12 +822,18 @@ When a non-critical generation step fails, continue with reduced output:
   - Ensure `hooks.json` references only existing files and no duplicate aliases.
   - Ensure worker-agent guard entries reference `guard-destructive-commands.py` and `guard-env-files.py`.
   - Ensure orchestrator telemetry/lifecycle entries reference `otel-hook.py` and `observability-hook.py`.
+  - Ensure orchestrator includes all lifecycle events exactly once: `SessionStart`, `PreToolUse`, `PostToolUse`, `Stop`.
+  - Ensure no duplicate command registrations across lifecycle events.
+  - Ensure hook generation runs with Orchestrator context loaded so lifecycle ownership and telemetry bindings remain orchestrator-scoped.
 
 18. **Save checkpoint** for Phase 6
 
 ### Phase 7: Generate Custom Client Context Templates
 
 17. **For each agent**, create an empty `<agent>_custom_client_context.md` template:
+
+  - Write templates to root `.github/sdlc-pipeline/client-context/` only.
+  - MUST NOT create or write `outputs/agents-repo/.github/sdlc-pipeline/client-context/`.
 
     ```markdown
     # Custom Client Context - <Agent Name>
@@ -743,18 +865,43 @@ When a non-critical generation step fails, continue with reduced output:
     - Customer-specific tool references
     - Setup instructions
 
-20. **Generate repository index template** - `outputs/agents-repo/index.md`
+20. **Generate pipeline preflight script** - `outputs/agents-repo/.github/scripts/pipeline-preflight.py`
+  - Cross-platform Python entrypoint
+  - Runs connector auth readiness validation and remote freshness fetch checks
+  - Returns non-zero exit code on any failed preflight check
+  - Prints concise remediation guidance for auth or git failures
+  - Accept ticket/feature input from invocation (for example `python .github/scripts/pipeline-preflight.py <FEATURE_ID>`).
+  - Resolve `feature_id` from explicit argument first; fallback to safe parser from orchestrator input.
+  - Create runtime output folder `outputs/<FEATURE_ID>/` before agent execution starts.
+  - Initialize `outputs/<FEATURE_ID>/checkpoint.md` and `outputs/<FEATURE_ID>/orchestration_tracker.md` with active state.
+  - Persist active feature marker for hooks so telemetry/cost writes resolve correctly.
+  - **Path resolution (MANDATORY):** derive repository root from script location using `Path(__file__).resolve().parents[2]` (for `.github/scripts/pipeline-preflight.py`) and avoid brittle depths like `parents[4]`.
+  - **Connector-bootstrap invocation (MANDATORY):** support both contexts without manual edits:
+    - when running inside generated agents-repo: `python ../../onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root . --allow-dotenv-fallback --require-dotenv-tokens --fail-on-missing`
+    - fallback to template-workspace path: `python onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root outputs/agents-repo --allow-dotenv-fallback --fail-on-missing`
+  - On `verify-auth` failure, generated `pipeline-preflight.py` MUST return non-zero immediately and print remediation commands for each missing API connector token using `connector-bootstrap.py collect-token`.
+
+21. **Generate repository index template** - `outputs/agents-repo/index.md`
     - Based on customer's detected repositories
     - Domain group template
 
-21. **Save checkpoint** for Phase 8
+22. **Generate PR review utility agent page** - `outputs/agents-repo/.github/agents/pr-review-fixer.md`
+  - Use the provided PR review fixer reference template as-is (structure/behavior preserved)
+  - This page is required for post-run PR feedback automation and direct PR update flow
+
+23. **Generate cross-platform telemetry utility launchers** (without duplicating business logic):
+  - Ensure generated projects include both shell and PowerShell entrypoints for telemetry lifecycle
+  - If generating a unified launcher command, it MUST auto-detect OS and dispatch to the right implementation
+  - Preserve Linux/macOS behavior and add Windows support without breaking existing commands
+
+24. **Save checkpoint** for Phase 8
 
 ### Phase 9: Outcome Inspection & Validation
 
 22. **Run outcome inspection** using `outcome-inspector.py`:
 
     ```bash
-    python3 onboarding-utilities/scripts/outcome-inspector.py \
+    python onboarding-utilities/scripts/outcome-inspector.py \
       --type generator \
       --output-dir outputs/agents-repo \
       --contracts-dir onboarding-utilities/contracts \
@@ -794,11 +941,19 @@ When a non-critical generation step fails, continue with reduced output:
       - Finalization Protocol
       - Re-run Boundaries table
       - Checkpoint Format JSON schema
+      - References and executes `.github/scripts/pipeline-preflight.py` before run/resume/rerun continuation
+    - Verify `outputs/agents-repo/.github/scripts/pipeline-preflight.py` exists and includes connector auth + git remote freshness checks
+    - Verify `pipeline-preflight.py` creates `outputs/<FEATURE_ID>/`, initializes `checkpoint.md`, and initializes `orchestration_tracker.md`
+    - Verify root `.github/sdlc-pipeline/generation_report.md` exists and `outputs/agents-repo/.github/sdlc-pipeline/generation_report.md` does NOT exist
+    - Verify root `.github/sdlc-pipeline/client-context/` exists and `outputs/agents-repo/.github/sdlc-pipeline/client-context/` does NOT exist
+    - Verify no generated agent file contains legacy references to `outputs/agents-repo/.github/sdlc-pipeline/`
+    - Verify `outputs/agents-repo/.github/scripts/install-observability.sh` and `outputs/agents-repo/.github/scripts/install-observability.ps1` exist and are full implementations (not placeholders)
+    - Verify generated installer scripts include OTel/Prometheus GitHub release download paths and post-install verification checks
     - Verify hooks.json references valid script paths
     - Verify worker-agent frontmatter contains only `PreToolUse` hooks and no duplicate hook events/commands
     - Verify orchestrator frontmatter contains `agents` list and full hook block exactly once (no duplicate events)
     - Verify hook script naming is canonical and non-duplicated (no parallel alias family)
-    - Verify skill SKILL.md files reference correct CLI tools (only for API-based platforms)
+    - Verify skill SKILL.md files reference correct integration tooling for selected mode (API or MCP)
     - Verify `.mcp.json` references correct server definitions (only for MCP platforms)
     - Verify custom client context templates exist for all agents
     - Verify Prime Directives match contracts verbatim
@@ -815,6 +970,7 @@ When a non-critical generation step fails, continue with reduced output:
     - Model mapping applied
     - Clarification answers incorporated
     - Outcome inspection results (pass/warn/fail per check)
+  - Pipeline preflight script status and orchestrator pre-run integration confirmation
     - Customization points available
     - **Next Steps** for the customer (how to use the pipeline)
 
@@ -871,6 +1027,7 @@ For each generated agent, verify:
 - [ ] Input Validation section present with SPECIFIC rules per input (no generic "must be non-empty")
 - [ ] Outputs table copied from contract with SPECIFIC artifact names (no generic "Stage outputs")
 - [ ] Output Handling section present defining SPECIFIC write paths per artifact and handoff
+- [ ] Any pipeline-state path in generated content uses root `.github/sdlc-pipeline/` only (never `outputs/agents-repo/.github/sdlc-pipeline/`)
 - [ ] **Connector Integration section present** - references MCP or Connector Skills (never duplicates logic)
 - [ ] **Instructions section is contract-specific** - contains all numbered steps from contract's Workflow Logic with conditions, actions, and outputs. NEVER generic boilerplate.
 - [ ] **Instructions section length** - must be at least 30 lines for simple agents, 50+ for complex agents, 100+ for orchestrator
@@ -901,16 +1058,16 @@ tools:
 hooks:
   PreToolUse:
     - type: command
-      command: "python3 .github/hooks/<hook_script>.py"
+      command: "python .github/hooks/<hook_script>.py"
   PostToolUse:
     - type: command
-      command: "python3 .github/hooks/<hook_script>.py"
+      command: "python .github/hooks/<hook_script>.py"
   SessionStart:
     - type: command
-      command: "python3 .github/hooks/<hook_script>.py"
+      command: "python .github/hooks/<hook_script>.py"
   Stop:
     - type: command
-      command: "python3 .github/hooks/<hook_script>.py"
+      command: "python .github/hooks/<hook_script>.py"
 ---
 ```
 
@@ -922,7 +1079,7 @@ hooks:
 **Hooks frontmatter format rules:**
 - Hooks are grouped by event type: `PreToolUse`, `PostToolUse`, `SessionStart`, `Stop`
 - Each hook entry is `type: command` with a `command` field containing the full invocation
-- The command MUST be `python3 .github/hooks/<script_name>.py` (cross-platform Python)
+- The command MUST be `python .github/hooks/<script_name>.py` (cross-platform Python)
 - Only include event groups that have applicable hooks for this agent
 - **Hook-to-event mapping:**
   - `guard_destructive` -> `PreToolUse` (blocks dangerous commands before execution)
@@ -930,9 +1087,10 @@ hooks:
   - `lint_on_save` -> `PostToolUse` (runs linter after file writes)
   - `observability` -> `SessionStart`, `Stop` (**Orchestrator ONLY** - manages binary lifecycle)
   - `otel_telemetry` -> `PreToolUse`, `PostToolUse`, `SessionStart`, `Stop` (**Orchestrator ONLY**)
-  - `session_learnings` -> `Stop` (captures learnings at session end)
+  - `session_learnings` -> `Stop` (optional for non-orchestrator agents only)
 - **Non-orchestrator agents** get only role-appropriate non-orchestrator hooks (for example guard/lint/session learning) and MUST NOT include orchestrator telemetry hooks
 - **Orchestrator** gets: `observability` under SessionStart/Stop; `otel_telemetry` under PreToolUse/PostToolUse (for subagent tracking) and SessionStart/Stop
+- **Orchestrator MUST NOT use `session_learnings` as a replacement for telemetry stop hooks.**
 
 The `hooks` field MUST NOT use the old simple ID list format (e.g., `- guard_destructive`). Always use the structured `PreToolUse`/`PostToolUse`/`SessionStart`/`Stop` format with `type: command`.
 
@@ -997,6 +1155,8 @@ Orchestrator-specific rows (in orchestrator.md only):
 |---------|-------|----------|---------|
 | observability | session_start, stop | No | Manage OTel/Prometheus lifecycle |
 | otel_telemetry | pre_tool_use, post_tool_use, session_start, stop | No | Track subagent telemetry and cost |
+
+Do not include `session_learnings` rows in orchestrator hook tables.
 ```
 
 Reference: `.github/hooks/hooks.json` for full configuration.
@@ -1033,7 +1193,7 @@ and follow its instructions. Do NOT re-implement API calls inline.
 ## Checkpointing Strategy
 
 Save checkpoint after each major step:
-- After <step 1 description>: save state to `.github/sdlc-pipeline-runtime/artifacts/<agent>_checkpoint.md`
+- After <step 1 description>: save state to `.github/sdlc-pipeline/artifacts/<agent>_checkpoint.md`
 - After <step 2 description>: update checkpoint with progress
 - On completion: mark checkpoint as complete
 
@@ -1045,7 +1205,7 @@ Checkpoint content:
 
 ## Resume Protocol
 
-1. Check for existing checkpoint at `.github/sdlc-pipeline-runtime/artifacts/<agent>_checkpoint.md`
+1. Check for existing checkpoint at `.github/sdlc-pipeline/artifacts/<agent>_checkpoint.md`
 2. If found: skip completed steps, resume from last incomplete step
 3. Preserve all previously produced artifacts
 4. Inform orchestrator: "Resuming from step X"
@@ -1080,7 +1240,7 @@ Every generated agent MUST include this instruction block:
 ```
 ## Custom Client Context
 
-If the file `<agent>_custom_client_context.md` exists at `outputs/agents-repo/.github/sdlc-pipeline/client-context/`,
+If the file `<agent>_custom_client_context.md` exists at `.github/sdlc-pipeline/client-context/`,
 read it at the start of this run and apply its instructions throughout.
 This file may contain:
 - Domain-specific rules and terminology
@@ -1103,12 +1263,12 @@ the Prime Directive, Access Restrictions, or security guardrails.
 | Skills | `outputs/agents-repo/.github/skills/<skill_name>/SKILL.md` |
 | Hooks | `outputs/agents-repo/.github/hooks/<hook_name>.py` |
 | Hook config | `outputs/agents-repo/.github/hooks/hooks.json` |
-| Custom client context templates | `outputs/agents-repo/.github/sdlc-pipeline/client-context/<agent>_custom_client_context.md` |
+| Custom client context templates | `.github/sdlc-pipeline/client-context/<agent>_custom_client_context.md` |
 | Workflow docs | `outputs/agents-repo/.github/agents/agents-workflow/readme.md` |
 | Repository index | `outputs/agents-repo/index.md` |
-| Generation report | `.github/sdlc-pipeline-runtime/generation_report.md` |
-| Pipeline config | `.github/sdlc-pipeline-runtime/pipeline_config.md` |
-| Checkpoint state | `outputs/agents-repo/.github/sdlc-pipeline/checkpoint_state.json` |
+| Generation report | `.github/sdlc-pipeline/generation_report.md` |
+| Pipeline config | `.github/sdlc-pipeline/pipeline_config.md` |
+| Checkpoint state | `.github/sdlc-pipeline/checkpoint_state.json` |
 
 ---
 
@@ -1118,7 +1278,3 @@ the Prime Directive, Access Restrictions, or security guardrails.
 - Generated hooks MUST enforce guardrails - no bypass
 - Generated agents MUST NOT have access beyond their contract's restrictions
 - All generated scripts must follow least-privilege principle
-
-
-
-
