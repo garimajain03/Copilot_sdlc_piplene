@@ -19,7 +19,6 @@ Run the **SDLC Pipeline Generator** to create customer-specific SDLC agents from
 1. Loads all contracts from `onboarding-utilities/contracts/` and customer context from preflight outputs
 2. Checks `intake-sources.md` for existing customer-defined agents - reuses and enhances where applicable
 3. Determines connector integration mode per platform (MCP vs API-based from `.mcp.json` and `connector_config.md`)
-4. Asks clarification questions about tools, ways of working, and standards
 5. Maps contract model tiers (reasoning/coding/fast) to customer's approved models
 6. Generates agent definitions (`outputs/agents-repo/.github/agents/agent<N>_<name>.md`) with full metadata, inputs/outputs, validation, checkpointing, hooks, connector integration, and completion criteria
 7. Reuses connector skills generated during preflight (`outputs/agents-repo/.github/skills/<skill>/SKILL.md` and `.github/skills/<skill>/SKILL.md`) and only regenerates if missing

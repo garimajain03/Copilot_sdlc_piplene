@@ -75,47 +75,29 @@ sdlc-pipeline-bundle/                  ← This standalone repository
 │   │   ├── agent8_iac_devops.contract.md      ← IaC/DevOps Specialist
 │   │   ├── orchestrator.contract.md
 │   │   ├── hooks/
-│   │   │   ├── hook_guard_destructive.contract.md
-│   │   │   ├── hook_guard_secrets.contract.md
-│   │   │   ├── hook_lint_on_save.contract.md
-│   │   │   ├── hook_session_learnings.contract.md
-│   │   │   ├── hook_observability.contract.md
-│   │   │   └── hook_otel_telemetry.contract.md
 │   │   └── skills/
-│   │       ├── skill_ticket_connector.contract.md
-│   │       ├── skill_scm_connector.contract.md
-│   │       ├── skill_design_connector.contract.md
-│   │       └── skill_testing.contract.md
-│   ├── templates/                     ← Generation Templates
-│   │   ├── agent_template.md.hbs
-│   │   ├── hook_template.py.hbs
-│   │   ├── skill_template.md.hbs
-│   │   ├── setup_template.sh.hbs
-│   │   ├── setup_template.ps1.hbs     ← Windows PowerShell setup template
-│   │   └── custom_client_context_template.md
-│   ├── schemas/                       ← Validation Schemas
-│   │   ├── contract_schema.md
-│   │   └── onboarding_answers_schema.md
-│   ├── scripts/                       ← Automation scripts
-│   │   ├── repo-scanner.py
-│   │   ├── instructions-generator.py
-│   │   ├── scm-bootstrap.py
-│   │   ├── connector-bootstrap.py
-│   │   ├── checkpoint-manager.py
-│   │   ├── outcome-inspector.py
-│   │   ├── pipeline-migrator.py           ← Version & migration manager
-│   │   ├── install-observability.sh       ← macOS/Linux binary installer
-│   │   └── install-observability.ps1      ← Windows binary installer
+│   ├── docs/                          ← Bundle documentation
+│   │   ├── getting-started.md
+│   │   └── workflow.html
+│   ├── examples/                      ← Sample intake documents
+│   │   └── intake-sources.md
 │   ├── observability/                 ← Telemetry stack templates
 │   │   ├── otel-collector-config.yml
-│   │   ├── prometheus/
-│   │   │   └── prometheus.yml
-│   │   └── .gitignore
-│   └── docs/                          ← Documentation
-│       ├── getting-started.md         ← How to run guide
-│       └── workflow.html              ← Interactive workflow visualization
-├── tests/                             ← Test suite
-│   └── test_scripts.py                ← Unit tests for automation scripts
+│   │   └── prometheus/
+│   └── scripts/                       ← Automation scripts
+├── schemas/                           ← Validation Schemas
+│   ├── contract_schema.md
+│   └── onboarding_answers_schema.md
+├── templates/                         ← Generation Templates
+│   ├── agent_template.md.hbs
+│   ├── hook_template.py.hbs
+│   ├── skill_template.md.hbs
+│   ├── setup_template.sh.hbs
+│   ├── setup_template.ps1.hbs         ← Windows PowerShell setup template
+│   └── custom_client_context_template.md
+├── observability/                     ← Local observability runtime assets
+└── tests/                             ← Test suite
+	└── test_scripts.py                ← Unit tests for automation scripts
 ```
 
 ## Contracts vs Specs
@@ -160,6 +142,12 @@ sdlc-pipeline-bundle/                  ← This standalone repository
 - Generated agents/hooks/instructions are written under `outputs/agents-repo/.github/`.
 - Connector skills are available in both `outputs/agents-repo/.github/skills/` and root `.github/skills/`.
 - `outputs/agents-repo/.github/sdlc-pipeline/` is a legacy location and must not be generated.
+
+## Connector Token Guidance
+
+- Generated repositories include `outputs/agents-repo/.env.template` with plain token variable names only.
+- Use `JIRA_TOKEN` and `GITLAB_TOKEN` (no `*_API_TOKEN` aliases).
+- If auth verification fails during preflight/start, remediation guidance is emitted by `connector-bootstrap.py` and preflight remains gated until missing tokens/OAuth steps are completed.
 
 ## Versioning
 

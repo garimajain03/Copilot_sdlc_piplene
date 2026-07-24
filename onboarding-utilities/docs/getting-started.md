@@ -92,7 +92,15 @@ The Generator will:
 
 ### 5. Run Your Pipeline
 
-Once generated, your SDLC pipeline agents are in `.github/agents/` ready to use.
+Once generated, your customer pipeline lives in `outputs/agents-repo/`.
+
+Primary generated locations:
+- `outputs/agents-repo/.github/agents/`
+- `outputs/agents-repo/.github/hooks/`
+- `outputs/agents-repo/.github/instructions/`
+- `outputs/agents-repo/.github/skills/`
+
+The bundle repository root `.github/` contains this template's own preflight/generator assets.
 
 ---
 
@@ -148,6 +156,14 @@ Any customer-defined layout. The Preflight Agent will ask clarifying questions t
 - Runtime temporary artifacts are generated only in `.github/sdlc-pipeline-runtime/` at repo root.
 - Generated agents, hooks, and instructions are generated in `outputs/agents-repo/.github/`.
 - `outputs/agents-repo/.github/sdlc-pipeline/` is legacy and must not be produced.
+
+---
+
+## Connector Tokens and Auth Readiness
+
+- Preflight can generate `outputs/agents-repo/.env.template`.
+- Token placeholders use plain names: `JIRA_TOKEN`, `GITLAB_TOKEN`.
+- On auth verification failure, preflight emits remediation guidance and pauses until missing token/OAuth prerequisites are satisfied.
 
 ---
 
@@ -242,11 +258,12 @@ The Preflight Agent validates your onboarding answers, clones your repositories,
 
 | File | Location |
 |------|----------|
-| `setup.sh` | `setup.sh` |
-| `hooks.json` | `.github/hooks/hooks.json` |
-| Connector skills | `.github/skills/<connector>/SKILL.md` |
-| Hook scripts | `.github/hooks/<hook_name>.py` |
-| Instruction files | `.github/instructions/<repo>.instructions.md` |
+| `setup.sh` | `outputs/agents-repo/setup.sh` |
+| `setup.ps1` | `outputs/agents-repo/setup.ps1` |
+| `hooks.json` | `outputs/agents-repo/.github/hooks/hooks.json` |
+| Connector skills | `outputs/agents-repo/.github/skills/<connector>/SKILL.md` |
+| Hook scripts | `outputs/agents-repo/.github/hooks/<hook_name>.py` |
+| Instruction files | `outputs/agents-repo/.github/instructions/<repo>.instructions.md` |
 | Codebase scan results | `.github/sdlc-pipeline/codebase_scan_results.md` |
 | Preflight report | `.github/sdlc-pipeline/preflight_report.md` |
 | Checkpoint state | `.github/sdlc-pipeline/checkpoint_state.json` |
@@ -284,14 +301,14 @@ The Preflight Agent must have completed successfully. Required outputs:
 
 | Category | Location |
 |----------|----------|
-| Agent definitions | `.github/agents/agent<N>_<name>.md` |
-| Orchestrator | `.github/agents/orchestrator.md` |
-| Skills | `.github/skills/<skill_name>/SKILL.md` |
-| Hooks | `.github/hooks/<hook_name>.py` |
-| Hook config | `.github/hooks/hooks.json` |
-| Custom context templates | `.github/sdlc-pipeline/client-context/<agent>_custom_client_context.md` |
-| Workflow docs | `.github/agents/agents-workflow/readme.md` |
-| Repository index | `index.md` |
+| Agent definitions | `outputs/agents-repo/.github/agents/agent<N>_<name>.md` |
+| Orchestrator | `outputs/agents-repo/.github/agents/orchestrator.md` |
+| Skills | `outputs/agents-repo/.github/skills/<skill_name>/SKILL.md` |
+| Hooks | `outputs/agents-repo/.github/hooks/<hook_name>.py` |
+| Hook config | `outputs/agents-repo/.github/hooks/hooks.json` |
+| Custom context templates | `outputs/agents-repo/.github/sdlc-pipeline/client-context/<agent>_custom_client_context.md` |
+| Workflow docs | `outputs/agents-repo/.github/agents/agents-workflow/readme.md` |
+| Repository index | `outputs/agents-repo/index.md` |
 | Generation report | `.github/sdlc-pipeline/generation_report.md` |
 
 ---
@@ -361,24 +378,26 @@ github-copilot-sdlc-template/
 │   ├── prompts/
 │   │   ├── preflight.prompt.md              ← /preflight command
 │   │   ├── generate-pipeline.prompt.md      ← /generate-pipeline command
+│   │   ├── generate-agents.prompt.md        ← Alternate generator command
 │   │   ├── resume-pipeline.prompt.md        ← /resume-pipeline command
 │   │   ├── pipeline-status.prompt.md        ← /pipeline-status command
 │   │   └── rerun-phase.prompt.md            ← /rerun-phase command
 │   └── copilot-instructions.md              ← Repo-level Copilot context
-├── contracts/                               ← Reusable Agent Contracts
-│   ├── CONTRACT_INDEX.md
-│   ├── agent0-agent6 + orchestrator contracts
-│   ├── hooks/                               ← Hook contracts
-│   └── skills/                              ← Skill contracts
+├── onboarding-utilities/
+│   ├── contracts/                           ← Reusable Agent Contracts
+│   ├── docs/
+│   │   ├── getting-started.md               ← This file
+│   │   └── workflow.html                    ← Interactive workflow visualization
+│   ├── examples/
+│   │   └── intake-sources.md
+│   ├── observability/                       ← OTel + Prometheus templates
+│   └── scripts/                             ← Automation scripts (Python/Bash)
 ├── templates/                               ← Generation templates (Handlebars)
 ├── schemas/                                 ← Validation schemas
-├── scripts/                                 ← Automation scripts (Python/Bash)
-├── observability/                           ← OTel + Prometheus configs
-├── docs/                                    ← Documentation
-│   ├── getting-started.md                   ← This file
-│   └── workflow.html                        ← Interactive workflow visualization
+├── observability/                           ← Runtime observability assets
+├── tests/
+│   └── test_scripts.py
 ├── client-onboarding-wizard.html            ← Onboarding wizard
-├── intake-sources.md                        ← Customer config (generated)
 └── README.md
 ```
 
