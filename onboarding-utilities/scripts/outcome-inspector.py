@@ -309,6 +309,18 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
                         f"pipeline-preflight.py missing runtime initialization token: {token}",
                         pipeline_preflight,
                     )
+            if "--require-dotenv-tokens" not in preflight_content:
+                inspector.error(
+                    "consistency",
+                    "pipeline-preflight.py must require local dotenv token presence (--require-dotenv-tokens) for opened agents-repo runs",
+                    pipeline_preflight,
+                )
+            if "No url found for submodule path" in preflight_content and "raise RuntimeError(stderr)" in preflight_content:
+                inspector.error(
+                    "consistency",
+                    "pipeline-preflight.py hard-fails nested submodule mismatch ('No url found for submodule path'); this must be treated as warning unless top-level submodule metadata is invalid",
+                    pipeline_preflight,
+                )
         except OSError:
             pass
 

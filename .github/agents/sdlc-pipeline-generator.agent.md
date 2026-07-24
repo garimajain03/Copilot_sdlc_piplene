@@ -655,8 +655,13 @@ When a non-critical generation step fails, continue with reduced output:
       - Generate `.github/scripts/pipeline-preflight.py` (written under `outputs/agents-repo/.github/scripts/pipeline-preflight.py`).
       - Script responsibilities MUST include both:
         1. Connector readiness check via `python ../../onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root . --allow-dotenv-fallback --require-dotenv-tokens --fail-on-missing`
-        2. Remote freshness check via `git fetch --all --prune` and `git submodule foreach --recursive git fetch --all --prune`
-      - If connector readiness fails because tokens are missing, preflight script MUST stop execution before pipeline start, print exact missing token variable names, and instruct the user to provide credentials and rerun `start <ISSUE_ID>`.
+          2. Remote freshness check via `git fetch --all --prune`, then submodule fetch with guardrails:
+            - If `.gitmodules` is missing or has no entries, skip submodule fetch without failing preflight
+            - For nested submodule fetch failures, print warning and continue when top-level submodules are healthy
+      - If connector readiness fails because tokens are missing, preflight script MUST stop execution before pipeline start, print exact missing token variable names, and print explicit remediation:
+        1. Copy `.env.template` to `.env` in generated agents-repo root
+        2. Fill required token values listed in `.env.template`
+        3. Re-run `start <ISSUE_ID>`
       - Generated orchestrator instructions MUST invoke `.github/scripts/pipeline-preflight.py` before any pipeline run starts, on resume, and before continuing after a rerun request.
       - If preflight script fails, orchestrator must halt and surface remediation steps.
 
@@ -879,7 +884,8 @@ When a non-critical generation step fails, continue with reduced output:
   - **Connector-bootstrap invocation (MANDATORY):** support both contexts without manual edits:
     - when running inside generated agents-repo: `python ../../onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root . --allow-dotenv-fallback --require-dotenv-tokens --fail-on-missing`
     - fallback to template-workspace path: `python onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root outputs/agents-repo --allow-dotenv-fallback --fail-on-missing`
-  - On `verify-auth` failure, generated `pipeline-preflight.py` MUST return non-zero immediately and print remediation commands for each missing API connector token using `connector-bootstrap.py collect-token`.
+  - On `verify-auth` failure, generated `pipeline-preflight.py` MUST return non-zero immediately and print remediation commands for each missing API connector token using `connector-bootstrap.py collect-token`, plus `.env.template` copy instructions (`Copy-Item .env.template .env` on PowerShell, `cp .env.template .env` on bash).
+  - **Submodule fetch robustness (MANDATORY):** generated `pipeline-preflight.py` must not fail pipeline start only because recursive nested submodule fetch fails; it should fail only when top-level repository fetch fails or top-level submodule metadata is invalid.
 
 21. **Generate repository index template** - `outputs/agents-repo/index.md`
     - Based on customer's detected repositories

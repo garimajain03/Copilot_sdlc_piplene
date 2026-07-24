@@ -8,6 +8,7 @@ Or:       python3 tests/test_scripts.py
 
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import shutil
@@ -462,6 +463,67 @@ class TestConnectorBootstrap(unittest.TestCase):
         self.assertIn(("confluence", "knowledge"), pairs)
         self.assertIn(("github", "scm"), pairs)
 
+    def test_verify_auth_normalizes_api_suffixed_platform_names(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira API
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: api
+- SCM System: gitlab api
+- SCM Integration Mode: api
+"""
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        result = mod.verify_auth(Path(self.output_root))
+
+        self.assertEqual(result["status"], "blocked")
+        missing = {item["required_env"] for item in result["api_missing_tokens"]}
+        self.assertIn("JIRA_TOKEN_ENC", missing)
+        self.assertIn("GITLAB_TOKEN_ENC", missing)
+        self.assertNotIn("JIRA_API_TOKEN_ENC", missing)
+        self.assertNotIn("GITLAB_API_TOKEN_ENC", missing)
+
+    def test_verify_auth_canonicalizes_legacy_inventory_platform_names(self):
+        mod = self._load_connector_bootstrap()
+        pipeline_dir = Path(self.tmpdir) / ".github" / "sdlc-pipeline"
+        pipeline_dir.mkdir(parents=True, exist_ok=True)
+        inventory_path = pipeline_dir / "connector_inventory.json"
+        inventory_path.write_text(
+            json.dumps(
+                {
+                    "generated_by": "test",
+                    "source": "intake",
+                    "connectors": [
+                        {
+                            "platform": "jira api",
+                            "category": "pm",
+                            "mode": "api",
+                            "auth": "token",
+                            "endpoint": "https://myorg.atlassian.net",
+                        },
+                        {
+                            "platform": "gitlab api",
+                            "category": "scm",
+                            "mode": "api",
+                            "auth": "token",
+                            "endpoint": "https://gitlab.com/api/v4",
+                        },
+                    ],
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+
+        result = mod.verify_auth(Path(self.output_root))
+        missing = {item["required_env"] for item in result["api_missing_tokens"]}
+        self.assertIn("JIRA_TOKEN_ENC", missing)
+        self.assertIn("GITLAB_TOKEN_ENC", missing)
+        self.assertNotIn("JIRA_API_TOKEN_ENC", missing)
+        self.assertNotIn("GITLAB_API_TOKEN_ENC", missing)
+
     def test_verify_auth_blocks_when_api_token_missing(self):
         mod = self._load_connector_bootstrap()
         self._write_intake(
@@ -680,6 +742,69 @@ class TestConnectorBootstrap(unittest.TestCase):
         self.assertFalse(stale_mcp_json.exists())
         self.assertFalse(stale_mcp_auth.exists())
 
+    def test_generate_artifacts_writes_env_template_with_required_tokens(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: api
+- SCM System: gitlab
+- SCM Integration Mode: api
+"""
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        env_template = Path(self.output_root) / ".env.template"
+
+        self.assertTrue(env_template.exists())
+        content = env_template.read_text(encoding="utf-8")
+        self.assertIn("JIRA_TOKEN=", content)
+        self.assertIn("GITLAB_TOKEN=", content)
+        self.assertNotIn("JIRA_TOKEN_ENC=", content)
+        self.assertNotIn("GITLAB_TOKEN_ENC=", content)
+
+    def test_generate_artifacts_does_not_create_legacy_connectors_dir(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: api
+- SCM System: gitlab
+- SCM Integration Mode: api
+"""
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        connectors_dir = Path(self.output_root) / ".github" / "connectors"
+        self.assertFalse(connectors_dir.exists())
+
+    def test_verify_auth_missing_dotenv_includes_copy_env_template_remediation(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: api
+- SCM System: gitlab
+- SCM Integration Mode: api
+"""
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        mod._upsert_env_file(Path(self.tmpdir) / ".env.encrypted", "JIRA_TOKEN_ENC", "enc-jira")
+        mod._upsert_env_file(Path(self.tmpdir) / ".env.encrypted", "GITLAB_TOKEN_ENC", "enc-gitlab")
+
+        result = mod.verify_auth(Path(self.output_root), require_dotenv_tokens=True)
+        remediation = result.get("remediation", {})
+
+        self.assertEqual(result["status"], "blocked")
+        self.assertIn("copy .env.template", " ".join(remediation.get("steps", [])).lower())
+        self.assertIn("re-run start <issue_id>", " ".join(remediation.get("steps", [])).lower())
+        self.assertEqual(remediation.get("copy_commands", {}).get("powershell"), "Copy-Item .env.template .env")
+        self.assertEqual(remediation.get("copy_commands", {}).get("bash"), "cp .env.template .env")
+
     def test_generate_with_pm_other_name_uses_custom_platform_name(self):
         mod = self._load_connector_bootstrap()
         self._write_intake(
@@ -735,7 +860,7 @@ class TestConnectorBootstrap(unittest.TestCase):
         self.assertIn("OTHER_TOKEN_ENC", missing)
         self.assertIn("GITLAB_TOKEN_ENC", missing)
 
-    def test_verify_auth_from_agents_repo_context_reuses_parent_env(self):
+    def test_verify_auth_from_agents_repo_context_uses_local_env(self):
         mod = self._load_connector_bootstrap()
         self._write_intake(
             """# Client Intake
@@ -746,7 +871,8 @@ class TestConnectorBootstrap(unittest.TestCase):
         )
 
         mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
-        mod._upsert_env_file(Path(self.tmpdir) / ".env.encrypted", "JIRA_TOKEN_ENC", "enc-jira")
+        local_env_encrypted = Path(self.output_root) / ".env.encrypted"
+        mod._upsert_env_file(local_env_encrypted, "JIRA_TOKEN_ENC", "enc-jira")
 
         with patch.object(mod.Path, "cwd", return_value=Path(self.output_root)):
             result = mod.verify_auth(Path("."), allow_dotenv_fallback=False)
@@ -860,6 +986,80 @@ class TestInstructionsGenerator(unittest.TestCase):
         self.assertTrue(os.path.exists(out_path))
         with open(out_path) as f:
             self.assertIn("file-test", f.read())
+
+
+# =============================================================================
+# workspace-bootstrap.py tests
+# =============================================================================
+class TestWorkspaceBootstrap(unittest.TestCase):
+    """Tests for workspace-bootstrap.py"""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _load_workspace_bootstrap(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "workspace_bootstrap",
+            os.path.join(SCRIPTS_DIR, "workspace-bootstrap.py")
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_add_submodules_recursive_failure_is_warning(self):
+        mod = self._load_workspace_bootstrap()
+        agents_repo = Path(self.tmpdir) / "agents-repo"
+        repos_dir = agents_repo / "repos"
+        agents_repo.mkdir(parents=True, exist_ok=True)
+
+        repos = [{"name": "repo-a", "url": "https://example.com/repo-a.git"}]
+        calls = []
+
+        def fake_run_git(args, cwd=None):
+            calls.append(args)
+            if args[:3] == ["submodule", "add", "https://example.com/repo-a.git"]:
+                (agents_repo / "repos" / "repo-a").mkdir(parents=True, exist_ok=True)
+                return subprocess.CompletedProcess(["git", *args], 0, stdout="", stderr="")
+            if args == ["submodule", "update", "--init", "--jobs", "4"]:
+                return subprocess.CompletedProcess(["git", *args], 0, stdout="", stderr="")
+            if args == ["submodule", "update", "--init", "--recursive", "--jobs", "4"]:
+                return subprocess.CompletedProcess(["git", *args], 1, stdout="", stderr="nested submodule auth failed")
+            return subprocess.CompletedProcess(["git", *args], 0, stdout="", stderr="")
+
+        with patch.object(mod, "run_git", side_effect=fake_run_git):
+            result = mod.add_submodules(agents_repo, repos_dir, repos)
+
+        self.assertIn(["submodule", "update", "--init", "--jobs", "4"], calls)
+        self.assertIn(["submodule", "update", "--init", "--recursive", "--jobs", "4"], calls)
+        warning_rows = [row for row in result if row.get("name") == "_submodule_recursive"]
+        self.assertEqual(len(warning_rows), 1)
+        self.assertEqual(warning_rows[0]["status"], "warning")
+        init_errors = [row for row in result if row.get("name") == "_submodule_init" and row.get("status") == "error"]
+        self.assertEqual(init_errors, [])
+
+    def test_add_submodules_non_recursive_failure_is_error(self):
+        mod = self._load_workspace_bootstrap()
+        agents_repo = Path(self.tmpdir) / "agents-repo"
+        repos_dir = agents_repo / "repos"
+        agents_repo.mkdir(parents=True, exist_ok=True)
+
+        repos = []
+
+        def fake_run_git(args, cwd=None):
+            if args == ["submodule", "update", "--init", "--jobs", "4"]:
+                return subprocess.CompletedProcess(["git", *args], 1, stdout="", stderr="init failed")
+            return subprocess.CompletedProcess(["git", *args], 0, stdout="", stderr="")
+
+        with patch.object(mod, "run_git", side_effect=fake_run_git):
+            result = mod.add_submodules(agents_repo, repos_dir, repos)
+
+        init_errors = [row for row in result if row.get("name") == "_submodule_init"]
+        self.assertEqual(len(init_errors), 1)
+        self.assertEqual(init_errors[0]["status"], "error")
 
 
 # =============================================================================

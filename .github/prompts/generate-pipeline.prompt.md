@@ -26,7 +26,7 @@ Run the **SDLC Pipeline Generator** to create customer-specific SDLC agents from
 8. Generates cross-platform hook scripts (`outputs/agents-repo/.github/hooks/<hook>.py`) and `hooks.json`
 9. Generates `outputs/agents-repo/.github/scripts/pipeline-preflight.py` to validate connector readiness and latest Agents Repo remote code
   - Script must compute repo root from `.github/scripts` using `Path(__file__).resolve().parents[2]` (never brittle `parents[4]` assumptions)
-  - Script must halt pipeline start when required credentials are missing, print missing token variables, and instruct rerun after credentials are provided
+  - Script must halt pipeline start when required credentials are missing, print missing token variables, and instruct the user to: copy `.env.template` to `.env`, fill the listed values, then rerun `start <ISSUE_ID>`
 10. Ensures generated orchestrator invokes `pipeline-preflight.py` before every pipeline run, resume, and rerun continuation
 11. Creates custom client context templates for each agent
 12. Generates workflow README, repository index, and PR reporting artifacts (`PR.md` and `pr_creation_report.md`)
@@ -97,7 +97,7 @@ Read and follow the full agent instructions at `.github/agents/sdlc-pipeline-gen
   - `python onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root outputs/agents-repo --allow-dotenv-fallback --fail-on-missing`
 - Verify latest remote code is fetched and workspace is up to date:
   - `git fetch --all --prune`
-  - `git submodule foreach --recursive git fetch --all --prune`
+  - Submodule fetch must be guarded: skip when `.gitmodules` is absent/empty, and treat recursive nested fetch failures as warnings unless top-level submodule metadata is invalid
 - If these checks fail, stop and show remediation before generating any files.
 
 **Generated orchestrator requirement (MANDATORY):**

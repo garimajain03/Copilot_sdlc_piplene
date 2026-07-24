@@ -170,9 +170,23 @@ def add_submodules(agents_repo_dir: Path, repos_dir: Path, repos: List[Dict[str,
 
         results.append({"name": repo["name"], "url": repo["url"], "status": "added", "path": str(full_path)})
 
-    init_proc = run_git(["submodule", "update", "--init", "--recursive"], cwd=agents_repo_dir)
+    # Initialize top-level submodules first; nested/foreign submodules can fail
+    # for unrelated access reasons and should not block workspace bootstrap.
+    init_proc = run_git(["submodule", "update", "--init", "--jobs", "4"], cwd=agents_repo_dir)
     if init_proc.returncode != 0:
         results.append({"name": "_submodule_init", "status": "error", "error": init_proc.stderr.strip()})
+        return results
+
+    recursive_proc = run_git(["submodule", "update", "--init", "--recursive", "--jobs", "4"], cwd=agents_repo_dir)
+    if recursive_proc.returncode != 0:
+        results.append(
+            {
+                "name": "_submodule_recursive",
+                "status": "warning",
+                "error": recursive_proc.stderr.strip(),
+                "message": "Nested submodule initialization failed; top-level submodules are initialized.",
+            }
+        )
 
     return results
 
