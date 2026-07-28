@@ -129,25 +129,40 @@ def inspect_preflight(output_dir: str, inspector: Inspector):
     root_pipeline, legacy_pipeline = _pipeline_dirs(output_dir)
     repo_root = _resolve_repo_root(output_dir)
 
-    # Check required files exist
-    required_files = {
+    # Preflight owns generated repo bootstrap files plus root pipeline state.
+    generated_repo_files = {
         "setup.sh": "Setup script",
         "setup.ps1": "Windows setup script",
+    }
+    root_pipeline_files = {
         "preflight_report.md": "Preflight report",
         "codebase_scan_results.md": "Codebase scan results",
     }
 
-    # Look in root pipeline state first, then legacy output-side path.
-    search_dirs = [output_dir, str(root_pipeline), str(legacy_pipeline)]
-
-    for filename, desc in required_files.items():
-        found = False
-        for d in search_dirs:
-            if os.path.exists(os.path.join(d, filename)):
-                found = True
-                break
-        if not found:
+    for filename, desc in generated_repo_files.items():
+        if not os.path.exists(os.path.join(output_dir, filename)):
             inspector.error("completeness", f"Missing required file: {filename} ({desc})")
+
+    for filename, desc in root_pipeline_files.items():
+        expected_path = root_pipeline / filename
+        if not expected_path.exists():
+            inspector.error(
+                "completeness",
+                f"Missing required root pipeline file: .github/sdlc-pipeline/{filename} ({desc})",
+                str(expected_path),
+            )
+
+        misplaced_candidates = [
+            Path(output_dir).resolve() / filename,
+            legacy_pipeline / filename,
+        ]
+        for candidate in misplaced_candidates:
+            if candidate.exists() and candidate.resolve() != expected_path.resolve():
+                inspector.error(
+                    "consistency",
+                    f"Preflight state artifact must be written to root .github/sdlc-pipeline/{filename}, not {candidate}",
+                    str(candidate),
+                )
 
     # Enforce setup scripts are generated only in output_dir (no duplicates elsewhere).
     expected_setup_paths = {
@@ -203,22 +218,6 @@ def inspect_preflight(output_dir: str, inspector: Inspector):
             inspector.error("quality", "setup.ps1 missing observability installer integration", "setup.ps1")
         if ".github\\scripts\\install-observability.ps1" not in content and "scripts\\install-observability.ps1" not in content:
             inspector.warning("quality", "setup.ps1 should resolve generated .github/scripts/install-observability.ps1 path", "setup.ps1")
-
-    # Check hooks.json
-    hooks_path = os.path.join(output_dir, ".github", "hooks", "hooks.json")
-    if os.path.exists(hooks_path):
-        try:
-            with open(hooks_path, "r") as f:
-                hooks = json.load(f)
-            if "hooks" not in hooks:
-                inspector.error("structure", "hooks.json missing 'hooks' key", "hooks.json")
-            else:
-                if "PreToolUse" not in hooks["hooks"]:
-                    inspector.warning("security", "No PreToolUse hooks registered — guards disabled", "hooks.json")
-        except json.JSONDecodeError:
-            inspector.error("quality", "hooks.json is not valid JSON", "hooks.json")
-    else:
-        inspector.warning("completeness", "hooks.json not found")
 
     # Check instructions files
     instructions_dir = os.path.join(output_dir, ".github", "instructions")
@@ -571,10 +570,14 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
 
     # Cross-reference integrity: verify hook/skill file references
     hooks_path = os.path.join(output_dir, ".github", "hooks", "hooks.json")
-    if os.path.exists(hooks_path):
+    if not os.path.exists(hooks_path):
+        inspector.error("completeness", "Missing required generator hook registry: .github/hooks/hooks.json", "hooks.json")
+    else:
         try:
             with open(hooks_path, "r") as f:
                 hooks_config = json.load(f)
+            if "hooks" not in hooks_config:
+                inspector.error("structure", "hooks.json missing 'hooks' key", "hooks.json")
             # Verify referenced hook scripts exist
             for event_type, event_hooks in hooks_config.get("hooks", {}).items():
                 if isinstance(event_hooks, list):
@@ -773,8 +776,10 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
                         f"Telemetry outputs mix feature folders for a single session: {examples}",
                         "outputs",
                     )
-        except (json.JSONDecodeError, IOError):
-            pass
+        except json.JSONDecodeError:
+            inspector.error("quality", "hooks.json is not valid JSON", "hooks.json")
+        except IOError:
+            inspector.error("quality", "Unable to read hooks.json", "hooks.json")
 
     # Verify skill directories have SKILL.md
     skills_dir = os.path.join(output_dir, ".github", "skills")

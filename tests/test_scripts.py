@@ -1084,6 +1084,13 @@ class TestOutcomeInspector(unittest.TestCase):
         spec.loader.exec_module(mod)
         return mod
 
+    def _create_minimal_generator_agents_dir(self):
+        agents_dir = os.path.join(self.tmpdir, ".github", "agents")
+        os.makedirs(agents_dir, exist_ok=True)
+        agent_content = '---\nname: "Test Agent"\nmodel: "test-model"\n---\n# Test Agent\n## Prime Directive\n> "Test"\n## Behavioral Guardrails\nTest\n## Custom Client Context\nTest\n## Quality Checklist\n- [ ] Test'
+        with open(os.path.join(agents_dir, "agent0_test.md"), "w", encoding="utf-8") as f:
+            f.write(agent_content)
+
     def test_inspector_creation(self):
         mod = self._load_inspector()
         inspector = mod.Inspector()
@@ -1127,6 +1134,50 @@ class TestOutcomeInspector(unittest.TestCase):
         messages = [f["message"] for f in inspector.findings]
         self.assertTrue(any("setup.sh" in m for m in messages))
 
+    def test_inspect_preflight_does_not_require_hooks_json(self):
+        mod = self._load_inspector()
+        output_dir = os.path.join(self.tmpdir, "outputs", "agents-repo")
+        root_pipeline = os.path.join(self.tmpdir, ".github", "sdlc-pipeline")
+        instructions_dir = os.path.join(output_dir, ".github", "instructions")
+        os.makedirs(root_pipeline)
+        os.makedirs(instructions_dir)
+
+        with open(os.path.join(output_dir, "setup.sh"), "w", encoding="utf-8") as f:
+            f.write("#!/usr/bin/env bash\nread -rs TOKEN\n.github/scripts/install-observability.sh\n")
+        with open(os.path.join(output_dir, "setup.ps1"), "w", encoding="utf-8") as f:
+            f.write("[CmdletBinding()]\n.github\\scripts\\install-observability.ps1\n")
+        with open(os.path.join(root_pipeline, "preflight_report.md"), "w", encoding="utf-8") as f:
+            f.write("# Preflight Report\n")
+        with open(os.path.join(root_pipeline, "codebase_scan_results.md"), "w", encoding="utf-8") as f:
+            f.write("# Codebase Scan\n")
+        with open(os.path.join(instructions_dir, "repo.instructions.md"), "w", encoding="utf-8") as f:
+            f.write("---\napplyTo: '**'\n---\n" + "A" * 100)
+
+        inspector = mod.Inspector()
+        mod.inspect_preflight(output_dir, inspector)
+
+        messages = [f["message"] for f in inspector.findings]
+        self.assertFalse(any("hooks.json" in m for m in messages))
+        self.assertFalse(inspector.has_errors())
+
+    def test_inspect_preflight_rejects_misplaced_pipeline_report(self):
+        mod = self._load_inspector()
+        output_dir = os.path.join(self.tmpdir, "outputs", "agents-repo")
+        root_pipeline = os.path.join(self.tmpdir, ".github", "sdlc-pipeline")
+        os.makedirs(output_dir)
+        os.makedirs(root_pipeline)
+
+        with open(os.path.join(output_dir, "preflight_report.md"), "w", encoding="utf-8") as f:
+            f.write("# Misplaced Preflight Report\n")
+        with open(os.path.join(root_pipeline, "codebase_scan_results.md"), "w", encoding="utf-8") as f:
+            f.write("# Codebase Scan\n")
+
+        inspector = mod.Inspector()
+        mod.inspect_preflight(output_dir, inspector)
+
+        messages = [f["message"] for f in inspector.findings]
+        self.assertTrue(any("Preflight state artifact must be written to root" in m for m in messages))
+
     def test_inspect_generator_no_agents_dir(self):
         mod = self._load_inspector()
         inspector = mod.Inspector()
@@ -1146,6 +1197,30 @@ class TestOutcomeInspector(unittest.TestCase):
         # Should not have "no agents dir" error
         errors = [f for f in inspector.findings if "No .github/agents" in f.get("message", "")]
         self.assertEqual(len(errors), 0)
+
+    def test_inspect_generator_requires_hooks_json(self):
+        mod = self._load_inspector()
+        self._create_minimal_generator_agents_dir()
+
+        inspector = mod.Inspector()
+        mod.inspect_generator(self.tmpdir, "", inspector)
+
+        messages = [f["message"] for f in inspector.findings]
+        self.assertTrue(any("Missing required generator hook registry" in m for m in messages))
+
+    def test_inspect_generator_rejects_invalid_hooks_json(self):
+        mod = self._load_inspector()
+        self._create_minimal_generator_agents_dir()
+        hooks_dir = os.path.join(self.tmpdir, ".github", "hooks")
+        os.makedirs(hooks_dir)
+        with open(os.path.join(hooks_dir, "hooks.json"), "w", encoding="utf-8") as f:
+            f.write("{not json")
+
+        inspector = mod.Inspector()
+        mod.inspect_generator(self.tmpdir, "", inspector)
+
+        messages = [f["message"] for f in inspector.findings]
+        self.assertTrue(any("hooks.json is not valid JSON" in m for m in messages))
 
     def test_inspect_instructions_missing_dir(self):
         mod = self._load_inspector()

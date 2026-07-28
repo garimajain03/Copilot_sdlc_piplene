@@ -95,6 +95,10 @@ hooks:
 | Tooling and Integration Preferences | {{CLIENT_TOOLING_CONTEXT}} |
 | Project Constraints | {{CLIENT_CONSTRAINTS_CONTEXT}} |
 
+## Existing Customer Agent Mapping
+
+{{EXISTING_AGENT_MAPPING}}
+
 ## Inputs
 
 | Artifact | Source | Required | Description |
@@ -210,6 +214,7 @@ Reference: `.github/hooks/hooks.json` for full hook configuration.
 | `CLIENT_INTAKE_SOURCES` | Onboarding answers → sources + linked docs | Input channels and knowledge sources |
 | `CLIENT_COMPLAINTS_CONTEXT` | Onboarding answers → pains/complaints | Existing pain points to prioritize |
 | `CLIENT_EXISTING_AGENTS_CONTEXT` | Onboarding answers → ai_stack.existing_agents* | Existing automation footprint |
+| `EXISTING_AGENT_MAPPING` | Generator Phase 1 Step 6 scan of resolved app repo `.github/agents/` | Mapped existing agent path/repository/capabilities/reuse decision, or explicit no-equivalent-found statement |
 | `CLIENT_COMPLIANCE_CONTEXT` | Onboarding answers → compliance + constraints | Security/compliance posture |
 | `CLIENT_TOOLING_CONTEXT` | Onboarding answers → approved tools/models + workflow systems | Toolchain and integration choices |
 | `CLIENT_CONSTRAINTS_CONTEXT` | Onboarding answers → explicit constraints and guardrails | Non-functional and delivery constraints |
