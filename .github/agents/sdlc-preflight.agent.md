@@ -354,6 +354,20 @@ When a non-critical step fails, continue with reduced capability:
    - Use `vscode/askQuestions` to collect answers
    - Do NOT assume or guess - always ask
    - Group related questions together (max 5 questions per round)
+   - Always include following question about telemetry/observability, even if optional:
+    ```
+    "Do you want to enable SDLC Pipeline telemetry/observability for this workspace?"
+    Options:
+      [Yes - install OTel Collector and Prometheus setup]
+      [No - do not install telemetry]
+      Make default selection: [Yes] (Allow the user to change to No if they prefer)
+  ```
+    Store the answer in `onboarding_context.json` under:
+      - `pipeline.telemetry_enabled`: `true|false`
+      - `observability.enabled`: `true|false`
+      - `observability.install_scripts`: `onboarding-utilities/scripts/install-observability.sh` and `onboarding-utilities/scripts/install-observability.ps1` only when enabled
+
+  This question is mandatory on every fresh `/preflight` run and MUST NOT be skipped just because telemetry is optional.
 8. **Save checkpoint** for Phase 1
 
 ### Phase 2: Connector Configuration
@@ -795,9 +809,10 @@ Reference-first setup generation policy (MANDATORY):
     - **Git submodule initialization** - add, init, and update all development repositories as submodules
     - **Tooling configuration** - configure git hooks, pre-commit, etc.
     - **Observability setup** (optional - if customer wants telemetry):
-      - Run `onboarding-utilities/scripts/install-observability.sh` to download OTel Collector + Prometheus binaries
-      - Copy `observability/otel-collector-config.yml` and `observability/prometheus/prometheus.yml` to project
-      - Verify installation with `onboarding-utilities/scripts/install-observability.sh --check`
+      - If `pipeline.telemetry_enabled=true`, the generated `setup.sh` MUST contain an explicit call to `onboarding-utilities/scripts/install-observability.sh` (or a copied equivalent path inside `outputs/agents-repo/scripts/install-observability.sh`) to download OTel Collector + Prometheus binaries
+      - If `pipeline.telemetry_enabled=true`, copy `observability/otel-collector-config.yml` and `observability/prometheus/prometheus.yml` to the generated agents repository
+      - If `pipeline.telemetry_enabled=true`, verify installation with `onboarding-utilities/scripts/install-observability.sh --check` or the copied equivalent path
+      - If `pipeline.telemetry_enabled=false`, include a visible comment in `setup.sh` stating telemetry was disabled by preflight selection and do not run observability installation
     - **Copy `.env.template`** to `.env` if `.env` doesn't exist
     - Add `.env` to `.gitignore`
     - **Validation checks** - verify workspace setup, submodule status, tool availability
@@ -811,8 +826,9 @@ Reference-first setup generation policy (MANDATORY):
     - **Git submodule initialization** - add, init, and update all development repositories as submodules
     - **Tooling configuration** - configure git hooks, pre-commit, etc.
     - **Observability setup** (optional - if customer wants telemetry):
-      - Run `onboarding-utilities/scripts/install-observability.ps1` for Windows-compatible binary download
-      - Verify installation
+      - If `pipeline.telemetry_enabled=true`, the generated `setup.ps1` MUST contain an explicit call to `onboarding-utilities/scripts/install-observability.ps1` (or a copied equivalent path inside `outputs/agents-repo/scripts/install-observability.ps1`) for Windows-compatible binary download
+      - If `pipeline.telemetry_enabled=true`, verify installation with `onboarding-utilities/scripts/install-observability.ps1 -Check` or the copied equivalent path
+      - If `pipeline.telemetry_enabled=false`, include a visible comment in `setup.ps1` stating telemetry was disabled by preflight selection and do not run observability installation
     - **Copy `.env.template`** to `.env` if `.env` doesn't exist
     - Add `.env` to `.gitignore`
     - **Validation checks** - verify workspace setup, submodule status, tool availability
@@ -828,7 +844,7 @@ Reference-first setup generation policy (MANDATORY):
 ### Phase 9: Install Prerequisites
 
 36. **Execute the generated setup script** to install all prerequisites on the current machine:
-
+    ***Always execute the setup script from the `outputs/agents-repo` directory to ensure correct relative paths.***
     - **Detect current OS:**
       - Windows -> run `outputs/agents-repo/setup.ps1`
       - macOS/Linux -> run `outputs/agents-repo/setup.sh`
@@ -859,39 +875,55 @@ Reference-first setup generation policy (MANDATORY):
 
 ### Phase 10: Outcome Inspection & Report
 
-40. **Run outcome inspection** using `outcome-inspector.py` to self-validate all outputs:
+40. **Write a draft preflight report before inspection** at `.github/sdlc-pipeline/preflight_report.md`.
+
+  This root pipeline file is a required Preflight output and MUST exist before running `outcome-inspector.py`. Do not defer report generation until after inspection; otherwise the inspector will correctly fail with `Missing required root pipeline file: .github/sdlc-pipeline/preflight_report.md`.
+  Do NOT write the report under `outputs/agents-repo/.github/sdlc-pipeline/`; `outcome-inspector.py --type preflight --output-dir outputs/agents-repo` treats that location as misplaced generated state.
+     The draft report MUST NOT claim that Phase 10 is complete, MUST NOT include final inspection pass/fail counts, and MUST NOT say that self-inspection has already run. In the phase table, mark Phase 10 as `In Progress` or `Pending final inspection` until `outcome-inspector.py` has completed.
+
+    The report MUST summarize:
+      - Validation status (all required fields pass or fail)
+      - Connector configuration (MCP vs API-based per platform)
+      - Workspace structure (default with submodules or custom)
+      - Repositories scanned (with clone/scan status per repo)
+      - Service Catalogue summary (from `index.md`)
+      - Codebase scan results (languages, frameworks, tools detected)
+      - Instruction files generated (count and locations)
+      - Prerequisites installation results (what was installed, what failed)
+      - Generated artifacts list (including both `setup.sh` and `setup.ps1`)
+      - Preliminary validation notes and known warnings
+      - Recommendations (e.g., "Consider adding pre-commit hooks")
+      - Warnings (e.g., "No linter detected - lint-on-save hook will be disabled")
+      - **Next Steps** (MANDATORY - always include):
+        1. Review generated files
+        2. Fill in `.env` from `.env.template`
+        3. Run `/generate-pipeline` to create agents, skills, hooks, and orchestrator
+        
+41. **Run outcome inspection** using `outcome-inspector.py` to self-validate all outputs after the draft report exists. This ensures that all required files exist, content is valid, and the generated setup scripts are functional.
 
     ```bash
     python3 onboarding-utilities/scripts/outcome-inspector.py \
-      --type preflight --output-dir outputs/agents-repo --format markdown
+      --type preflight --output-dir outputs/agents-repo \
+      > .github/sdlc-pipeline/outcome_inspection.json
 
     python3 onboarding-utilities/scripts/outcome-inspector.py \
-      --type instructions --instructions-dir outputs/agents-repo/.github/instructions --format markdown
+      --type instructions --instructions-dir outputs/agents-repo/.github/instructions \
+      > .github/sdlc-pipeline/instructions_inspection.json
     ```
+    If either command exits non-zero because warnings were found, read the JSON output before deciding whether the warning is blocking. Warnings do not prevent Phase 10 completion when they are documented in the final report.
 
-41. **Inspect and fix** any issues found:
+42. **Inspect and fix** any issues found:
     - **Errors (blocking):** Fix immediately before proceeding
+    - If inspection reports `Missing required root pipeline file: .github/sdlc-pipeline/preflight_report.md`, treat it as an agent sequencing bug: write `.github/sdlc-pipeline/preflight_report.md` immediately, then re-run inspection before continuing
+    - If `pipeline.telemetry_enabled=true`, verify generated setup scripts contain observability installer references:
+      - `setup.sh` must reference `install-observability.sh`
+      - `setup.ps1` must reference `install-observability.ps1`
+      - If either reference is missing, fix the setup script and re-run inspection before continuing
     - **Warnings:** Attempt to resolve, add to report if unresolvable
+    - Update `preflight_report.md` with final outcome inspection results after inspection completes. Only this final update may mark Phase 10 as `Complete`.
+    - The final report MUST include an `Outcome Inspection` section with the recorded status, error count, warning count, info count, and remaining warning/error messages from `outcome_inspection.json` and `instructions_inspection.json`.
     - Re-run inspection after fixes to confirm resolution
-    - Maximum 2 fix-and-recheck cycles - after that, report remaining issues
-
-42. **Write** `.github/sdlc-pipeline/preflight_report.md` summarizing:
-    - Validation status (all required fields pass or fail)
-    - Connector configuration (MCP vs API-based per platform)
-    - Workspace structure (default with submodules or custom)
-    - Repositories scanned (with clone/scan status per repo)
-    - Service Catalogue summary (from `index.md`)
-    - Codebase scan results (languages, frameworks, tools detected)
-    - Instruction files generated (count and locations)
-    - Prerequisites installation results (what was installed, what failed)
-    - Generated artifacts list (including both `setup.sh` and `setup.ps1`)
-    - Outcome inspection results
-    - Recommendations (e.g., "Consider adding pre-commit hooks")
-    - Warnings (e.g., "No linter detected - lint-on-save hook will be disabled")
-    - **Next Steps** (MANDATORY - always include):
-      1. Review generated files
-      2. Complete connector authentication (`mcp_auth_instructions.md` / `api_auth_instructions.md`)
-      3. Run `/generate-pipeline` to create agents, hooks, and orchestrator (reusing preflight connector skills)
+    - Maximum 2 fix-and-recheck cycles - after that, report remaining issues        
 
 43. **Display Next Steps** to the customer (see Execution Format section above)
 
