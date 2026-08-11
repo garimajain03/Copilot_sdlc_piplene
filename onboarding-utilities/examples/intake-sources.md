@@ -102,6 +102,7 @@ _Generated: 29 May 2026_
   - Atlassian: https://myorg.atlassian.net
   - GitHub Enterprise: https://github.myorg.com
 - **Existing agents:** _(not provided)_
+- **Existing agents repository details:** Collected by SDLC Preflight when Existing agents = yes (repo URL or local cloned path)
 - **CMS:** None
 
 ---

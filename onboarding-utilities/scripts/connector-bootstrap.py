@@ -59,6 +59,8 @@ MCP_CATALOG: Dict[str, Dict[str, object]] = {
         "command": "npx",
         "args": ["-y", "@modelcontextprotocol/server-atlassian"],
         "env": {"ATLASSIAN_URL": "{endpoint}", "ATLASSIAN_TOKEN": "${ATLASSIAN_TOKEN}"},
+        "auth_modes": ["token", "oauth"],
+        "default_auth": "token",
         "auth": "token",
     },
     "confluence": {
@@ -66,6 +68,8 @@ MCP_CATALOG: Dict[str, Dict[str, object]] = {
         "command": "npx",
         "args": ["-y", "@modelcontextprotocol/server-atlassian"],
         "env": {"ATLASSIAN_URL": "{endpoint}", "ATLASSIAN_TOKEN": "${ATLASSIAN_TOKEN}"},
+        "auth_modes": ["token", "oauth"],
+        "default_auth": "token",
         "auth": "token",
     },
     "github": {
@@ -73,6 +77,8 @@ MCP_CATALOG: Dict[str, Dict[str, object]] = {
         "command": "npx",
         "args": ["-y", "@modelcontextprotocol/server-github"],
         "env": {"GITHUB_TOKEN": "${GITHUB_TOKEN}"},
+        "auth_modes": ["token", "oauth"],
+        "default_auth": "oauth",
         "auth": "oauth",
     },
     "gitlab": {
@@ -80,6 +86,20 @@ MCP_CATALOG: Dict[str, Dict[str, object]] = {
         "command": "npx",
         "args": ["-y", "@modelcontextprotocol/server-gitlab"],
         "env": {"GITLAB_TOKEN": "${GITLAB_TOKEN}"},
+        "auth_modes": ["token", "oauth"],
+        "default_auth": "token",
+        "auth": "token",
+    },
+    "azure devops": {
+        "server_name": "azure-devops",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-azure-devops"],
+        "env": {
+            "AZURE_DEVOPS_URL": "{endpoint}",
+            "AZURE_DEVOPS_TOKEN": "${AZURE_DEVOPS_TOKEN}",
+        },
+        "auth_modes": ["token", "oauth"],
+        "default_auth": "token",
         "auth": "token",
     },
 }
@@ -98,6 +118,9 @@ API_CATALOG: Dict[str, Dict[str, str]] = {
 
 
 PLATFORM_ALIASES: Dict[str, str] = {
+    "ado": "azure devops",
+    "azure-devops": "azure devops",
+    "azure_devops": "azure devops",
     "azure-repos": "azure devops",
     "azure repos": "azure devops",
     "atlassian jira": "jira",
@@ -114,6 +137,11 @@ def parse_arg() -> argparse.Namespace:
     gen = sub.add_parser("generate", help="Generate connector artifacts from intake-sources.md")
     gen.add_argument("--intake", required=True, help="Path to intake-sources.md")
     gen.add_argument("--output-root", default="outputs/agents-repo", help="Generated agents repo root")
+    gen.add_argument(
+        "--mcp-auth-overrides",
+        default="",
+        help="Optional JSON file with MCP auth selections from preflight (example: {\"pm\":\"oauth\",\"scm\":\"token\",\"confluence\":\"oauth\"})",
+    )
 
     collect = sub.add_parser("collect-token", help="Collect and encrypt a connector token")
     collect.add_argument("--connector", required=True, help="Connector platform (jira, github, gitlab, confluence, etc.)")
@@ -142,13 +170,24 @@ def parse_arg() -> argparse.Namespace:
 
 
 def _extract_line_value(text: str, label: str) -> str:
-    pattern = re.compile(rf"^\s*[-*]?\s*{re.escape(label)}\s*:\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
+    pattern = re.compile(
+        rf"^\s*[-*]?\s*(?:\*\*)?{re.escape(label)}(?:\*\*)?\s*:\s*(.+?)\s*$",
+        re.IGNORECASE | re.MULTILINE,
+    )
     match = pattern.search(text)
-    return match.group(1).strip() if match else ""
+    if not match:
+        return ""
+
+    value = match.group(1).strip()
+    if value.startswith("**"):
+        value = value[2:].lstrip()
+    if value.endswith("**"):
+        value = value[:-2].rstrip()
+    return value
 
 
 def parse_intake_markdown(path: Path) -> Dict[str, str]:
-    content = path.read_text(encoding="utf-8")
+    content = path.read_text(encoding="utf-8-sig")
     pm_name = _extract_line_value(content, "PM/Requirements Name")
     if not pm_name:
         pm_name = _extract_line_value(content, "PM/Requirement Name")
@@ -157,10 +196,13 @@ def parse_intake_markdown(path: Path) -> Dict[str, str]:
         "pm_name": pm_name,
         "pm_url": _extract_line_value(content, "PM Tool URL"),
         "pm_mode": _extract_line_value(content, "PM Integration Mode"),
+        "pm_mcp_auth_mode": _extract_line_value(content, "PM MCP Auth Mode"),
         "scm_system": _extract_line_value(content, "SCM System"),
         "scm_mode": _extract_line_value(content, "SCM Integration Mode"),
+        "scm_mcp_auth_mode": _extract_line_value(content, "SCM MCP Auth Mode"),
         "confluence_url": _extract_line_value(content, "Confluence URL"),
         "confluence_mode": _extract_line_value(content, "Confluence Integration Mode"),
+        "confluence_mcp_auth_mode": _extract_line_value(content, "Confluence MCP Auth Mode"),
     }
     return values
 
@@ -172,6 +214,69 @@ def _normalize_mode(value: str) -> str:
     if cleaned in {"api", "api-based connector", "api based connector", "api-based"}:
         return "api"
     return ""
+
+
+def _normalize_auth_mode(value: str) -> str:
+    cleaned = value.strip().lower()
+    if cleaned in {"token", "oauth", "auto", "none"}:
+        return cleaned
+    return ""
+
+
+def _get_mcp_catalog_entry(platform: str) -> Dict[str, object]:
+    return MCP_CATALOG.get(_resolve_catalog_platform(platform), {})
+
+
+def _get_mcp_supported_auth_modes(platform: str) -> List[str]:
+    entry = _get_mcp_catalog_entry(platform)
+    configured = entry.get("auth_modes")
+    if isinstance(configured, list):
+        modes = [str(item).strip().lower() for item in configured if str(item).strip()]
+        filtered = [mode for mode in modes if mode in {"token", "oauth"}]
+        if filtered:
+            return filtered
+
+    auth = str(entry.get("auth", "token")).strip().lower()
+    return [auth] if auth in {"token", "oauth"} else ["token"]
+
+
+def _get_mcp_default_auth_mode(platform: str) -> str:
+    entry = _get_mcp_catalog_entry(platform)
+    default_auth = str(entry.get("default_auth", "")).strip().lower()
+    supported = _get_mcp_supported_auth_modes(platform)
+    if default_auth in supported:
+        return default_auth
+    return supported[0] if supported else "token"
+
+
+def _resolve_mcp_auth_mode(platform: str, requested: str) -> str:
+    requested_mode = _normalize_auth_mode(requested)
+    supported = _get_mcp_supported_auth_modes(platform)
+    if requested_mode in {"token", "oauth"} and requested_mode in supported:
+        return requested_mode
+    return _get_mcp_default_auth_mode(platform)
+
+
+def _load_mcp_auth_overrides(path_text: str) -> Dict[str, str]:
+    if not path_text.strip():
+        return {}
+
+    path = Path(path_text).expanduser().resolve()
+    if not path.exists():
+        raise RuntimeError(f"MCP auth overrides file not found: {path}")
+
+    payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("MCP auth overrides must be a JSON object")
+
+    normalized: Dict[str, str] = {}
+    for key, value in payload.items():
+        norm_key = _normalize_platform(str(key))
+        norm_value = _normalize_auth_mode(str(value))
+        if not norm_key or norm_value not in {"token", "oauth"}:
+            continue
+        normalized[norm_key] = norm_value
+    return normalized
 
 
 def _normalize_platform(name: str) -> str:
@@ -226,7 +331,8 @@ def _map_scm_platform(scm_system: str) -> str:
     return _resolve_catalog_platform(scm_system)
 
 
-def resolve_connectors(values: Dict[str, str]) -> List[ConnectorSpec]:
+def resolve_connectors(values: Dict[str, str], mcp_auth_overrides: Dict[str, str] | None = None) -> List[ConnectorSpec]:
+    mcp_auth_overrides = mcp_auth_overrides or {}
     specs: List[ConnectorSpec] = []
 
     pm_platform = _map_pm_platform(values.get("pm_system", ""))
@@ -234,11 +340,17 @@ def resolve_connectors(values: Dict[str, str]) -> List[ConnectorSpec]:
     if pm_platform == "other" and pm_name:
         pm_platform = _resolve_catalog_platform(pm_name)
     pm_mode = _normalize_mode(values.get("pm_mode", ""))
+    pm_mcp_auth_mode = ""
     pm_endpoint = values.get("pm_url", "")
     if pm_platform and pm_mode:
         catalog_platform = _resolve_catalog_platform(pm_platform)
         endpoint = pm_endpoint or API_CATALOG.get(catalog_platform, {}).get("default_endpoint", "")
-        auth = MCP_CATALOG.get(catalog_platform, {}).get("auth", "token") if pm_mode == "mcp" else "token"
+        pm_mcp_auth_mode = (
+            mcp_auth_overrides.get("pm")
+            or mcp_auth_overrides.get(catalog_platform)
+            or values.get("pm_mcp_auth_mode", "")
+        )
+        auth = _resolve_mcp_auth_mode(catalog_platform, pm_mcp_auth_mode) if pm_mode == "mcp" else "token"
         specs.append(ConnectorSpec(platform=pm_platform, category="pm", mode=pm_mode, auth=auth, endpoint=endpoint))
 
     confluence_url = values.get("confluence_url", "").strip()
@@ -246,15 +358,26 @@ def resolve_connectors(values: Dict[str, str]) -> List[ConnectorSpec]:
         resolved_confluence_mode = _normalize_mode(values.get("confluence_mode", ""))
         # Backward-compatible fallback for older intake files without explicit confluence mode.
         confluence_mode = resolved_confluence_mode or (pm_mode if pm_platform == "jira" and pm_mode else "api")
-        auth = MCP_CATALOG.get("confluence", {}).get("auth", "token") if confluence_mode == "mcp" else "token"
+        confluence_mcp_auth_mode = (
+            mcp_auth_overrides.get("confluence")
+            or mcp_auth_overrides.get("knowledge")
+            or values.get("confluence_mcp_auth_mode", "")
+        )
+        auth = _resolve_mcp_auth_mode("confluence", confluence_mcp_auth_mode) if confluence_mode == "mcp" else "token"
         specs.append(ConnectorSpec(platform="confluence", category="knowledge", mode=confluence_mode, auth=auth, endpoint=confluence_url))
 
     scm_platform = _map_scm_platform(values.get("scm_system", ""))
     scm_mode = _normalize_mode(values.get("scm_mode", ""))
+    scm_mcp_auth_mode = ""
     if scm_platform and scm_mode:
         catalog_platform = _resolve_catalog_platform(scm_platform)
         endpoint = API_CATALOG.get(catalog_platform, {}).get("default_endpoint", "")
-        auth = MCP_CATALOG.get(catalog_platform, {}).get("auth", "token") if scm_mode == "mcp" else "token"
+        scm_mcp_auth_mode = (
+            mcp_auth_overrides.get("scm")
+            or mcp_auth_overrides.get(catalog_platform)
+            or values.get("scm_mcp_auth_mode", "")
+        )
+        auth = _resolve_mcp_auth_mode(catalog_platform, scm_mcp_auth_mode) if scm_mode == "mcp" else "token"
         specs.append(ConnectorSpec(platform=scm_platform, category="scm", mode=scm_mode, auth=auth, endpoint=endpoint))
 
     unique: Dict[tuple, ConnectorSpec] = {}
@@ -276,6 +399,22 @@ def _reset_directory(path: Path) -> None:
     if path.exists() and path.is_dir():
         shutil.rmtree(path, ignore_errors=True)
     path.mkdir(parents=True, exist_ok=True)
+
+
+def _is_reusable_api_skill(skill_dir: Path) -> bool:
+    required_files = ("SKILL.md", "README.md", "package.json", "config.js", "index.js")
+    return skill_dir.is_dir() and all((skill_dir / name).exists() for name in required_files)
+
+
+def _is_reusable_mcp_skill(skill_dir: Path) -> bool:
+    required_files = ("SKILL.md", "README.md", "package.json", "config.js", "index.js")
+    return skill_dir.is_dir() and all((skill_dir / name).exists() for name in required_files)
+
+
+def _copy_skill_bundle(source_dir: Path, target_dir: Path) -> None:
+    if target_dir.exists():
+        shutil.rmtree(target_dir, ignore_errors=True)
+    shutil.copytree(source_dir, target_dir)
 
 
 def _candidate_repo_roots(output_root: Path) -> List[Path]:
@@ -418,6 +557,8 @@ def _render_mcp_json(connectors: List[ConnectorSpec]) -> Dict[str, object]:
         env_map = dict(entry.get("env", {}))
         if "ATLASSIAN_URL" in env_map and spec.endpoint:
             env_map["ATLASSIAN_URL"] = spec.endpoint
+        if "AZURE_DEVOPS_URL" in env_map and spec.endpoint:
+            env_map["AZURE_DEVOPS_URL"] = spec.endpoint
         servers[entry["server_name"]] = {
             "command": entry["command"],
             "args": entry["args"],
@@ -434,23 +575,71 @@ def _render_mcp_auth_instructions(connectors: List[ConnectorSpec]) -> str:
     if oauth_connectors:
         lines.append("## OAuth-based MCP Connectors")
         lines.append("")
+        lines.append("OAuth login is an interactive flow handled by your MCP client/server (for example browser consent or device-code login).")
+        lines.append("The preflight commands below do not perform login; they only checkpoint completion and re-run verification.")
+        lines.append("")
         for spec in oauth_connectors:
+            template_mark = (
+                f"python onboarding-utilities/scripts/connector-bootstrap.py mark-oauth-complete --connector \"{spec.platform}\" --output-root outputs/agents-repo"
+            )
+            agents_mark = (
+                f"python ../../onboarding-utilities/scripts/connector-bootstrap.py mark-oauth-complete --connector \"{spec.platform}\" --output-root ."
+            )
             lines.append(f"### {spec.platform}")
             lines.append("1. Start the MCP server configured in .mcp.json.")
-            lines.append("2. Complete the OAuth consent flow when prompted in your MCP client.")
-            lines.append("3. Verify access by listing resources from the connector after sign-in.")
-            lines.append(
-                f"4. Mark complete: python onboarding-utilities/scripts/connector-bootstrap.py mark-oauth-complete --connector \"{spec.platform}\" --output-root outputs/agents-repo"
-            )
+            lines.append("2. Trigger a real connector request from your MCP client to start OAuth login.")
+            lines.append("3. Complete the OAuth consent flow (browser/device flow) when prompted.")
+            lines.append("4. Verify access by listing resources from the connector after sign-in.")
+            lines.append("5. Run these copy-paste commands:")
+            lines.append("")
+            lines.append("   Template workspace root:")
+            lines.append("   ```bash")
+            lines.append(f"   {template_mark}")
+            lines.append("   ```")
+            lines.append("   Opened agents-repo workspace:")
+            lines.append("   ```bash")
+            lines.append(f"   {agents_mark}")
+            lines.append("   ```")
+            lines.append("6. Re-run verification:")
+            lines.append("   ```bash")
+            lines.append("   python onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root outputs/agents-repo --allow-dotenv-fallback --fail-on-missing")
+            lines.append("   ```")
             lines.append("")
 
     if token_connectors:
         lines.append("## Token-based MCP Connectors")
         lines.append("")
-        lines.append("Update the token placeholders in outputs/agents-repo/.mcp.json before resuming.")
+        lines.append("Collect connector tokens through secure terminal prompts before resuming.")
         lines.append("")
         for spec in token_connectors:
-            lines.append(f"- {spec.platform}: set the required token env variables referenced in the server env block.")
+            template_collect = (
+                f"python onboarding-utilities/scripts/connector-bootstrap.py collect-token --connector \"{spec.platform}\" --output-root outputs/agents-repo"
+            )
+            agents_collect = (
+                f"python ../../onboarding-utilities/scripts/connector-bootstrap.py collect-token --connector \"{spec.platform}\" --output-root ."
+            )
+            lines.append(f"- {spec.platform}:")
+            lines.append("  1. Template workspace root:")
+            lines.append("  ```bash")
+            lines.append(f"  {template_collect}")
+            lines.append("  ```")
+            lines.append("  2. Opened agents-repo workspace:")
+            lines.append("  ```bash")
+            lines.append(f"  {agents_collect}")
+            lines.append("  ```")
+        lines.append("")
+
+    if oauth_connectors or token_connectors:
+        lines.append("## Verify Authentication")
+        lines.append("")
+        lines.append("Template workspace root:")
+        lines.append("```bash")
+        lines.append("python onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root outputs/agents-repo --allow-dotenv-fallback --fail-on-missing")
+        lines.append("```")
+        lines.append("Opened agents-repo workspace:")
+        lines.append("```bash")
+        lines.append("python ../../onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root . --allow-dotenv-fallback --fail-on-missing")
+        lines.append("```")
         lines.append("")
 
     lines.append("After finishing authentication, run /resume-pipeline to continue onboarding.")
@@ -510,7 +699,7 @@ def _render_api_auth_instructions(connectors: List[ConnectorSpec]) -> str:
     lines: List[str] = [
         "# API Connector Token Setup",
         "",
-        "Use connector-bootstrap.py collect-token for each API connector before resuming.",
+        "Use onboarding-utilities/scripts/connector-bootstrap.py collect-token for each API connector before resuming.",
         "After collecting tokens, run verify-auth to confirm all connectors are ready.",
         "",
     ]
@@ -548,18 +737,28 @@ def _render_api_auth_instructions(connectors: List[ConnectorSpec]) -> str:
         lines.append(f"  1. Obtain a token with the required scopes for {spec.platform} APIs.")
         lines.append(f"  2. Required token variable base name: {token_env}")
         lines.append(f"  3. Run from the template workspace root:")
+        lines.append("  ```bash")
         lines.append(
-            f"     python onboarding-utilities/scripts/connector-bootstrap.py collect-token --connector \"{spec.platform}\" --output-root outputs/agents-repo"
+            f"  python onboarding-utilities/scripts/connector-bootstrap.py collect-token --connector \"{spec.platform}\" --output-root outputs/agents-repo"
         )
+        lines.append("  ```")
         lines.append(f"  4. If running from an opened agents-repo workspace, use:")
+        lines.append("  ```bash")
         lines.append(
-            f"     python ../../onboarding-utilities/scripts/connector-bootstrap.py collect-token --connector \"{spec.platform}\" --output-root ."
+            f"  python ../../onboarding-utilities/scripts/connector-bootstrap.py collect-token --connector \"{spec.platform}\" --output-root ."
         )
+        lines.append("  ```")
         lines.append(f"  5. The encrypted value is stored as {token_env}_ENC in .env.encrypted at repository root.")
         lines.append("")
-    lines.append("Validation command:")
-    lines.append("- Template workspace root: python onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root outputs/agents-repo --fail-on-missing")
-    lines.append("- Opened agents-repo workspace: python ../../onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root . --require-dotenv-tokens --fail-on-missing")
+    lines.append("Validation commands:")
+    lines.append("Template workspace root:")
+    lines.append("```bash")
+    lines.append("python onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root outputs/agents-repo --fail-on-missing")
+    lines.append("```")
+    lines.append("Opened agents-repo workspace:")
+    lines.append("```bash")
+    lines.append("python ../../onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root . --require-dotenv-tokens --fail-on-missing")
+    lines.append("```")
     lines.append("")
     lines.append("If verify-auth reports missing .env tokens in opened agents-repo:")
     lines.append("- Copy .env.template to .env")
@@ -822,6 +1021,10 @@ def _render_env_template(connectors: List[ConnectorSpec]) -> str:
 
 def _build_verify_auth_remediation(
     output_root: Path,
+    connectors: List[ConnectorSpec],
+    api_missing_tokens: List[Dict[str, str]],
+    mcp_token_pending: List[Dict[str, object]],
+    mcp_oauth_pending: List[str],
     api_missing_dotenv_tokens: List[Dict[str, str]],
     blocked: bool,
 ) -> Dict[str, object]:
@@ -836,14 +1039,47 @@ def _build_verify_auth_remediation(
     token_hints = sorted(set(missing_any_of))
 
     steps: List[str] = [
-        "Connector preflight stopped because required token variables are missing in .env.",
-        "Copy .env.template to .env in the generated agents-repo root.",
-        "Fill the required token values listed in .env.template.",
-        "Re-run start <ISSUE_ID> after saving .env.",
+        "Connector preflight stopped because authentication is incomplete.",
+        "For MCP OAuth connectors, first complete OAuth in your MCP client/server (interactive browser or device-code flow).",
+        "Then run the exact per-connector commands shown below in terminal.",
+        "Re-run verify-auth after completing the commands.",
+        "Resume preflight once verify-auth returns blocked: false.",
     ]
     if token_hints:
         steps.append(f"Missing variables: {', '.join(token_hints)}")
 
+    token_platforms = sorted(
+        {
+            _resolve_catalog_platform(str(item.get("platform", "")))
+            for item in api_missing_tokens
+            if item.get("platform")
+        }
+        | {
+            _resolve_catalog_platform(str(item.get("platform", "")))
+            for item in mcp_token_pending
+            if item.get("platform")
+        }
+    )
+
+    oauth_platforms = sorted({_resolve_catalog_platform(item) for item in mcp_oauth_pending if item})
+
+    token_commands = [
+        {
+            "platform": platform,
+            "template_workspace": f"python onboarding-utilities/scripts/connector-bootstrap.py collect-token --connector \"{platform}\" --output-root outputs/agents-repo",
+            "agents_repo_workspace": f"python ../../onboarding-utilities/scripts/connector-bootstrap.py collect-token --connector \"{platform}\" --output-root .",
+        }
+        for platform in token_platforms
+    ]
+
+    oauth_commands = [
+        {
+            "platform": platform,
+            "mark_complete_template_workspace": f"python onboarding-utilities/scripts/connector-bootstrap.py mark-oauth-complete --connector \"{platform}\" --output-root outputs/agents-repo",
+            "mark_complete_agents_repo_workspace": f"python ../../onboarding-utilities/scripts/connector-bootstrap.py mark-oauth-complete --connector \"{platform}\" --output-root .",
+        }
+        for platform in oauth_platforms
+    ]
     return {
         "env_template": template_path,
         "copy_commands": {
@@ -851,12 +1087,29 @@ def _build_verify_auth_remediation(
             "bash": "cp .env.template .env",
         },
         "steps": steps,
+        "terminal_commands": {
+            "token_collection": token_commands,
+            "oauth_completion": oauth_commands,
+            "verify_auth": {
+                "template_workspace": "python onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root outputs/agents-repo --allow-dotenv-fallback --fail-on-missing",
+                "agents_repo_workspace": "python ../../onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root . --allow-dotenv-fallback --fail-on-missing",
+            },
+        },
+        "copy_paste_commands": {
+            "api_and_mcp_token_template_workspace": [cmd["template_workspace"] for cmd in token_commands],
+            "api_and_mcp_token_agents_repo_workspace": [cmd["agents_repo_workspace"] for cmd in token_commands],
+            "mcp_oauth_template_workspace": [cmd["mark_complete_template_workspace"] for cmd in oauth_commands],
+            "mcp_oauth_agents_repo_workspace": [cmd["mark_complete_agents_repo_workspace"] for cmd in oauth_commands],
+            "verify_auth_template_workspace": "python onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root outputs/agents-repo --allow-dotenv-fallback --fail-on-missing",
+            "verify_auth_agents_repo_workspace": "python ../../onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root . --allow-dotenv-fallback --fail-on-missing",
+        },
     }
 
 
-def generate_artifacts(intake: Path, output_root: Path) -> Dict[str, object]:
+def generate_artifacts(intake: Path, output_root: Path, mcp_auth_overrides_path: str = "") -> Dict[str, object]:
     values = parse_intake_markdown(intake)
-    connectors = resolve_connectors(values)
+    mcp_auth_overrides = _load_mcp_auth_overrides(mcp_auth_overrides_path)
+    connectors = resolve_connectors(values, mcp_auth_overrides=mcp_auth_overrides)
 
     repo_root = _resolve_repo_root(output_root)
     pipeline_dir = repo_root / ".github" / "sdlc-pipeline"
@@ -913,6 +1166,7 @@ def generate_artifacts(intake: Path, output_root: Path) -> Dict[str, object]:
     generated_impls: List[str] = []
     expected_skill_names: List[str] = []
     expected_impl_files: List[str] = []
+    reusable_skill_catalog = _resolve_repo_root(output_root) / ".github" / "skills"
 
     for spec in connectors:
         catalog_platform = _resolve_catalog_platform(spec.platform)
@@ -924,6 +1178,22 @@ def generate_artifacts(intake: Path, output_root: Path) -> Dict[str, object]:
         skill_dir = skills_dir / skill_name
         root_skill_dir = root_skills_dir / skill_name
         _reset_directory(skill_dir)
+
+        reusable_skill_dir = reusable_skill_catalog / skill_name
+        reusable_api = spec.mode == "api" and _is_reusable_api_skill(reusable_skill_dir)
+        reusable_mcp = spec.mode == "mcp" and _is_reusable_mcp_skill(reusable_skill_dir)
+        if reusable_api or reusable_mcp:
+            _copy_skill_bundle(reusable_skill_dir, skill_dir)
+            generated_skills.append(str(skill_dir / "SKILL.md"))
+            generated_skills.append(str(reusable_skill_dir / "SKILL.md"))
+
+            if reusable_api or reusable_mcp:
+                if (skill_dir / "index.js").exists():
+                    generated_impls.append(str(skill_dir / "index.js"))
+                if (reusable_skill_dir / "index.js").exists():
+                    generated_impls.append(str(reusable_skill_dir / "index.js"))
+            continue
+
         _reset_directory(root_skill_dir)
 
         skill_path = skill_dir / "SKILL.md"
@@ -949,12 +1219,6 @@ def generate_artifacts(intake: Path, output_root: Path) -> Dict[str, object]:
 
     _prune_stale_connector_artifacts(
         skills_dir=skills_dir,
-        connector_impl_dir=connector_impl_dir,
-        expected_skill_names=expected_skill_names,
-        expected_impl_files=expected_impl_files,
-    )
-    _prune_stale_connector_artifacts(
-        skills_dir=root_skills_dir,
         connector_impl_dir=connector_impl_dir,
         expected_skill_names=expected_skill_names,
         expected_impl_files=expected_impl_files,
@@ -1127,6 +1391,58 @@ def _extract_mcp_missing_env(mcp_json: Dict[str, object], spec: ConnectorSpec) -
     return missing
 
 
+def _required_mcp_token_env_names(spec: ConnectorSpec) -> List[str]:
+    catalog_platform = _resolve_catalog_platform(spec.platform)
+    entry = MCP_CATALOG.get(catalog_platform, {})
+    env_map = dict(entry.get("env", {}))
+    required: List[str] = []
+    for key, raw_value in env_map.items():
+        if key.endswith("URL"):
+            continue
+        env_name = _extract_placeholder_env_name(str(raw_value)) or key
+        if env_name:
+            required.append(env_name)
+    return sorted(set(required))
+
+
+def _resolve_mcp_token_readiness(
+    connectors: List[ConnectorSpec],
+    encrypted_env: Dict[str, str],
+    dotenv_env: Dict[str, str],
+    allow_dotenv_fallback: bool,
+) -> Dict[str, object]:
+    missing: List[Dict[str, object]] = []
+    satisfied_via_dotenv: List[Dict[str, str]] = []
+
+    for spec in connectors:
+        if spec.mode != "mcp" or spec.auth != "token":
+            continue
+
+        required_env = _required_mcp_token_env_names(spec)
+        unresolved: List[str] = []
+        for env_name in required_env:
+            enc_key = f"{env_name}_ENC"
+            if encrypted_env.get(enc_key, "").strip():
+                continue
+
+            dotenv_enc = dotenv_env.get(enc_key, "").strip()
+            dotenv_plain = dotenv_env.get(env_name, "").strip()
+            if allow_dotenv_fallback and (dotenv_enc or dotenv_plain):
+                source_key = enc_key if dotenv_enc else env_name
+                satisfied_via_dotenv.append({"platform": spec.platform, "source": source_key})
+                continue
+
+            unresolved.append(enc_key)
+
+        if unresolved:
+            missing.append({"platform": spec.platform, "required_env": unresolved})
+
+    return {
+        "missing": missing,
+        "satisfied_via_dotenv": satisfied_via_dotenv,
+    }
+
+
 def verify_auth(
     output_root: Path,
     allow_dotenv_fallback: bool = False,
@@ -1163,23 +1479,23 @@ def verify_auth(
         if spec.mode == "mcp" and spec.auth == "oauth" and spec.platform in oauth_status
     ]
 
-    mcp_token_pending: List[Dict[str, object]] = []
-    mcp_json_path = output_root / ".mcp.json"
-    mcp_json: Dict[str, object] = {}
-    if mcp_json_path.exists():
-        mcp_json = json.loads(mcp_json_path.read_text(encoding="utf-8"))
-
-    for spec in connectors:
-        if spec.mode != "mcp" or spec.auth != "token":
-            continue
-        missing_env = _extract_mcp_missing_env(mcp_json, spec)
-        if missing_env:
-            mcp_token_pending.append({"platform": spec.platform, "missing_env": missing_env})
+    mcp_token_readiness = _resolve_mcp_token_readiness(
+        connectors=connectors,
+        encrypted_env=encrypted_env,
+        dotenv_env=dotenv_env,
+        allow_dotenv_fallback=allow_dotenv_fallback,
+    )
+    mcp_token_pending = mcp_token_readiness["missing"]
+    mcp_token_satisfied_via_dotenv = mcp_token_readiness["satisfied_via_dotenv"]
 
     blocked = bool(api_missing or api_missing_dotenv_tokens or oauth_pending or mcp_token_pending)
     status = "blocked" if blocked else "ok"
     remediation = _build_verify_auth_remediation(
         output_root=output_root,
+        connectors=connectors,
+        api_missing_tokens=api_missing,
+        mcp_token_pending=mcp_token_pending,
+        mcp_oauth_pending=oauth_pending,
         api_missing_dotenv_tokens=api_missing_dotenv_tokens,
         blocked=blocked,
     )
@@ -1195,6 +1511,7 @@ def verify_auth(
             "mcp_oauth_pending": len(oauth_pending),
             "mcp_oauth_completed": len(oauth_completed),
             "mcp_token_pending": len(mcp_token_pending),
+            "mcp_token_satisfied_via_dotenv": len(mcp_token_satisfied_via_dotenv),
         },
         "api_missing_tokens": api_missing,
         "api_missing_dotenv_tokens": api_missing_dotenv_tokens,
@@ -1202,6 +1519,7 @@ def verify_auth(
         "mcp_oauth_pending": oauth_pending,
         "mcp_oauth_completed": oauth_completed,
         "mcp_token_pending": mcp_token_pending,
+        "mcp_token_satisfied_via_dotenv": mcp_token_satisfied_via_dotenv,
         "remediation": remediation,
     }
 
@@ -1209,17 +1527,23 @@ def verify_auth(
 def collect_token(connector: str, output_root: Path, token_env_override: str = "") -> Dict[str, str]:
     connector_key = _normalize_platform(connector)
     catalog_platform = _resolve_catalog_platform(connector_key)
-    if catalog_platform not in API_CATALOG:
-        inventory_platforms = {
-            _resolve_catalog_platform(spec.platform)
-            for spec in _load_connectors_from_inventory(output_root)
-            if spec.mode == "api"
-        }
-        if catalog_platform not in inventory_platforms:
-            raise RuntimeError(f"Unsupported connector for token collection: {connector}")
+    connectors = _load_connectors_from_inventory(output_root)
+    matching_connector = next((spec for spec in connectors if _resolve_catalog_platform(spec.platform) == catalog_platform), None)
+    if matching_connector is None:
+        raise RuntimeError(f"Unsupported connector for token collection: {connector}")
 
     fallback_token_env = f"{_safe_slug(catalog_platform).upper().replace('-', '_')}_TOKEN"
-    token_env = token_env_override.strip() or API_CATALOG.get(catalog_platform, {}).get("token_env", fallback_token_env)
+    if token_env_override.strip():
+        token_env = token_env_override.strip()
+    elif matching_connector.mode == "api":
+        token_env = API_CATALOG.get(catalog_platform, {}).get("token_env", fallback_token_env)
+    elif matching_connector.mode == "mcp" and matching_connector.auth == "token":
+        token_envs = _required_mcp_token_env_names(matching_connector)
+        if not token_envs:
+            raise RuntimeError(f"No MCP token variable mapping found for connector: {catalog_platform}")
+        token_env = token_envs[0]
+    else:
+        raise RuntimeError(f"Connector is not configured for token authentication: {catalog_platform}")
     token_value = getpass.getpass(prompt=f"Enter token for {catalog_platform}: ").strip()
     if not token_value:
         raise RuntimeError("Token cannot be empty")
@@ -1251,7 +1575,11 @@ def main() -> int:
     args = parse_arg()
     try:
         if args.command == "generate":
-            result = generate_artifacts(intake=Path(args.intake), output_root=Path(args.output_root))
+            result = generate_artifacts(
+                intake=Path(args.intake),
+                output_root=Path(args.output_root),
+                mcp_auth_overrides_path=getattr(args, "mcp_auth_overrides", ""),
+            )
         elif args.command == "collect-token":
             result = collect_token(connector=args.connector, output_root=Path(args.output_root), token_env_override=args.token_env)
         elif args.command == "mark-oauth-complete":

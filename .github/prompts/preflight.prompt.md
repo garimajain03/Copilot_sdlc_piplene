@@ -19,28 +19,29 @@ Run the **SDLC Preflight Agent** to prepare a customer's project for the SDLC Pi
 1. Validates `intake-sources.md` against the schema
 2. Treats `intake-sources.md` as read-only and MUST NOT modify the file; uses values as provided
 3. Reads integration mechanism per platform from `intake-sources.md` (MCP vs API-based Connector Skills) and MUST NOT ask again in chat unless a platform value is missing/ambiguous
-4. If PM system is `Other`, reads `PM/Requirements Name` and uses that exact connector name during preflight generation
-5. Generates connector artifacts in preflight (`.mcp.json`, connector inventory/config, connector skills, API connector bundles)
-6. Detects MCP auth mechanism (OAuth or token) and generates authentication instructions
-7. Securely collects API connector tokens, encrypts them, and stores encrypted env values
-8. Runs mandatory connector auth verification and blocks Phase 2 completion until authentication is ready
-9. Provides explicit API/MCP authentication instructions and pauses cleanly when auth is incomplete
-10. Resumes from Phase 2 after user completes token/OAuth steps and runs `/resume-pipeline`
-11. Asks for workspace structure and applies one mutually exclusive mode:
+4. If any platform is configured as MCP, asks MCP auth mode in Phase 2 (`token` or `oauth`) for PM, SCM, and Confluence as applicable
+5. If PM system is `Other`, reads `PM/Requirements Name` and uses that exact connector name during preflight generation
+6. Materializes connector artifacts in preflight (`.mcp.json`, connector inventory/config, connector skills, selected API and MCP connector bundles)
+7. Detects MCP auth mechanism (OAuth or token) and generates authentication instructions
+8. Securely collects API and MCP token connector values, encrypts them, and stores encrypted env values
+9. Runs mandatory connector auth verification and blocks Phase 2 completion until authentication is ready
+10. Provides explicit API/MCP authentication instructions and pauses cleanly when auth is incomplete
+11. Resumes from Phase 2 after user completes token/OAuth steps and runs `/resume-pipeline`
+12. Asks for workspace structure and applies one mutually exclusive mode:
   - Default: Agents Monorepo and Submodules
   - Custom: Agents and Repositories in Parallel Workspace
-11. Collects the customer's repository list
-12. Bootstraps workspace under `outputs/` via `onboarding-utilities/scripts/workspace-bootstrap.py`
-13. Smart-scans each repo for structure, dependencies, and patterns via `onboarding-utilities/scripts/repo-scanner.py`
-14. Incrementally maintains `index.md` with repository catalog and Service Catalogue
-15. Generates `outputs/agents-repo/.github/instructions/<repo>.instructions.md` per repo via `onboarding-utilities/scripts/instructions-generator.py`
-16. Generates `copilot-instructions.md` using scanned repository context, including per-repo files in each cloned repo at `<repo>/.github/copilot-instructions.md`
-17. Generates `setup.sh` (macOS/Linux) and `setup.ps1` (Windows) - both include prerequisite installation, workspace config, submodule init, and validation
-18. Renders setup scripts from `templates/setup_template.sh.hbs` and `templates/setup_template.ps1.hbs` (no minimal synthesized replacements), preserving observability install and config copy behavior
-19. Generates `.env.template` in `outputs/agents-repo`, writes `.env` and `.env.encrypted` at repository root, and generates `.gitmodules` (if default workspace)
-20. Runs the appropriate setup script to install all prerequisites
-21. Self-validates all outputs via `onboarding-utilities/scripts/outcome-inspector.py`
-22. Writes `preflight_report.md` with results and next steps
+13. Collects the customer's repository list
+14. Bootstraps workspace under `outputs/` via `onboarding-utilities/scripts/workspace-bootstrap.py`
+15. Smart-scans each repo for structure, dependencies, and patterns via `onboarding-utilities/scripts/repo-scanner.py`
+16. Incrementally maintains `index.md` with repository catalog and Service Catalogue
+17. Generates `outputs/agents-repo/.github/instructions/<repo>.instructions.md` per repo via `onboarding-utilities/scripts/instructions-generator.py`
+18. Generates `copilot-instructions.md` using scanned repository context, including per-repo files in each cloned repo at `<repo>/.github/copilot-instructions.md`
+19. Generates `setup.sh` (macOS/Linux) and `setup.ps1` (Windows) - both include prerequisite installation, workspace config, submodule init, and validation
+20. Renders setup scripts from `templates/setup_template.sh.hbs` and `templates/setup_template.ps1.hbs` (no minimal synthesized replacements), preserving observability install and config copy behavior
+21. Generates `.env.template` in `outputs/agents-repo`, writes `.env` and `.env.encrypted` at repository root, and generates `.gitmodules` (if default workspace)
+22. Runs the appropriate setup script to install all prerequisites
+23. Self-validates all outputs via `onboarding-utilities/scripts/outcome-inspector.py`
+24. Writes `preflight_report.md` with results and next steps
 
 ## Instructions
 
@@ -49,6 +50,7 @@ Read and follow the full agent instructions at `.github/agents/sdlc-preflight.ag
 **Output path rule (MANDATORY):**
 - Generate pipeline state only under root `.github/sdlc-pipeline/`.
 - Generate connector skills under both `outputs/agents-repo/.github/skills/` and root `.github/skills/`.
+- Reuse root reusable API and MCP connector bundles for Jira, Azure DevOps, GitLab, and GitHub when selected by PM/SCM.
 - Keep generated agents/hooks/instructions under `outputs/agents-repo/.github/...`.
 - Generate setup scripts only at `outputs/agents-repo/setup.sh` and `outputs/agents-repo/setup.ps1`.
 - Do NOT generate `setup.sh` or `setup.ps1` in any other path.
@@ -76,8 +78,17 @@ Read and follow the full agent instructions at `.github/agents/sdlc-preflight.ag
 **Fresh Start:** When running `/preflight`, always start fresh from Phase 1. Reset any existing checkpoint state first.
 
 **Connector Auth Gate (MANDATORY):**
+- If MCP is selected for PM/SCM/Confluence, capture auth choices and write `.github/sdlc-pipeline/mcp_auth_overrides.json` before connector generation.
+- Run connector generation with overrides:
+  - `python onboarding-utilities/scripts/connector-bootstrap.py generate --intake intake-sources.md --output-root outputs/agents-repo --mcp-auth-overrides .github/sdlc-pipeline/mcp_auth_overrides.json`
 - Run `python onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root outputs/agents-repo --allow-dotenv-fallback --fail-on-missing` during Phase 2.
 - If blocked, do not mark Phase 2 complete; show auth instructions (`api_auth_instructions.md` and/or `mcp_auth_instructions.md`) and pause with checkpoint.
+- If blocked, print explicit copy-paste commands grouped by auth type:
+  - API token missing: `python onboarding-utilities/scripts/connector-bootstrap.py collect-token --connector "<platform>" --output-root outputs/agents-repo`
+  - MCP token missing: `python onboarding-utilities/scripts/connector-bootstrap.py collect-token --connector "<platform>" --output-root outputs/agents-repo`
+  - MCP OAuth pending: first complete interactive OAuth login in MCP client/server, then run `python onboarding-utilities/scripts/connector-bootstrap.py mark-oauth-complete --connector "<platform>" --output-root outputs/agents-repo`
+  - Final verification: `python onboarding-utilities/scripts/connector-bootstrap.py verify-auth --output-root outputs/agents-repo --allow-dotenv-fallback --fail-on-missing`
+- Print command lines exactly as returned by `verify-auth` remediation command fields (no path shortening, no rewriting), and render them in fenced `bash` blocks for easy copy-paste.
 - On `/resume-pipeline`, re-run Phase 2 verification first, then continue to Phase 3 only when it returns unblocked.
 - If user has provided tokens in root `.env` (fallback) or root `.env.encrypted` (preferred), verification should recognize readiness.
 

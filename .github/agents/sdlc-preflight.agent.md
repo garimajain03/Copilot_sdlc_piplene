@@ -119,9 +119,10 @@ Next Steps
   - `.github/sdlc-pipeline/mcp_auth_instructions.md` / `api_auth_instructions.md` - Connector auth instructions
 
 2. Complete connector authentication:
-  - MCP OAuth connectors: finish OAuth flow and resume
-  - MCP token connectors: update token variables referenced in `.mcp.json`
-  - API connectors: run secure token collection to populate encrypted env values
+  - API token connectors: run `collect-token` per platform
+  - MCP token connectors: run the same `collect-token` per platform
+  - MCP OAuth connectors: run `mark-oauth-complete` per platform after finishing OAuth
+  - Re-run `verify-auth` and resume only when it reports `blocked: false`
 
 3. Run the Pipeline Generator:
    > `/generate-pipeline`
@@ -186,8 +187,8 @@ This repository supports two workspace layouts selected during Phase 3 and store
 8. **`outputs/agents-repo/index.md`** - Central repository catalog with Service Catalogue (incrementally maintained)
 9. **`.github/sdlc-pipeline/preflight_report.md`** - Validation results, warnings, and recommendations
 10. **`.github/sdlc-pipeline/onboarding_context.json`** - Normalized onboarding context extracted from intake answers (including `workspace_mode` and resolved repository paths)
-11. **`outputs/agents-repo/.github/skills/<skill>/SKILL.md`** and **`.github/skills/<skill>/SKILL.md`** - Connector skills generated during Preflight (API and MCP connector-aware)
-12. **`outputs/agents-repo/.github/skills/<api-skill>/{README.md,package.json,config.js,index.js,.gitignore}`** and mirrored root `.github/skills/<api-skill>/...` - Template-based API connector bundle (for API-selected platforms)
+11. **`outputs/agents-repo/.github/skills/<skill>/SKILL.md`** and **`.github/skills/<skill>/SKILL.md`** - Connector skills selected and materialized during Preflight (API and MCP connector-aware)
+12. **`outputs/agents-repo/.github/skills/<api-skill>/{README.md,package.json,config.js,index.js,.gitignore}`** and mirrored root `.github/skills/<api-skill>/...` - Reusable API connector bundle (for API-selected platforms)
 13. **`.github/sdlc-pipeline/mcp_auth_instructions.md`** - MCP authentication instructions (OAuth/token guidance)
 14. **`.github/sdlc-pipeline/api_auth_instructions.md`** - API token setup instructions and secure collection commands
 15. **Clarification questions** (if information is missing or unclear)
@@ -196,7 +197,7 @@ This repository supports two workspace layouts selected during Phase 3 and store
 > the **SDLC Preflight Agent** and treated as reusable onboarding artifacts. The Pipeline
 > Generator must reuse them and must not regenerate duplicates.
 >
-> Connector authentication is performed during onboarding using secure token collection
+> Connector authentication is performed during preflight using secure token collection
 > for API connectors and explicit MCP auth instructions for MCP connectors.
 
 ---
@@ -405,19 +406,35 @@ When a non-critical step fails, continue with reduced capability:
   - Never ask a platform connector question if that platform already has a resolved mode in `intake-sources.md`.
   - Ask only for platforms that are unresolved after parsing.
 
-9. **Generate connector artifacts immediately in Preflight** (connector mode is fully onboarding-driven):
+9. **Materialize connector artifacts immediately in Preflight** (connector mode from intake; MCP auth mode captured in Phase 2):
+
+   If any connector mode is `mcp`, ask auth mode (`token` or `oauth`) in Phase 2 for each applicable category and save:
+
+   - `.github/sdlc-pipeline/mcp_auth_overrides.json`
+
+   Example:
+
+   ```json
+   {
+     "pm": "oauth",
+     "scm": "token",
+     "confluence": "oauth"
+   }
+   ```
 
    ```bash
    python3 onboarding-utilities/scripts/connector-bootstrap.py generate \
      --intake intake-sources.md \
-     --output-root outputs/agents-repo
+     --output-root outputs/agents-repo \
+     --mcp-auth-overrides .github/sdlc-pipeline/mcp_auth_overrides.json
    ```
 
-   This MUST generate all required connector artifacts without waiting for `/generate-pipeline`:
+  This MUST produce all required connector artifacts without waiting for `/generate-pipeline`:
    - `.mcp.json` entries for MCP-selected platforms only
    - `connector_config.md` and `connector_inventory.json`
   - Connector skills in both `outputs/agents-repo/.github/skills/` and `.github/skills/` for API and MCP selections
-  - API connector bundles in `outputs/agents-repo/.github/skills/<api-skill>/` and `.github/skills/<api-skill>/` for API selections
+  - Reuse existing API and MCP connector bundles from `.github/skills/` for Jira, Azure DevOps, GitLab, and GitHub when selected by PM/SCM intake values
+  - Copy selected connector bundles into `outputs/agents-repo/.github/skills/<skill>/`
    - MCP/API auth instruction files in `.github/sdlc-pipeline/`
 
 10. **Handle MCP authentication requirements and pause when required:**
@@ -427,8 +444,16 @@ When a non-critical step fails, continue with reduced capability:
      - Present generated OAuth instructions from `mcp_auth_instructions.md`
      - Pause onboarding and ask the user to resume after completing OAuth
    - If token auth is required for any selected MCP connector:
-     - Present generated token update instructions from `mcp_auth_instructions.md`
-     - Pause onboarding and ask the user to resume after setting required token variables
+     - Present generated token guidance from `mcp_auth_instructions.md`
+     - Print per-platform token collection commands:
+
+     ```bash
+     python onboarding-utilities/scripts/connector-bootstrap.py collect-token \
+       --connector <platform> \
+       --output-root outputs/agents-repo
+     ```
+
+     - Pause onboarding and ask the user to resume after token collection completes
 
 11. **Handle API connector authentication with instructions-first pause/resume:**
 
@@ -471,12 +496,14 @@ When a non-critical step fails, continue with reduced capability:
 
    Enforcement rules:
    - If verification returns blocked, Phase 2 MUST NOT be marked completed.
-  - For API connectors with missing tokens, present `api_auth_instructions.md` and pause.
-  - When API tokens are missing, explicitly list each missing required token variable name from `api_missing_tokens[].required_env` in the Phase 2 response.
+  - For API connectors with missing tokens, present `api_auth_instructions.md`, print per-platform `collect-token` commands, and pause.
+  - For MCP token connectors with missing encrypted/fallback token variables, present `mcp_auth_instructions.md`, print per-platform `collect-token` commands, and pause.
+  - For MCP OAuth connectors, present `mcp_auth_instructions.md`, instruct the user to complete interactive OAuth login in MCP client/server first, then print per-platform `mark-oauth-complete` commands, and pause.
+  - When printing command checklists, use the exact command strings from `verify-auth` remediation (full paths preserved) and render each group in fenced `bash` blocks for copy-paste.
+  - When tokens are missing, explicitly list each missing required token variable name from verification output in the Phase 2 response.
    - If user asks to continue immediately, they may run `collect-token` manually and then `/resume-pipeline`.
    - If user has already added tokens to `.env` or `.env.encrypted`, `/resume-pipeline` must re-run verification and proceed when clear.
-   - For MCP OAuth connectors, present `mcp_auth_instructions.md`, save checkpoint with status `paused`, and ask the user to run `/resume-pipeline` after OAuth completion.
-   - For MCP token connectors with unresolved placeholders in `.mcp.json`, present `mcp_auth_instructions.md`, save checkpoint with status `paused`, and ask the user to run `/resume-pipeline` after setting tokens.
+  - Save checkpoint with status `paused` after any blocked auth result and include command checklist plus `/resume-pipeline` instruction.
    - Save checkpoint `last_data` with verification details (`api_missing_tokens`, `mcp_oauth_pending`, `mcp_token_pending`) before pausing.
    - Phase 2 may report completed only when `verify-auth` returns `blocked: false`.
 

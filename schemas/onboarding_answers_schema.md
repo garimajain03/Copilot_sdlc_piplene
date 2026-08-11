@@ -92,7 +92,7 @@
 | Field | Required | Purpose |
 |-------|----------|---------|
 | MCPs | No | Connector configuration |
-| Existing agents | No | Conflict avoidance |
+| Existing agents (Yes/No) | No | Indicates whether preflight must collect existing-agents repository location |
 | CMS | No | Content management skill |
 
 ### 9. Pipeline Configuration (Optional)
@@ -141,7 +141,7 @@ The generator MUST consume onboarding data from a normalized JSON root in additi
 | Personas + workflow details | `organisation.personas`, `workflow.*` | role-specific routing and workflow assumptions |
 | Confluence/docs/uploads/design refs | `sources.*` | connector and retrieval instructions |
 | Guardrails + PII + quality/security/risk | `constraints.*` | safety constraints and validation logic |
-| Existing agents and files | `ai_stack.existing_agents*` | reuse/deconflict decisions |
+| Existing agents flag | `ai_stack.existing_agents` | triggers preflight collection of existing-agents repo URL/path |
 | Business context, goals, complaints/pain points | `business_context.*` | prompt emphasis and requirements framing |
 | Workspace layout selection | `workspace.mode` | repository path resolution and generation target directory |
 

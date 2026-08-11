@@ -1,0 +1,10 @@
+{
+  "name": "mcp-github-connector",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "help": "node index.js --command=help",
+    "validate-mcp-config": "node index.js --command=validate-mcp-config"
+  }
+}
