@@ -5,7 +5,6 @@ repos/
 .github/sdlc-pipeline/
 .github/sdlc-pipeline-runtime/*
 .github/instructions/
-.github/skills/
 outputs/
 .sdlc-pipeline/
 .sdlc-preflight/
