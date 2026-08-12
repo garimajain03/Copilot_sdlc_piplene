@@ -130,6 +130,29 @@ PLATFORM_ALIASES: Dict[str, str] = {
 }
 
 
+UNSET_VALUE_MARKERS = {
+    "",
+    "(not provided)",
+    "_(not provided)_",
+    "not provided",
+    "(not specified)",
+    "_(not specified)_",
+    "not specified",
+    "n/a",
+    "na",
+}
+
+
+SKIP_VALUE_MARKERS = {
+    "skip",
+    "not configured",
+    "not_configured_skip",
+    "none",
+    "n/a",
+    "na",
+}
+
+
 def parse_arg() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate preflight connector artifacts and collect tokens securely")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -186,23 +209,47 @@ def _extract_line_value(text: str, label: str) -> str:
     return value
 
 
+def _normalize_scalar_value(value: str) -> str:
+    cleaned = str(value).strip()
+    if not cleaned:
+        return ""
+
+    lowered = cleaned.lower().strip()
+    if lowered in UNSET_VALUE_MARKERS:
+        return ""
+
+    # Allow markdown-style wrappers around placeholder values, such as _(... )_.
+    unwrapped = lowered.strip("_*").strip()
+    if unwrapped in UNSET_VALUE_MARKERS:
+        return ""
+
+    return cleaned
+
+
+def _is_skip_value(value: str) -> bool:
+    normalized = _normalize_scalar_value(value).lower()
+    if not normalized:
+        return False
+    return normalized in SKIP_VALUE_MARKERS
+
+
 def parse_intake_markdown(path: Path) -> Dict[str, str]:
     content = path.read_text(encoding="utf-8-sig")
     pm_name = _extract_line_value(content, "PM/Requirements Name")
     if not pm_name:
         pm_name = _extract_line_value(content, "PM/Requirement Name")
     values = {
-        "pm_system": _extract_line_value(content, "PM/Requirements System"),
-        "pm_name": pm_name,
-        "pm_url": _extract_line_value(content, "PM Tool URL"),
-        "pm_mode": _extract_line_value(content, "PM Integration Mode"),
-        "pm_mcp_auth_mode": _extract_line_value(content, "PM MCP Auth Mode"),
-        "scm_system": _extract_line_value(content, "SCM System"),
-        "scm_mode": _extract_line_value(content, "SCM Integration Mode"),
-        "scm_mcp_auth_mode": _extract_line_value(content, "SCM MCP Auth Mode"),
-        "confluence_url": _extract_line_value(content, "Confluence URL"),
-        "confluence_mode": _extract_line_value(content, "Confluence Integration Mode"),
-        "confluence_mcp_auth_mode": _extract_line_value(content, "Confluence MCP Auth Mode"),
+        "pm_system": _normalize_scalar_value(_extract_line_value(content, "PM/Requirements System")),
+        "pm_name": _normalize_scalar_value(pm_name),
+        "pm_url": _normalize_scalar_value(_extract_line_value(content, "PM Tool URL")),
+        "pm_mode": _normalize_scalar_value(_extract_line_value(content, "PM Integration Mode")),
+        "pm_mcp_auth_mode": _normalize_scalar_value(_extract_line_value(content, "PM MCP Auth Mode")),
+        "scm_system": _normalize_scalar_value(_extract_line_value(content, "SCM System")),
+        "scm_mode": _normalize_scalar_value(_extract_line_value(content, "SCM Integration Mode")),
+        "scm_mcp_auth_mode": _normalize_scalar_value(_extract_line_value(content, "SCM MCP Auth Mode")),
+        "confluence_url": _normalize_scalar_value(_extract_line_value(content, "Confluence URL")),
+        "confluence_mode": _normalize_scalar_value(_extract_line_value(content, "Confluence Integration Mode")),
+        "confluence_mcp_auth_mode": _normalize_scalar_value(_extract_line_value(content, "Confluence MCP Auth Mode")),
     }
     return values
 
@@ -353,18 +400,22 @@ def resolve_connectors(values: Dict[str, str], mcp_auth_overrides: Dict[str, str
         auth = _resolve_mcp_auth_mode(catalog_platform, pm_mcp_auth_mode) if pm_mode == "mcp" else "token"
         specs.append(ConnectorSpec(platform=pm_platform, category="pm", mode=pm_mode, auth=auth, endpoint=endpoint))
 
-    confluence_url = values.get("confluence_url", "").strip()
-    if confluence_url:
-        resolved_confluence_mode = _normalize_mode(values.get("confluence_mode", ""))
-        # Backward-compatible fallback for older intake files without explicit confluence mode.
-        confluence_mode = resolved_confluence_mode or (pm_mode if pm_platform == "jira" and pm_mode else "api")
-        confluence_mcp_auth_mode = (
-            mcp_auth_overrides.get("confluence")
-            or mcp_auth_overrides.get("knowledge")
-            or values.get("confluence_mcp_auth_mode", "")
-        )
-        auth = _resolve_mcp_auth_mode("confluence", confluence_mcp_auth_mode) if confluence_mode == "mcp" else "token"
-        specs.append(ConnectorSpec(platform="confluence", category="knowledge", mode=confluence_mode, auth=auth, endpoint=confluence_url))
+    confluence_url = _normalize_scalar_value(values.get("confluence_url", ""))
+    confluence_mode_raw = _normalize_scalar_value(values.get("confluence_mode", ""))
+    if not _is_skip_value(confluence_mode_raw):
+        resolved_confluence_mode = _normalize_mode(confluence_mode_raw)
+        confluence_selected = bool(confluence_url) or bool(resolved_confluence_mode)
+        if confluence_selected:
+            # Backward-compatible fallback for older intake files without explicit confluence mode.
+            confluence_mode = resolved_confluence_mode or (pm_mode if pm_platform == "jira" and pm_mode else "api")
+            confluence_endpoint = confluence_url or API_CATALOG.get("confluence", {}).get("default_endpoint", "")
+            confluence_mcp_auth_mode = (
+                mcp_auth_overrides.get("confluence")
+                or mcp_auth_overrides.get("knowledge")
+                or values.get("confluence_mcp_auth_mode", "")
+            )
+            auth = _resolve_mcp_auth_mode("confluence", confluence_mcp_auth_mode) if confluence_mode == "mcp" else "token"
+            specs.append(ConnectorSpec(platform="confluence", category="knowledge", mode=confluence_mode, auth=auth, endpoint=confluence_endpoint))
 
     scm_platform = _map_scm_platform(values.get("scm_system", ""))
     scm_mode = _normalize_mode(values.get("scm_mode", ""))
@@ -485,6 +536,52 @@ def _resolve_repo_root(output_root: Path) -> Path:
 
 def _resolve_pipeline_dir(output_root: Path) -> Path:
     return _resolve_repo_root(output_root) / ".github" / "sdlc-pipeline"
+
+
+def _load_onboarding_context_overrides(output_root: Path) -> Dict[str, str]:
+    context_path = _resolve_pipeline_dir(output_root) / "onboarding_context.json"
+    if not context_path.exists():
+        return {}
+
+    try:
+        payload = json.loads(context_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+    tooling = payload.get("tooling_integration_preferences", {})
+    sources = payload.get("sources", {})
+    clarifications = payload.get("clarifications", {})
+
+    mode_candidates = [
+        str(clarifications.get("confluence_integration_mode", "")).strip(),
+        str(tooling.get("confluence_integration_mode", "")).strip(),
+        str(sources.get("confluence_integration_mode", "")).strip(),
+    ]
+    url_candidates = [
+        str(tooling.get("confluence_url", "")).strip(),
+        str(sources.get("confluence_url", "")).strip(),
+    ]
+
+    mode = ""
+    for candidate in mode_candidates:
+        normalized = _normalize_scalar_value(candidate)
+        if normalized:
+            mode = normalized
+            break
+
+    url = ""
+    for candidate in url_candidates:
+        normalized = _normalize_scalar_value(candidate)
+        if normalized:
+            url = normalized
+            break
+
+    result: Dict[str, str] = {}
+    if mode:
+        result["confluence_mode"] = mode
+    if url:
+        result["confluence_url"] = url
+    return result
 
 
 def _has_nonempty_env_file(path: Path) -> bool:
@@ -1045,6 +1142,9 @@ def _build_verify_auth_remediation(
         "Re-run verify-auth after completing the commands.",
         "Resume preflight once verify-auth returns blocked: false.",
     ]
+    if api_missing_dotenv_tokens:
+        steps.append("Copy .env.template to .env and fill the missing token variables.")
+        steps.append("Re-run start <ISSUE_ID> after updating .env in agents-repo workspace mode.")
     if token_hints:
         steps.append(f"Missing variables: {', '.join(token_hints)}")
 
@@ -1108,6 +1208,16 @@ def _build_verify_auth_remediation(
 
 def generate_artifacts(intake: Path, output_root: Path, mcp_auth_overrides_path: str = "") -> Dict[str, object]:
     values = parse_intake_markdown(intake)
+    context_overrides = _load_onboarding_context_overrides(output_root)
+
+    intake_explicit_confluence = bool(_normalize_scalar_value(values.get("confluence_url", ""))) or bool(
+        _normalize_mode(_normalize_scalar_value(values.get("confluence_mode", "")))
+    )
+    if not intake_explicit_confluence:
+        if "confluence_mode" in context_overrides:
+            values["confluence_mode"] = context_overrides["confluence_mode"]
+        if "confluence_url" in context_overrides:
+            values["confluence_url"] = context_overrides["confluence_url"]
     mcp_auth_overrides = _load_mcp_auth_overrides(mcp_auth_overrides_path)
     connectors = resolve_connectors(values, mcp_auth_overrides=mcp_auth_overrides)
 

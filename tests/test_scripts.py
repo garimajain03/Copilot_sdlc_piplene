@@ -447,6 +447,19 @@ class TestConnectorBootstrap(unittest.TestCase):
         self.assertEqual(values["scm_system"], "gitlab")
         self.assertEqual(values["scm_mode"], "mcp")
 
+    def test_parse_intake_markdown_treats_not_provided_values_as_empty(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """## Knowledge Sources
+- Confluence URL: _(not provided)_
+- Confluence Integration Mode: _(not provided)_
+"""
+        )
+
+        values = mod.parse_intake_markdown(Path(self.intake_path))
+        self.assertEqual(values["confluence_url"], "")
+        self.assertEqual(values["confluence_mode"], "")
+
     def test_resolve_connectors_deduplicates(self):
         mod = self._load_connector_bootstrap()
         values = {
@@ -462,6 +475,40 @@ class TestConnectorBootstrap(unittest.TestCase):
         self.assertIn(("jira", "pm"), pairs)
         self.assertIn(("confluence", "knowledge"), pairs)
         self.assertIn(("github", "scm"), pairs)
+
+    def test_resolve_connectors_skips_confluence_when_mode_is_skip(self):
+        mod = self._load_connector_bootstrap()
+        values = {
+            "pm_system": "Jira",
+            "pm_url": "https://myorg.atlassian.net",
+            "pm_mode": "api",
+            "scm_system": "gitlab",
+            "scm_mode": "api",
+            "confluence_url": "",
+            "confluence_mode": "not_configured_skip",
+        }
+
+        specs = mod.resolve_connectors(values)
+        pairs = {(s.platform, s.category) for s in specs}
+        self.assertNotIn(("confluence", "knowledge"), pairs)
+        self.assertIn(("jira", "pm"), pairs)
+        self.assertIn(("gitlab", "scm"), pairs)
+
+    def test_resolve_connectors_includes_confluence_when_mode_selected_without_url(self):
+        mod = self._load_connector_bootstrap()
+        values = {
+            "pm_system": "Jira",
+            "pm_url": "https://myorg.atlassian.net",
+            "pm_mode": "api",
+            "scm_system": "gitlab",
+            "scm_mode": "api",
+            "confluence_url": "",
+            "confluence_mode": "api",
+        }
+
+        specs = mod.resolve_connectors(values)
+        pairs = {(s.platform, s.category) for s in specs}
+        self.assertIn(("confluence", "knowledge"), pairs)
 
     def test_verify_auth_normalizes_api_suffixed_platform_names(self):
         mod = self._load_connector_bootstrap()
@@ -543,6 +590,74 @@ class TestConnectorBootstrap(unittest.TestCase):
         missing = {item["required_env"] for item in result["api_missing_tokens"]}
         self.assertIn("JIRA_TOKEN_ENC", missing)
         self.assertIn("GITLAB_TOKEN_ENC", missing)
+
+    def test_generate_artifacts_uses_preflight_skip_for_confluence_when_intake_not_selected(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: api
+- SCM System: gitlab
+- SCM Integration Mode: api
+- Confluence URL: _(not provided)_
+- Confluence Integration Mode: _(not provided)_
+"""
+        )
+
+        pipeline_dir = Path(self.tmpdir) / ".github" / "sdlc-pipeline"
+        pipeline_dir.mkdir(parents=True, exist_ok=True)
+        (pipeline_dir / "onboarding_context.json").write_text(
+            json.dumps(
+                {
+                    "clarifications": {
+                        "confluence_integration_mode": "not_configured_skip"
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        result = mod.verify_auth(Path(self.output_root))
+
+        missing = {item["required_env"] for item in result["api_missing_tokens"]}
+        self.assertIn("JIRA_TOKEN_ENC", missing)
+        self.assertIn("GITLAB_TOKEN_ENC", missing)
+        self.assertNotIn("CONFLUENCE_TOKEN_ENC", missing)
+
+    def test_generate_artifacts_uses_preflight_selected_confluence_when_intake_not_selected(self):
+        mod = self._load_connector_bootstrap()
+        self._write_intake(
+            """# Client Intake
+- PM/Requirements System: Jira
+- PM Tool URL: https://myorg.atlassian.net
+- PM Integration Mode: api
+- SCM System: gitlab
+- SCM Integration Mode: api
+- Confluence URL: _(not provided)_
+- Confluence Integration Mode: _(not provided)_
+"""
+        )
+
+        pipeline_dir = Path(self.tmpdir) / ".github" / "sdlc-pipeline"
+        pipeline_dir.mkdir(parents=True, exist_ok=True)
+        (pipeline_dir / "onboarding_context.json").write_text(
+            json.dumps(
+                {
+                    "clarifications": {
+                        "confluence_integration_mode": "api"
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        mod.generate_artifacts(Path(self.intake_path), Path(self.output_root))
+        result = mod.verify_auth(Path(self.output_root))
+
+        missing = {item["required_env"] for item in result["api_missing_tokens"]}
+        self.assertIn("CONFLUENCE_TOKEN_ENC", missing)
 
     def test_verify_auth_passes_when_api_tokens_present(self):
         mod = self._load_connector_bootstrap()
