@@ -154,6 +154,129 @@ if (-not (Test-Path $prometheusPath)) {
     Write-Success "prometheus already installed"
 }
 
+# --- Setup Config Files ------------------------------------------------------
+
+$OtelConfig = Join-Path $ObsDir "otel-collector-config.yml"
+$PromDir = Join-Path $ObsDir "prometheus"
+$PromConfig = Join-Path $PromDir "prometheus.yml"
+
+if (-not (Test-Path $OtelConfig)) {
+        Write-Info "Creating default otel-collector-config.yml..."
+        @"
+###############################################################################
+# OpenTelemetry Collector Configuration - Portable Bundle
+#
+# Receives OTLP signals from VS Code Copilot Chat and routes them:
+#   - Metrics  -> Prometheus exporter (scraped by Prometheus)
+#   - Traces   -> Debug console (for troubleshooting)
+#   - Logs     -> Debug console (for troubleshooting)
+###############################################################################
+
+receivers:
+    otlp:
+        protocols:
+            grpc:
+                endpoint: 0.0.0.0:4317
+            http:
+                endpoint: 0.0.0.0:4318
+
+processors:
+    batch:
+        send_batch_size: 512
+        timeout: 5s
+
+    resourcedetection:
+        detectors: [env, system]
+        system:
+            hostname_sources: [os]
+        timeout: 5s
+        override: false
+
+    attributes/copilot:
+        actions:
+            - key: deployment.environment
+                value: local
+                action: upsert
+            - key: telemetry.source
+                value: copilot-chat
+                action: upsert
+
+    memory_limiter:
+        check_interval: 5s
+        limit_mib: 512
+        spike_limit_mib: 128
+
+exporters:
+    prometheus:
+        endpoint: 0.0.0.0:8889
+        namespace: copilot
+        resource_to_telemetry_conversion:
+            enabled: true
+
+    debug:
+        verbosity: basic
+        sampling_initial: 5
+        sampling_thereafter: 200
+
+extensions:
+    health_check:
+        endpoint: 0.0.0.0:13133
+
+service:
+    extensions: [health_check]
+
+    pipelines:
+        traces:
+            receivers: [otlp]
+            processors: [memory_limiter, resourcedetection, attributes/copilot, batch]
+            exporters: [debug]
+
+        metrics:
+            receivers: [otlp]
+            processors: [memory_limiter, resourcedetection, attributes/copilot, batch]
+            exporters: [prometheus, debug]
+
+        logs:
+            receivers: [otlp]
+            processors: [memory_limiter, resourcedetection, attributes/copilot, batch]
+            exporters: [debug]
+
+    telemetry:
+        logs:
+            level: info
+        metrics:
+            readers:
+                - pull:
+                        exporter:
+                            prometheus:
+                                host: "0.0.0.0"
+                                port: 8888
+"@ | Set-Content -Path $OtelConfig -Encoding utf8
+        Write-Success "Created otel-collector-config.yml"
+}
+
+New-Item -ItemType Directory -Force -Path $PromDir | Out-Null
+if (-not (Test-Path $PromConfig)) {
+        Write-Info "Creating default prometheus.yml..."
+        @"
+global:
+    scrape_interval: 15s
+    evaluation_interval: 15s
+
+scrape_configs:
+    - job_name: "otel-collector-copilot"
+        static_configs:
+            - targets: ["localhost:8889"]
+                labels:
+                    source: "copilot-chat"
+
+    - job_name: "otel-collector-internal"
+        static_configs:
+            - targets: ["localhost:8888"]
+"@ | Set-Content -Path $PromConfig -Encoding utf8
+        Write-Success "Created prometheus.yml"
+}
+
 # --- Verification ------------------------------------------------------------
 
 Write-Info "Verifying installation..."

@@ -21,6 +21,98 @@ SCRIPTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "onboardi
 sys.path.insert(0, SCRIPTS_DIR)
 
 
+class TestOtelHookCosting(unittest.TestCase):
+    """Tests for cached/non-cached telemetry cost calculation."""
+
+    @staticmethod
+    def _load_otel_hook_module():
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "otel_hook",
+            os.path.join(SCRIPTS_DIR, "otel-hook.py"),
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def setUp(self):
+        self.mod = self._load_otel_hook_module()
+        self.original_rates = dict(self.mod.MODEL_COST_RATES)
+
+    def tearDown(self):
+        self.mod.MODEL_COST_RATES = self.original_rates
+
+    def test_coerce_pricing_map_supports_extended_keys(self):
+        raw = {
+            "models": {
+                "gpt-5.3-codex": {
+                    "input_per_1m_tokens": 1.75,
+                    "cached_input_per_1m_tokens": 0.175,
+                    "output_per_1m_tokens": 0.35,
+                }
+            }
+        }
+        coerced = self.mod._coerce_pricing_map(raw, "unit-test")
+        self.assertIn("gpt-5.3-codex", coerced)
+        self.assertEqual(coerced["gpt-5.3-codex"]["input"], 1.75)
+        self.assertEqual(coerced["gpt-5.3-codex"]["cached_input"], 0.175)
+        self.assertEqual(coerced["gpt-5.3-codex"]["output"], 0.35)
+
+    def test_cost_uses_explicit_non_cached_tokens_without_subtraction(self):
+        self.mod.MODEL_COST_RATES = {
+            "test-model": {"input": 2.0, "cached_input": 0.5, "output": 3.0}
+        }
+        breakdown = self.mod.compute_cost_breakdown(
+            model="test-model",
+            input_tokens=1000,
+            cached_input_tokens=400,
+            non_cached_input_tokens=800,
+            output_tokens=200,
+        )
+        self.assertEqual(breakdown["non_cached_input_tokens"], 800)
+        self.assertEqual(breakdown["cached_input_tokens"], 400)
+
+        expected_non_cached = (800 / 1_000_000) * 2.0
+        expected_cached = (400 / 1_000_000) * 0.5
+        expected_output = (200 / 1_000_000) * 3.0
+        expected_total = expected_non_cached + expected_cached + expected_output
+
+        self.assertAlmostEqual(breakdown["non_cached_input_cost"], expected_non_cached, places=12)
+        self.assertAlmostEqual(breakdown["cached_input_cost"], expected_cached, places=12)
+        self.assertAlmostEqual(breakdown["output_cost"], expected_output, places=12)
+        self.assertAlmostEqual(breakdown["total_cost"], expected_total, places=12)
+
+    def test_cost_subtracts_cached_tokens_when_non_cached_not_explicit(self):
+        self.mod.MODEL_COST_RATES = {
+            "test-model": {"input": 2.0, "cached_input": 0.5, "output": 3.0}
+        }
+        breakdown = self.mod.compute_cost_breakdown(
+            model="test-model",
+            input_tokens=1000,
+            cached_input_tokens=400,
+            non_cached_input_tokens=0,
+            output_tokens=0,
+        )
+        self.assertEqual(breakdown["non_cached_input_tokens"], 600)
+        self.assertEqual(breakdown["cached_input_tokens"], 400)
+
+    def test_non_zero_usage_and_positive_rate_do_not_round_to_zero(self):
+        self.mod.MODEL_COST_RATES = {
+            "test-model": {"input": 0.15, "cached_input": 0.05, "output": 0.6}
+        }
+        breakdown = self.mod.compute_cost_breakdown(
+            model="test-model",
+            input_tokens=1,
+            cached_input_tokens=0,
+            non_cached_input_tokens=0,
+            output_tokens=1,
+        )
+        self.assertGreater(breakdown["input_cost"], 0)
+        self.assertGreater(breakdown["output_cost"], 0)
+        self.assertGreater(breakdown["total_cost"], 0)
+
+
 # =============================================================================
 # checkpoint-manager.py tests
 # =============================================================================

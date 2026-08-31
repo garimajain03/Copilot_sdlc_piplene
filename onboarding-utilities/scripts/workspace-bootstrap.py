@@ -143,12 +143,60 @@ def ensure_observability_pricing(agents_repo_dir: Path) -> bool:
     if source_file is None:
         return False
 
-    target_dir = agents_repo_dir / "observability"
-    target_dir.mkdir(parents=True, exist_ok=True)
-    target_file = target_dir / "model-pricing.json"
-    if not target_file.exists():
-        shutil.copy2(source_file, target_file)
+    copied_any = False
+    # Canonical runtime location for generated hooks.
+    canonical_target = agents_repo_dir / ".github" / "observability" / "model-pricing.json"
+    canonical_target.parent.mkdir(parents=True, exist_ok=True)
+    if not canonical_target.exists():
+        shutil.copy2(source_file, canonical_target)
+        copied_any = True
+
+    # Backward-compatible location used by older templates/contracts.
+    legacy_target = agents_repo_dir / "observability" / "model-pricing.json"
+    legacy_target.parent.mkdir(parents=True, exist_ok=True)
+    if not legacy_target.exists():
+        shutil.copy2(source_file, legacy_target)
+        copied_any = True
+
+    return copied_any
+
+
+def ensure_vscode_otel_settings(target_root: Path) -> bool:
+    """Ensure the target workspace root has VS Code Copilot OTel exporter settings."""
+    vscode_dir = target_root / ".vscode"
+    settings_path = vscode_dir / "settings.json"
+    vscode_dir.mkdir(parents=True, exist_ok=True)
+
+    otel_settings = {
+        "github.copilot.chat.otel.enabled": True,
+        "github.copilot.chat.otel.otlpEndpoint": "http://localhost:4318",
+        "github.copilot.chat.otel.exporterType": "otlp-http",
+        "github.copilot.chat.otel.dbSpanExporter.enabled": True,
+        "github.copilot.chat.otel.captureContent": False,
+    }
+
+    existing: Dict[str, object] = {}
+    if settings_path.exists():
+        try:
+            with open(settings_path, "r", encoding="utf-8") as f:
+                parsed = json.load(f)
+                if isinstance(parsed, dict):
+                    existing = parsed
+        except (OSError, json.JSONDecodeError):
+            existing = {}
+
+    changed = False
+    for key, value in otel_settings.items():
+        if existing.get(key) != value:
+            existing[key] = value
+            changed = True
+
+    if not settings_path.exists() or changed:
+        with open(settings_path, "w", encoding="utf-8") as f:
+            json.dump(existing, f, indent=2)
+            f.write("\n")
         return True
+
     return False
 
 
@@ -219,6 +267,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Bootstrap SDLC workspace layouts")
     parser.add_argument("--workspace-mode", required=True, choices=["default", "custom"])
     parser.add_argument("--output-root", default="outputs")
+    parser.add_argument(
+        "--workspace-root",
+        default="",
+        help="Optional workspace root to configure VS Code OTel settings; defaults to current working directory",
+    )
     parser.add_argument("--agents-repo-url", default="")
     parser.add_argument("--agents-repo-branch", default="main")
     parser.add_argument("--app-repos", required=True, help="JSON list of repo URLs or repo names")
@@ -250,6 +303,7 @@ def main() -> int:
         agents_repo_dir = output_root / "agents-repo"
         app_repos_dir = output_root / "app-repos"
         default_submodule_dir = agents_repo_dir / "repos"
+        active_workspace_root = Path(args.workspace_root).expanduser() if args.workspace_root.strip() else Path.cwd()
 
         output_root.mkdir(parents=True, exist_ok=True)
         agents_repo_status = clone_agents_repo_if_requested(
@@ -258,6 +312,9 @@ def main() -> int:
             branch=args.agents_repo_branch,
         )
         pricing_copied = ensure_observability_pricing(agents_repo_dir)
+        active_workspace_otel_updated = ensure_vscode_otel_settings(active_workspace_root)
+        generated_repo_otel_updated = ensure_vscode_otel_settings(agents_repo_dir)
+        reload_required = active_workspace_otel_updated
 
         if args.workspace_mode == "default":
             clone_results = add_submodules(
@@ -290,6 +347,10 @@ def main() -> int:
             "status": "ok",
             "agents_repo_status": agents_repo_status,
             "observability_pricing": "copied" if pricing_copied else "existing_or_unavailable",
+            "vscode_otel_settings": "updated" if generated_repo_otel_updated else "existing",
+            "vscode_otel_settings_active_workspace": "updated" if active_workspace_otel_updated else "existing",
+            "vscode_otel_settings_generated_repo": "updated" if generated_repo_otel_updated else "existing",
+            "reload_required": reload_required,
             "layout": layout,
             "repositories": clone_results,
         }

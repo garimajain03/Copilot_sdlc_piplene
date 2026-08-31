@@ -139,31 +139,80 @@ receivers:
   otlp:
     protocols:
       grpc:
-        endpoint: "localhost:4317"
+        endpoint: 0.0.0.0:4317
       http:
-        endpoint: "localhost:4318"
+        endpoint: 0.0.0.0:4318
 
 processors:
   batch:
+    send_batch_size: 512
     timeout: 5s
-    send_batch_size: 1024
+
+  resourcedetection:
+    detectors: [env, system]
+    system:
+      hostname_sources: [os]
+    timeout: 5s
+    override: false
+
+  attributes/copilot:
+    actions:
+      - key: deployment.environment
+        value: local
+        action: upsert
+      - key: telemetry.source
+        value: copilot-chat
+        action: upsert
+
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: 512
+    spike_limit_mib: 128
 
 exporters:
   prometheus:
-    endpoint: "localhost:8889"
-    namespace: "copilot"
+    endpoint: 0.0.0.0:8889
+    namespace: copilot
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  debug:
+    verbosity: basic
+    sampling_initial: 5
+    sampling_thereafter: 200
 
 extensions:
   health_check:
-    endpoint: "localhost:13133"
+    endpoint: 0.0.0.0:13133
 
 service:
   extensions: [health_check]
   pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, attributes/copilot, batch]
+      exporters: [debug]
+
     metrics:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [prometheus]
+      processors: [memory_limiter, resourcedetection, attributes/copilot, batch]
+      exporters: [prometheus, debug]
+
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, attributes/copilot, batch]
+      exporters: [debug]
+
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: "0.0.0.0"
+                port: 8888
 OTELCFG
     success "Created otel-collector-config.yml"
   fi
@@ -178,10 +227,15 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'otel-collector'
+  - job_name: "otel-collector-copilot"
     static_configs:
-      - targets: ['localhost:8889']
-    scrape_interval: 5s
+      - targets: ["localhost:8889"]
+        labels:
+          source: "copilot-chat"
+
+  - job_name: "otel-collector-internal"
+    static_configs:
+      - targets: ["localhost:8888"]
 PROMCFG
     success "Created prometheus.yml"
   fi

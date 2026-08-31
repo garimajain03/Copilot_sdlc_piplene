@@ -633,23 +633,19 @@ When a non-critical generation step fails, continue with reduced output:
     - Include customer's guardrails
     - **Include full telemetry hooks configuration** (hook IDs, events, blocking, script paths)
     - **Orchestrator frontmatter (MANDATORY shape):**
-      - Include exactly these top-level YAML keys: `name`, `description`, `tools`, `agents`, `model`, `hooks`.
+      - Include exactly these top-level YAML keys: `name`, `description`, `tools`, `agents`, `model`.
       - `name` must be `Agentic Flow Orchestrator`.
       - `tools` must include: `agent`, `read`, `search`, `execute`, `edit`, `todo`, `vscode/askQuestions`.
       - `agents` must include all configured worker/utility agents (for example Agentic Flow 0-6, CI/CD Analyzer, Orchestrator Debug Logs Analyst, PR Review Fixer) without duplicates.
       - `model` must be `GPT-5.3-Codex`.
-      - `hooks` must include the full set below without duplication:
-        - `SessionStart`: `python .github/hooks/observability-hook.py` (timeout 30), `python .github/hooks/otel-hook.py` (timeout 15)
-        - `PreToolUse`: `python .github/hooks/otel-hook.py` (timeout 15)
-        - `PostToolUse`: `python .github/hooks/otel-hook.py` (timeout 30)
-        - `Stop`: `python .github/hooks/otel-hook.py` (timeout 15), `python .github/hooks/observability-hook.py` (timeout 30)
-      - Each hook command entry in frontmatter must include `type`, `command`, and `timeout`.
-      - Orchestrator frontmatter must not contain duplicate hook events or duplicate command entries.
+      - Do NOT emit lifecycle telemetry hooks in orchestrator frontmatter when `.github/hooks/hooks.json` is generated.
+      - `.github/hooks/hooks.json` is the single authoritative runtime registration for `SessionStart`, `PreToolUse`, `PostToolUse`, and `Stop`.
+      - This avoids duplicate OTel/observability executions for one tool event.
     - **Define orchestrator inputs and outputs clearly** with validation rules (from contract)
     - **Add input validation** (ticket reference format, index.md exists, pipeline config exists)
     - **Add output validation** (pipeline_log.md written, telemetry_report.md written)
-    - Include hooks in YAML frontmatter
-    - Reference hooks.json for full hook configuration
+    - Use `.github/hooks/hooks.json` as the canonical hook runtime wiring.
+    - Do not duplicate orchestrator lifecycle hooks in YAML frontmatter.
     - **Telemetry ownership rule:** Keep telemetry collection orchestrator-owned. Do not place `otel_telemetry` on non-orchestrator agents.
     - **Pipeline preflight integration (MANDATORY):**
       - Generate `.github/scripts/pipeline-preflight.py` (written under `outputs/agents-repo/.github/scripts/pipeline-preflight.py`).
@@ -765,7 +761,20 @@ When a non-critical generation step fails, continue with reduced output:
     - `otel-hook.py` MUST write reports to dynamic `outputs/<FEATURE_ID>/telemetry_report.md` and `outputs/<FEATURE_ID>/cost_report.md` (resolved from payload/checkpoint/latest output dir fallback).
     - `otel-hook.py` MUST NOT contain hardcoded feature folder names (for example `EPMINAI-2413`).
     - If pricing file is not found, `otel-hook.py` must still emit telemetry with zero-cost fallback and continue non-blocking.
-    - **Model pricing:** The `otel_telemetry` hook MUST load pricing from `observability/model-pricing.json` - NEVER hardcode prices in the script. Use the pricing file resolution order from the contract (env var -> file path -> URL -> default file).
+    - **Model pricing:** The `otel_telemetry` hook MUST load pricing from `.github/observability/model-pricing.json` (legacy fallback: `observability/model-pricing.json`) - NEVER hardcode prices in the script. Use the pricing file resolution order from the contract (env var -> file path -> URL -> default file).
+    - **VS Code OTel export config:** Generated repos MUST include `.vscode/settings.json` with:
+      - `github.copilot.chat.otel.enabled: true`
+      - `github.copilot.chat.otel.otlpEndpoint: "http://localhost:4318"`
+      - `github.copilot.chat.otel.exporterType: "otlp-http"`
+      - `github.copilot.chat.otel.captureContent: false`
+    - **Collector config parity:** Generated `.github/observability/otel-collector-config.yml` MUST match the bundle reference configuration shape:
+      - OTLP receiver with both gRPC `:4317` and HTTP `:4318`
+      - Prometheus exporter on `:8889` with `resource_to_telemetry_conversion.enabled: true`
+      - Collector internal telemetry exposed on `:8888`
+      - Metrics, traces, and logs pipelines defined
+    - **Prometheus config parity:** Generated `.github/observability/prometheus/prometheus.yml` MUST include both scrape jobs:
+      - `localhost:8889` for Copilot metrics exporter
+      - `localhost:8888` for collector internal metrics
     - **Cost output:** Write cost estimates to a separate `cost_report.md` file (in addition to `telemetry_report.md`).
     - **Cost visibility:** The hook MUST print a one-line cost summary to stdout after each agent completes (so cost appears in the chat/output):
       `[TELEMETRY] Agent: <name> | Model: <model> | Tokens: <total> | Cost: $<amount> | Time: <seconds>s`
@@ -781,7 +790,7 @@ When a non-critical generation step fails, continue with reduced output:
     **`otel-hook.py` MUST use this pricing access pattern:**
     ```python
     WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
-    PRICING_FILE = WORKSPACE_ROOT / "observability" / "model-pricing.json"
+    PRICING_FILE = WORKSPACE_ROOT / ".github" / "observability" / "model-pricing.json"
 
     def load_pricing() -> dict:
         pricing_path = os.environ.get("MODEL_PRICING_FILE", str(PRICING_FILE))
@@ -1078,8 +1087,8 @@ hooks:
 ```
 
 **Hook ownership rules (MANDATORY):**
-- Only include `hooks:` when at least one hook applies to that generated file.
-- The Orchestrator includes `SessionStart`, `Stop`, `PreToolUse`, and `PostToolUse` with telemetry + observability responsibilities per contracts.
+- `.github/hooks/hooks.json` is the sole authoritative runtime registration for orchestrator lifecycle telemetry hooks.
+- The Orchestrator frontmatter MUST NOT duplicate lifecycle telemetry hook registrations when `hooks.json` is present.
 - Non-orchestrator agents MUST NOT include orchestrator-only telemetry hooks.
 
 **Hooks frontmatter format rules:**
@@ -1095,7 +1104,7 @@ hooks:
   - `otel_telemetry` -> `PreToolUse`, `PostToolUse`, `SessionStart`, `Stop` (**Orchestrator ONLY**)
   - `session_learnings` -> `Stop` (optional for non-orchestrator agents only)
 - **Non-orchestrator agents** get only role-appropriate non-orchestrator hooks (for example guard/lint/session learning) and MUST NOT include orchestrator telemetry hooks
-- **Orchestrator** gets: `observability` under SessionStart/Stop; `otel_telemetry` under PreToolUse/PostToolUse (for subagent tracking) and SessionStart/Stop
+- **Orchestrator runtime wiring**: configure lifecycle telemetry hooks in `.github/hooks/hooks.json` only.
 - **Orchestrator MUST NOT use `session_learnings` as a replacement for telemetry stop hooks.**
 
 The `hooks` field MUST NOT use the old simple ID list format (e.g., `- guard_destructive`). Always use the structured `PreToolUse`/`PostToolUse`/`SessionStart`/`Stop` format with `type: command`.
