@@ -466,22 +466,14 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
         if agent_file == "orchestrator.md":
             if "agents:" not in fm:
                 inspector.error("frontmatter", "Orchestrator missing 'agents' list in frontmatter", agent_file)
-            required_hook_events = ["SessionStart:", "PreToolUse:", "PostToolUse:", "Stop:"]
-            for ev in required_hook_events:
-                if ev not in fm:
-                    inspector.error("frontmatter", f"Orchestrator missing hook event: {ev.rstrip(':')}", agent_file)
-            if fm.count("SessionStart:") > 1 or fm.count("PreToolUse:") > 1 or fm.count("PostToolUse:") > 1 or fm.count("Stop:") > 1:
-                inspector.error("frontmatter", "Orchestrator has duplicate hook event blocks", agent_file)
-            if "otel-hook.py" not in fm:
-                inspector.error("frontmatter", "Orchestrator frontmatter must include otel-hook.py", agent_file)
-            if "observability-hook.py" not in fm:
-                inspector.error("frontmatter", "Orchestrator frontmatter must include observability-hook.py", agent_file)
+            # Runtime lifecycle telemetry hooks are owned by .github/hooks/hooks.json.
+            # Frontmatter must not duplicate orchestrator telemetry registrations.
+            if "otel-hook.py" in fm:
+                inspector.error("frontmatter", "Orchestrator frontmatter must not duplicate otel-hook.py; use hooks.json runtime wiring", agent_file)
+            if "observability-hook.py" in fm:
+                inspector.error("frontmatter", "Orchestrator frontmatter must not duplicate observability-hook.py; use hooks.json runtime wiring", agent_file)
             if "session-learnings.py" in fm:
                 inspector.error("frontmatter", "Orchestrator must not use session-learnings.py in frontmatter hooks", agent_file)
-            command_entries = len(re.findall(r"-\s+type:\s+command", fm))
-            timeout_entries = len(re.findall(r"\n\s*timeout:\s*\d+", fm))
-            if command_entries > 0 and timeout_entries < command_entries:
-                inspector.error("frontmatter", "Orchestrator hook entries must include timeout for every command", agent_file)
             if "PR.md" not in content:
                 inspector.error("consistency", "Orchestrator must include PR.md output artifact", agent_file)
             if "pr_creation_report.md" not in content:
@@ -709,12 +701,109 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
                     )
 
                 # Generated repo should include pricing file so telemetry cost works standalone.
-                pricing_path = os.path.join(output_dir, "observability", "model-pricing.json")
-                if not os.path.exists(pricing_path):
+                canonical_pricing_path = os.path.join(output_dir, ".github", "observability", "model-pricing.json")
+                legacy_pricing_path = os.path.join(output_dir, "observability", "model-pricing.json")
+                if not os.path.exists(canonical_pricing_path) and not os.path.exists(legacy_pricing_path):
                     inspector.error(
                         "completeness",
-                        "Missing observability/model-pricing.json in generated repo; telemetry cost report will not work in standalone agents-repo",
-                        "observability/model-pricing.json",
+                        "Missing model-pricing.json in generated repo (.github/observability/model-pricing.json); telemetry cost report will not work in standalone agents-repo",
+                        ".github/observability/model-pricing.json",
+                    )
+
+                # Generated repo must enable Copilot OTel export in workspace settings.
+                vscode_settings_path = os.path.join(output_dir, ".vscode", "settings.json")
+                if not os.path.exists(vscode_settings_path):
+                    inspector.error(
+                        "completeness",
+                        "Missing .vscode/settings.json; Copilot OTel export is not configured for generated repo",
+                        ".vscode/settings.json",
+                    )
+                else:
+                    try:
+                        with open(vscode_settings_path, "r", encoding="utf-8") as sf:
+                            vscode_settings = json.load(sf)
+                        required_settings = {
+                            "github.copilot.chat.otel.enabled": True,
+                            "github.copilot.chat.otel.otlpEndpoint": "http://localhost:4318",
+                            "github.copilot.chat.otel.exporterType": "otlp-http",
+                        }
+                        for skey, sval in required_settings.items():
+                            if vscode_settings.get(skey) != sval:
+                                inspector.error(
+                                    "completeness",
+                                    f".vscode/settings.json missing required OTEL setting: {skey}={sval}",
+                                    ".vscode/settings.json",
+                                )
+                    except (OSError, json.JSONDecodeError):
+                        inspector.error(
+                            "quality",
+                            ".vscode/settings.json is not valid JSON",
+                            ".vscode/settings.json",
+                        )
+
+            collector_cfg_path = os.path.join(output_dir, ".github", "observability", "otel-collector-config.yml")
+            if not os.path.exists(collector_cfg_path):
+                inspector.error(
+                    "completeness",
+                    "Missing collector config: .github/observability/otel-collector-config.yml",
+                    ".github/observability/otel-collector-config.yml",
+                )
+            else:
+                try:
+                    with open(collector_cfg_path, "r", encoding="utf-8") as cf:
+                        collector_content = cf.read()
+                    required_collector_tokens = [
+                        "resource_to_telemetry_conversion:",
+                        "enabled: true",
+                        "endpoint: 0.0.0.0:8889",
+                        "port: 8888",
+                        "traces:",
+                        "metrics:",
+                        "logs:",
+                    ]
+                    for token in required_collector_tokens:
+                        if token not in collector_content:
+                            inspector.error(
+                                "consistency",
+                                f"Collector config missing telemetry parity token: {token}",
+                                ".github/observability/otel-collector-config.yml",
+                            )
+                except OSError:
+                    inspector.error(
+                        "quality",
+                        "Unable to read collector config",
+                        ".github/observability/otel-collector-config.yml",
+                    )
+
+            prom_cfg_path = os.path.join(output_dir, ".github", "observability", "prometheus", "prometheus.yml")
+            if not os.path.exists(prom_cfg_path):
+                inspector.error(
+                    "completeness",
+                    "Missing Prometheus config: .github/observability/prometheus/prometheus.yml",
+                    ".github/observability/prometheus/prometheus.yml",
+                )
+            else:
+                try:
+                    with open(prom_cfg_path, "r", encoding="utf-8") as pf:
+                        prom_content = pf.read()
+                    required_prom_tokens = [
+                        "otel-collector-copilot",
+                        "localhost:8889",
+                        "otel-collector-internal",
+                        "localhost:8888",
+                    ]
+                    for token in required_prom_tokens:
+                        if token not in prom_content:
+                            inspector.error(
+                                "consistency",
+                                f"Prometheus config missing telemetry parity token: {token}",
+                                ".github/observability/prometheus/prometheus.yml",
+                            )
+                except OSError:
+                    inspector.error(
+                        "quality",
+                        "Unable to read Prometheus config",
+                        ".github/observability/prometheus/prometheus.yml",
                     )
 
             # Detect duplicate hook files present on disk with both naming families.
@@ -754,6 +843,28 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
             runtime_outputs_root = Path(output_dir) / "outputs"
             if runtime_outputs_root.is_dir():
                 session_to_features: dict[str, set[str]] = {}
+
+                def _to_float(value) -> float:
+                    try:
+                        return float(value)
+                    except (TypeError, ValueError):
+                        return 0.0
+
+                def _resolve_rate(rate_map: dict, model_name: str) -> dict:
+                    if not isinstance(rate_map, dict):
+                        return {}
+                    candidates = [
+                        str(model_name or "").strip(),
+                        str(model_name or "").strip().lower(),
+                        str(model_name or "").strip().lower().replace("_", "-"),
+                        "default",
+                    ]
+                    for key in candidates:
+                        rates = rate_map.get(key)
+                        if isinstance(rates, dict):
+                            return rates
+                    return {}
+
                 for telemetry_json in runtime_outputs_root.glob("*/*_telemetry_report.json"):
                     try:
                         with open(telemetry_json, "r", encoding="utf-8") as tf:
@@ -764,6 +875,101 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
                     feature_id = str(report.get("feature_id", telemetry_json.parent.name)).strip()
                     if session_id and feature_id:
                         session_to_features.setdefault(session_id, set()).add(feature_id)
+
+                    pricing_map = report.get("cost_rates", {}) if isinstance(report, dict) else {}
+                    agents = report.get("agents", []) if isinstance(report, dict) else []
+                    for agent in agents if isinstance(agents, list) else []:
+                        model_tokens = agent.get("tokens_by_model", {}) if isinstance(agent, dict) else {}
+                        model_costs = agent.get("cost_by_model", {}) if isinstance(agent, dict) else {}
+                        for model_name, tok in model_tokens.items():
+                            if not isinstance(tok, dict):
+                                continue
+
+                            input_tokens = _to_float(tok.get("input", 0))
+                            cached_tokens = _to_float(tok.get("cached_input", 0))
+                            explicit_non_cached_tokens = _to_float(tok.get("non_cached_input", 0))
+                            output_tokens = _to_float(tok.get("output", 0))
+
+                            if explicit_non_cached_tokens > 0:
+                                non_cached_tokens = explicit_non_cached_tokens
+                            elif input_tokens >= cached_tokens:
+                                non_cached_tokens = input_tokens - cached_tokens
+                            else:
+                                non_cached_tokens = input_tokens
+                                cached_tokens = 0.0
+
+                            rates = _resolve_rate(pricing_map, str(model_name))
+                            input_rate = _to_float(rates.get("input", rates.get("input_per_1m_tokens", 0)))
+                            cached_rate = _to_float(
+                                rates.get(
+                                    "cached_input",
+                                    rates.get("cached_input_per_1m_tokens", input_rate),
+                                )
+                            )
+                            output_rate = _to_float(rates.get("output", rates.get("output_per_1m_tokens", 0)))
+
+                            expected_non_cached_cost = (non_cached_tokens / 1_000_000) * input_rate
+                            expected_cached_cost = (cached_tokens / 1_000_000) * cached_rate
+                            expected_output_cost = (output_tokens / 1_000_000) * output_rate
+                            expected_total_cost = expected_non_cached_cost + expected_cached_cost + expected_output_cost
+
+                            actual = model_costs.get(model_name, {}) if isinstance(model_costs, dict) else {}
+                            actual_non_cached_cost = _to_float(actual.get("non_cached_input_cost", 0))
+                            actual_cached_cost = _to_float(actual.get("cached_input_cost", 0))
+                            actual_output_cost = _to_float(actual.get("output_cost", 0))
+                            actual_total_cost = _to_float(actual.get("total_cost", 0))
+
+                            if rates and (input_tokens > 0 or output_tokens > 0):
+                                if input_rate > 0 and non_cached_tokens > 0 and actual_non_cached_cost == 0:
+                                    inspector.error(
+                                        "consistency",
+                                        "Telemetry cost validation failed: non-cached input cost is zero despite non-zero usage and pricing",
+                                        str(telemetry_json.relative_to(Path(output_dir))),
+                                    )
+                                if cached_rate > 0 and cached_tokens > 0 and actual_cached_cost == 0:
+                                    inspector.error(
+                                        "consistency",
+                                        "Telemetry cost validation failed: cached input cost is zero despite non-zero usage and pricing",
+                                        str(telemetry_json.relative_to(Path(output_dir))),
+                                    )
+                                if output_rate > 0 and output_tokens > 0 and actual_output_cost == 0:
+                                    inspector.error(
+                                        "consistency",
+                                        "Telemetry cost validation failed: output cost is zero despite non-zero usage and pricing",
+                                        str(telemetry_json.relative_to(Path(output_dir))),
+                                    )
+                                if expected_total_cost > 0 and actual_total_cost == 0:
+                                    inspector.error(
+                                        "consistency",
+                                        "Telemetry cost validation failed: total cost is zero despite non-zero usage and pricing",
+                                        str(telemetry_json.relative_to(Path(output_dir))),
+                                    )
+
+                            tolerance = 1e-8
+                            if abs(actual_non_cached_cost - expected_non_cached_cost) > tolerance:
+                                inspector.error(
+                                    "consistency",
+                                    "Telemetry non-cached input cost does not match pricing formula",
+                                    str(telemetry_json.relative_to(Path(output_dir))),
+                                )
+                            if abs(actual_cached_cost - expected_cached_cost) > tolerance:
+                                inspector.error(
+                                    "consistency",
+                                    "Telemetry cached input cost does not match pricing formula",
+                                    str(telemetry_json.relative_to(Path(output_dir))),
+                                )
+                            if abs(actual_output_cost - expected_output_cost) > tolerance:
+                                inspector.error(
+                                    "consistency",
+                                    "Telemetry output cost does not match pricing formula",
+                                    str(telemetry_json.relative_to(Path(output_dir))),
+                                )
+                            if abs(actual_total_cost - expected_total_cost) > tolerance:
+                                inspector.error(
+                                    "consistency",
+                                    "Telemetry total cost does not match pricing formula",
+                                    str(telemetry_json.relative_to(Path(output_dir))),
+                                )
 
                 mixed = {sid: feats for sid, feats in session_to_features.items() if len(feats) > 1}
                 if mixed:

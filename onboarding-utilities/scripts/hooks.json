@@ -1,5 +1,17 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/observability-hook.py",
+        "timeout": 15
+      },
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/otel-hook.py",
+        "timeout": 15
+      }
+    ],
     "UserPromptSubmit": [
       {
         "type": "command",
@@ -17,9 +29,19 @@
         "type": "command",
         "command": "python3 .github/hooks/guard-env-files.py",
         "timeout": 10
+      },
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/otel-hook.py",
+        "timeout": 20
       }
     ],
     "PostToolUse": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/otel-hook.py",
+        "timeout": 20
+      },
       {
         "type": "command",
         "command": "python3 .github/hooks/eslint-on-save.py",
@@ -27,6 +49,16 @@
       }
     ],
     "Stop": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/otel-hook.py",
+        "timeout": 20
+      },
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/observability-hook.py",
+        "timeout": 15
+      },
       {
         "type": "command",
         "command": "python3 .github/hooks/session-learnings-check.py",

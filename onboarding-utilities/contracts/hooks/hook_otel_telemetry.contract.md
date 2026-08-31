@@ -80,13 +80,13 @@ Cost estimates MUST be written to a separate file: `<output_folder>/cost_report.
 ### Pricing Source Priority
 
 1. **Environment variable** `OTEL_MODEL_PRICING_JSON` - inline JSON
-2. **File** `OTEL_MODEL_PRICING_FILE` - path to pricing JSON file (default: `observability/model-pricing.json`)
+2. **File** `OTEL_MODEL_PRICING_FILE` - path to pricing JSON file (default: `.github/observability/model-pricing.json`)
 3. **URL** `OTEL_MODEL_PRICING_URL` - remote pricing endpoint
-4. **Defaults** - load from `observability/model-pricing.json` (bundled with this repo)
+4. **Defaults** - load from `.github/observability/model-pricing.json` (bundled with generated repos)
 
 ### Pricing File Location
 
-The pricing config lives at `observability/model-pricing.json`. To update:
+The pricing config lives at `.github/observability/model-pricing.json` (legacy fallback: `observability/model-pricing.json`). To update:
 ```bash
 python3 scripts/update-latest-model-pricing.py
 ```
