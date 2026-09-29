@@ -176,7 +176,7 @@ Where hooks should fire, including full hook configuration:
 |-------|------|----------|
 | `contract_id` | String | Yes |
 | `skill_name` | String | Yes |
-| `category` | Enum | Yes - `ticket_management`, `scm`, `design`, `testing`, `observability` |
+| `category` | Enum | Yes - `ticket_management`, `scm`, `design`, `testing`, `observability`, `infrastructure`, `policy`, `cost` |
 | `version` | SemVer | Yes |
 
 Sections: Role, Capabilities (abstract), Commands (generic), Input/Output, Customization Points.

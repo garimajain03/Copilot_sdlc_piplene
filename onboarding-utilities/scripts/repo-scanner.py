@@ -845,6 +845,60 @@ def detect_patterns(repo_path: str, pkg_info: dict) -> list[dict[str, str]]:
     return patterns
 
 
+def detect_iac(repo_path: str) -> dict[str, Any]:
+    """Detect Infrastructure as Code tools and cloud provider in repository."""
+    infra_info = {
+        "has_iac": False,
+        "tool": "none",
+        "provider": "AWS",  # Default to AWS
+        "posture": "greenfield",
+        "details": [],
+    }
+
+    tf_found = False
+    for root, dirs, files in os.walk(repo_path):
+        dirs[:] = [d for d in dirs if not should_ignore_dir(d)]
+        for f in files:
+            ext = Path(f).suffix.lower()
+            if ext in (".tf", ".tfvars", ".hcl"):
+                tf_found = True
+                rel_p = os.path.relpath(os.path.join(root, f), repo_path)
+                if len(infra_info["details"]) < 10:
+                    infra_info["details"].append(rel_p)
+
+    if tf_found:
+        infra_info["has_iac"] = True
+        infra_info["tool"] = "Terraform"
+        infra_info["posture"] = "brownfield"
+
+    if os.path.exists(os.path.join(repo_path, "cdk.json")) or os.path.exists(os.path.join(repo_path, "cdk.out")):
+        infra_info["has_iac"] = True
+        infra_info["tool"] = "CDK"
+        infra_info["posture"] = "brownfield"
+        infra_info["details"].append("cdk.json")
+
+    if os.path.exists(os.path.join(repo_path, "Pulumi.yaml")):
+        infra_info["has_iac"] = True
+        infra_info["tool"] = "Pulumi"
+        infra_info["posture"] = "brownfield"
+        infra_info["details"].append("Pulumi.yaml")
+
+    bicep_files = [f for f in os.listdir(repo_path) if f.endswith(".bicep")] if os.path.isdir(repo_path) else []
+    if bicep_files:
+        infra_info["has_iac"] = True
+        infra_info["tool"] = "Bicep"
+        infra_info["provider"] = "Azure"
+        infra_info["posture"] = "brownfield"
+        infra_info["details"].extend(bicep_files)
+
+    if not infra_info["has_iac"]:
+        infra_info["has_iac"] = False
+        infra_info["tool"] = "none"
+        infra_info["posture"] = "greenfield"
+
+    return infra_info
+
+
 def scan_repo(repo_path: str, max_depth: int = 6) -> dict[str, Any]:
     """Full repository scan producing structured analysis."""
     repo_name = os.path.basename(os.path.abspath(repo_path))
@@ -887,6 +941,7 @@ def scan_repo(repo_path: str, max_depth: int = 6) -> dict[str, Any]:
         result["dotnet"] = parse_dotnet_project(repo_path)
         result["go"] = parse_go_module(repo_path)
         result["rust"] = parse_rust_cargo(repo_path)
+        result["infra"] = detect_iac(repo_path)
         result["patterns"] = detect_patterns(repo_path, result["package_info"])
         result["ambiguous_items"] = result["structure"].pop("ambiguous_items", [])
     except Exception as e:

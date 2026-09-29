@@ -12,6 +12,17 @@ BLOCK_PATTERNS = [
     r"\bgit\s+reset\s+--hard\b",
     r"\bDROP\s+DATABASE\b",
     r"\bDROP\s+TABLE\b",
+    r"\bterraform\s+(apply|destroy)\b",
+    r"\btofu\s+(apply|destroy)\b",
+    r"\bpulumi\s+(up|destroy)\b",
+    r"\bcdk\s+(deploy|destroy)\b",
+    r"\baws\s+cloudformation\s+delete-stack\b",
+    r"\baws\s+s3\s+rb\b",
+    r"\baz\s+deployment\s+.*create\b",
+    r"\baz\s+group\s+delete\b",
+    r"\bgcloud\s+deployment-manager\s+.*delete\b",
+    r"\bkubectl\s+delete\b",
+    r"\bhelm\s+uninstall\b",
 ]
 
 ALLOW_PATTERNS = [

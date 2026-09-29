@@ -54,6 +54,18 @@ _Generated: 29 May 2026_
 | TypeScript strictness | `tsconfig.json` - `strict`, `paths`, `baseUrl` |
 | Pre-commit hooks | `.husky/`, `.lefthook.yml`, `lint-staged` in `package.json` |
 | Build tool | `vite.config.*`, `webpack.config.*`, `next.config.*` |
+| Infrastructure & IaC | `.tf`, `.bicep`, `cdk.json`, `Dockerfile`, `Chart.yaml`, `serverless.yml` |
+
+---
+
+## Infrastructure
+- **Include IaC Agent:** true
+- **Posture:** brownfield
+- **Cloud Provider:** AWS
+- **IaC Tool:** Terraform
+- **CI/CD Platform:** GitHub Actions
+- **Secret Store:** AWS Secrets Manager
+- **Environments:** dev, staging, prod
 
 ---
 

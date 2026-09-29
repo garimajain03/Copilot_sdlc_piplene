@@ -349,7 +349,8 @@ When a non-critical step fails, continue with reduced capability:
   - `tooling_integration_preferences`
   - `project_constraints`
   - `behavioral_guardrails`
-  - Prefer explicit values from `intake-sources.md` (including fields captured by `client-onboarding-wizard-new.html`).
+  - `infrastructure`: `include_iac_agent`, `posture`, `cloud_provider` (default `AWS`), `iac_tool` (default `Terraform`), `cicd_platform`, `secret_store`, `environments`
+  - Prefer explicit values from `intake-sources.md` (including fields captured by `client-onboarding-wizard.html`).
   - If a field is missing, store an empty string or empty list and mark it for clarification.
 7. **Ask clarification questions** for any REQUIRED field that is missing or ambiguous:
    - Use `vscode/askQuestions` to collect answers

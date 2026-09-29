@@ -33,7 +33,11 @@ Performs adversarial analysis of the implementation. Thinks like an attacker, sk
 | `problem_spec.md` | Agent 1 | Yes | Assumptions to challenge |
 | `design_spec.md` | Agent 2 | Yes | Architecture to stress-test |
 | `verification_report.md` | Agent 4 | Yes | Known issues and coverage |
-| `implementation_manifest.md` | Agent 3b | Yes | What was built |
+| `implementation_manifest.md` | Agent 3b | Conditional | What was built (required on code route; `iac_manifest.md` used on infra route) |
+| `iac_manifest.md` | Agent 8 | Conditional | What infrastructure was built (required on infra route; substitutes for `implementation_manifest.md`) |
+| `blast_radius_assessment.md` | Agent 8 / 8b | Conditional | Impact analysis for infra route |
+| `rollback_plan.md` | Agent 8 / 8b | Conditional | Reversion steps for infra route |
+| `cost_impact.md` | Agent 8 / 8b | No | Estimated cloud cost delta for infra route |
 | Source repository code | Repository | Yes | Implementation to analyze |
 | Custom client context | Client | No | `agent5_critic_custom_client_context.md` - risk tolerances, compliance |
 
@@ -70,11 +74,12 @@ Performs adversarial analysis of the implementation. Thinks like an attacker, sk
 - **Reasoning:** The most dangerous risks are the ones nobody thought about
 - **Output:** Blind spot analysis
 
-### Step 5: Stress Test Scenarios
+### Step 5: Stress Test Scenarios & IaC Impact Analysis
 - **Condition:** Always
 - **Action:** Design: load tests, chaos scenarios, dependency failure simulations, data anomaly scenarios. What breaks first? What's the blast radius?
-- **Reasoning:** Understanding behavior under stress informs monitoring and scaling
-- **Output:** Stress test recommendations
+  - On Infrastructure/DevOps route: consume `blast_radius_assessment.md`, `rollback_plan.md`, and `cost_impact.md` (if present) rather than re-deriving. Weigh blast radius rating (Isolated / Scoped / Service-Wide / Platform-Wide), rollback complexity (Automatic / Manual-Simple / Manual-Complex / Irreversible), and cost delta.
+- **Reasoning:** Understanding behavior under stress and infra impact informs monitoring, scaling, and human approval gates
+- **Output:** Stress test recommendations and infra impact evaluation
 
 ### Step 6: Ship Recommendation
 - **Condition:** After all analysis
@@ -83,6 +88,7 @@ Performs adversarial analysis of the implementation. Thinks like an attacker, sk
   - `ship_with_monitoring` - Medium risks mitigated with monitoring
   - `fix_first` - High risks need addressing before ship
   - `redesign` - Fundamental architectural issues
+  - **IaC Gate Rule:** An `Irreversible` rollback rating, `Platform-Wide` blast radius, or severe unbudgeted cost surge forces a `fix_first` or `redesign` recommendation requiring explicit human approval override.
 - **Reasoning:** Clear, actionable recommendation enables go/no-go decision
 - **Output:** `risk_assessment.md`
 
@@ -111,7 +117,11 @@ Performs adversarial analysis of the implementation. Thinks like an attacker, sk
 | `problem_spec.md` | Read | Assumptions to challenge |
 | `design_spec.md` | Read | Architecture to stress-test |
 | `verification_report.md` | Read | Known issues |
-| `implementation_manifest.md` | Read | What was built |
+| `implementation_manifest.md` | Read | What was built (code route) |
+| `iac_manifest.md` | Read | What infrastructure was built (infra route) |
+| `blast_radius_assessment.md` | Read | Infra blast radius analysis |
+| `rollback_plan.md` | Read | Infra rollback plan |
+| `cost_impact.md` | Read | Infra cloud cost impact |
 | Source repository code | Read only | Analysis target |
 | `risk_assessment.md` | Write | Primary output |
 | Source repository code | No Write | Critic doesn't fix |

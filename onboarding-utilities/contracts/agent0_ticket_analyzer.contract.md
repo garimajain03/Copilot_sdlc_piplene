@@ -7,7 +7,7 @@
 | pipeline_position | 0 |
 | version | 1.0.0 |
 | model_tier | reasoning |
-| argument_hint | Ticket ID or requirement file path (e.g., "ILO-123" or "requirements/feature.md") |
+| argument_hint | Ticket ID or requirement file path (e.g., "ILO-123" or "requirements/feature.md"), or a short inline free-form request (e.g., "create a Lambda for order-notifications") |
 
 ## Role
 
@@ -29,7 +29,7 @@ Fetches ticket/requirement context from the customer's project management system
 
 | Artifact | Source | Required | Description |
 |----------|--------|----------|-------------|
-| Ticket ID or requirement file | User / Orchestrator | Yes | The ticket reference (e.g., PROJECT-1234) or path to a requirements document |
+| Ticket ID or requirement file | User / Orchestrator | Yes | The ticket reference (e.g., PROJECT-1234), a path to a requirements document, or `raw_request.md` containing an inline free-form request with no formal ticket/user story |
 | Repository index | Repository | Yes | Routing table mapping repos to domains/keywords |
 | Custom client context | Client | No | `agent0_ticket_analyzer_custom_client_context.md` - additional classification rules, domain mappings |
 
@@ -49,6 +49,12 @@ Fetches ticket/requirement context from the customer's project management system
 - **Action:** Parse ticket ID; create output folder `outputs/<TICKET_ID>/`
 - **Reasoning:** Establish working directory and ticket identity before any retrieval
 - **Output:** Ticket ID, output folder path
+
+### Step 1a: Handle Inline Free-Form Request (No Ticket)
+- **Condition:** Input does not match a ticket ID pattern and is not an existing requirement file (e.g. a short imperative ask like "create a Lambda for order-notifications" or "provision all infra for the payments service")
+- **Action:** Treat the raw text itself as the ticket description; skip PM connector retrieval entirely (Stages 1-3 do not apply - there is no ticket to fetch). Generate a synthetic feature ID/output folder from a slug of the request text and timestamp. Do not ask the user to reformat the request as a ticket or user story.
+- **Reasoning:** Terse infra asks ("create a lambda", "stand up infra for X") are valid pipeline inputs on their own; requiring a formal ticket would block legitimate low-ceremony requests
+- **Output:** Synthetic feature ID, output folder path, raw request text treated as ticket description
 
 ### Step 2: Stage 1 - Core Ticket Retrieval
 - **Condition:** Always (default stage)
@@ -77,9 +83,11 @@ Fetches ticket/requirement context from the customer's project management system
 ### Step 6: Classification
 - **Condition:** After all retrieval stages complete
 - **Action:** Classify ticket on two dimensions:
-  - **Implementation Type:** New Feature, Bug Fix, Incident Fix, Tech Debt, Config Change, Enhancement
+  - **Implementation Type:** New Feature, Bug Fix, Incident Fix, Tech Debt, Config Change, Enhancement, Infrastructure/DevOps (Infrastructure/DevOps is available when IaC is enabled via `include_iac_agent: true`; otherwise infra tickets classify under Config Change or Tech Debt)
   - **Complexity:** Low, Medium, High, Critical
   - Include confidence rating and reasoning for each
+  - Signal detection for `Infrastructure/DevOps`: infra-tagged file paths in repo index, keywords such as `terraform`, `cloudformation`, `cdk`, `pipeline`, `deploy`, `cluster`, `IAM`, `VPC`, `S3`, `EC2`, `AWS`, `migration`, `infrastructure`, `helm`, `kubernetes`
+  - **Terse infra request handling:** A short imperative request naming a resource type (e.g. "create a lambda", "provision all necessary infra for this service") is sufficient on its own to classify as `Infrastructure/DevOps`; do not downgrade confidence purely for brevity - flag it instead as `scope: minimal-spec, self-resolve from repo conventions` so Agent 1 knows to derive the rest from existing IaC patterns rather than demanding a full user story
 - **Reasoning:** Classification drives pipeline routing - which agents run, which are skipped
 - **Output:** Classification table with breakdown factors
 
@@ -106,6 +114,7 @@ Fetches ticket/requirement context from the customer's project management system
 | Condition | Action | Reasoning |
 |-----------|--------|-----------|
 | Ticket has no attachments | Skip Stage 3 | No artifacts to download |
+| Input is inline free-form text (no ticket ID, no PM connector call possible) | Skip Stages 1-3 entirely; classify directly from the provided text | Nothing to fetch from a PM system that doesn't exist for this input |
 | Ticket references design tool URLs | Flag for Design Connector enrichment | UI tasks need design context |
 | Ticket is Bug Fix + Low complexity | Recommend skipping Agent 2a, 3a, 5 | Lightweight fixes don't need full design review |
 | Ticket references existing PRs | Offer to retrieve PR context | Prior implementation attempts inform analysis |
