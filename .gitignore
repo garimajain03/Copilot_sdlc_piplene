@@ -6,9 +6,13 @@ repos/
 .github/sdlc-pipeline-runtime/*
 .github/instructions/
 outputs/
+outputs*.zip
 .sdlc-pipeline/
 .sdlc-preflight/
 __pycache__/
 .pytest_cache/
 *.pyc
 .env.encrypted
+.vscode/settings.json
+intake-sources.md
+.vscode/settings.json

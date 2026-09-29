@@ -32,15 +32,15 @@ Ticket/Requirement
     ┌────┴────────────┐
     │ Ticket Type?     │
     └────┬────────┬────┘
-    Code │        │ IaC/DevOps
+    Code │        │ Infrastructure/DevOps
          ▼        ▼
 ┌──────────────┐  ┌──────────────────┐
 │  Agent 3a    │  │  Agent 8         │
 │  Scaffolder  │  │  IaC/DevOps      │
 └────────┬─────┘  │  Specialist      │
          │        └────────┬─────────┘
-         │ scaffold_       │ iac_manifest.md
-         │ manifest.md     │
+         │ scaffold_       │ iac_manifest.md, iac_plan_output.md
+         │ manifest.md     │ blast_radius_assessment.md, rollback_plan.md
          ▼                 │
 ┌──────────────────┐       │
 │  Agent 3b        │       │
@@ -110,17 +110,21 @@ Ticket/Requirement
 | `SC-SCM` | SCM Connector | [skills/skill_scm_connector.contract.md](skills/skill_scm_connector.contract.md) | Source control operations (GitHub, GitLab, Bitbucket, etc.) |
 | `SC-DESIGN` | Design Connector | [skills/skill_design_connector.contract.md](skills/skill_design_connector.contract.md) | Design tool integration (Figma, Sketch, etc.) |
 | `SC-TEST` | Testing Skill | [skills/skill_testing.contract.md](skills/skill_testing.contract.md) | Test framework conventions & execution |
+| `SC-IAC-POLICY` | IaC Policy | [skills/skill_iac_policy.contract.md](skills/skill_iac_policy.contract.md) | Pluggable policy-as-code governance (Checkov, OPA, AWS SCP) |
+| `SC-IAC-COST` | IaC Cost | [skills/skill_iac_cost.contract.md](skills/skill_iac_cost.contract.md) | Cloud infrastructure cost delta estimation |
+| `SC-IAC-TEST` | IaC Testing | [skills/skill_iac_testing.contract.md](skills/skill_iac_testing.contract.md) | IaC module unit and contract testing |
 
 ## Hook Contracts
 
 | Contract ID | Hook | File | Purpose |
-|-------------|------|------|---------|
+|-------------|-------|------|---------|
 | `HC-GUARD-CMD` | Guard Destructive | [hooks/hook_guard_destructive.contract.md](hooks/hook_guard_destructive.contract.md) | Block irreversible terminal commands |
 | `HC-GUARD-SEC` | Guard Secrets | [hooks/hook_guard_secrets.contract.md](hooks/hook_guard_secrets.contract.md) | Prevent secret/credential exposure |
 | `HC-LINT` | Lint on Save | [hooks/hook_lint_on_save.contract.md](hooks/hook_lint_on_save.contract.md) | Auto-fix code style on file writes |
 | `HC-OBSERVABILITY` | Observability Lifecycle | [hooks/hook_observability.contract.md](hooks/hook_observability.contract.md) | Manage OTel Collector + Prometheus processes |
 | `HC-OTEL-TELEMETRY` | OTel Telemetry | [hooks/hook_otel_telemetry.contract.md](hooks/hook_otel_telemetry.contract.md) | Per-agent metrics, token tracking, cost estimation |
 | `HC-LEARN` | Session Learnings | [hooks/hook_session_learnings.contract.md](hooks/hook_session_learnings.contract.md) | Extract and store session learnings |
+| `HC-DRIFT` | Infrastructure Drift | [hooks/hook_iac_drift.contract.md](hooks/hook_iac_drift.contract.md) | Infrastructure plan-vs-live-state drift monitoring |
 
 ## Artifact Flow
 
@@ -147,6 +151,9 @@ Ticket/Requirement
 | `blast_radius_assessment.md` | Agent 8 | Critic, Human | Markdown (impact analysis) |
 | `rollback_plan.md` | Agent 8 | Human, Orchestrator | Markdown (revert steps) |
 | `iac_plan_output.md` | Agent 8 | Verifier, Human | Markdown (plan/preview output) |
+| `policy_report.md` | Agent 8 | Verifier, Critic, Human | Markdown (policy-as-code governance report) |
+| `cost_impact.md` | Agent 8 | Critic, Human | Markdown (estimated cloud cost delta) |
+| `drift_report.md` | HC-DRIFT | Agent 8, Human | Markdown (infrastructure drift monitoring report) |
 | `checkpoint.md` | All agents | All agents | Markdown (pipeline state tracking) |
 | `telemetry_report.md` | HC-OTEL-TELEMETRY | Orchestrator, Human | Markdown (per-agent time, tokens, cost) |
 | `cost_report.md` | HC-OTEL-TELEMETRY | Orchestrator, Human | Markdown (per-model and total estimated cost) |

@@ -7,7 +7,7 @@
 | pipeline_position | coordinator |
 | version | 1.0.0 |
 | model_tier | reasoning |
-| argument_hint | Ticket ID, requirement file path, or 'resume' to continue from checkpoint |
+| argument_hint | Ticket ID, requirement file path, inline free-form request (e.g. "create a Lambda for order-notifications" or "provision all infra for the payments service"), or 'resume' to continue from checkpoint |
 
 ## Role
 
@@ -30,7 +30,7 @@ Coordinates the full SDLC pipeline. Accepts tickets or requirements, delegates t
 
 | Artifact | Source | Required | Description |
 |----------|--------|----------|-------------|
-| Ticket ID or requirement file | User | Yes | Entry point for pipeline |
+| Ticket ID or requirement file | User | Yes | Entry point for pipeline. May be a ticket ID, a path to a requirement file, or a short inline free-form request typed directly (no formal ticket/user story required) |
 | `intake-sources.md` | Setup | No | Client configuration (read once at start) |
 | Custom client context | Client | No | `orchestrator_custom_client_context.md` - routing rules, model overrides |
 | `.github/scripts/pipeline-preflight.py` | Generator | Yes | Pre-run preflight script that validates connector readiness and remote freshness |
@@ -40,7 +40,7 @@ Coordinates the full SDLC pipeline. Accepts tickets or requirements, delegates t
 
 ### Input Validation
 
-1. **Ticket ID or requirement file** - Must be non-empty; if ticket ID, must match ticket prefix regex from onboarding
+1. **Ticket ID or requirement file** - Must be non-empty; if ticket ID, must match ticket prefix regex from onboarding. If the input matches neither a ticket ID pattern nor an existing file path, treat it as an inline free-form request: it must be non-empty text describing what to do (e.g. a one-line infra ask) - never require it to be a structured user story
 2. **`intake-sources.md`** - If present, validate against onboarding schema (Organisation, LLM Models, Constraints sections required)
 3. **Custom client context** - If present, validate structure (expected sections: routing rules, model overrides)
 4. **`.github/scripts/pipeline-preflight.py`** - Must exist and be executable via `python`; script must complete successfully before pipeline execution can continue
@@ -61,6 +61,7 @@ If validation fails for an optional input, **log a warning** and proceed without
 | `pr_creation_report.md` | Human | Markdown | SCM PR/MR creation result, URL, and fallback actions if creation fails |
 | `telemetry_report.md` | Human | Markdown | Per-agent time, tokens, cost |
 | `cost_report.md` | Human | Markdown | Cost-focused summary with per-model and total estimated spend |
+| `resource_cost_report.md` | Human | Markdown | Pre-IaC cloud resource cost estimate and approval gate artifact |
 | `checkpoint.md` | Self (resume) | Markdown | Pipeline state for resume/re-run |
 | `pipeline_log.md` | Human | Markdown | Full execution log with decisions |
 
@@ -77,9 +78,9 @@ After pipeline completion, validate:
 
 ### Step 1: Initialize Pipeline
 - **Condition:** User provides ticket ID or requirement file
-- **Action:** Run `.github/scripts/pipeline-preflight.py` before any other step. The preflight run must verify connector readiness and latest remote code state (Agents Repo remote fetch status), then set feature_id, create output folder, initialize checkpoint.md, and load custom client context if exists
+- **Action:** Run `.github/scripts/pipeline-preflight.py` before any other step. The preflight run must verify connector readiness and latest remote code state (Agents Repo remote fetch status), then set feature_id, create output folder, initialize checkpoint.md, and load custom client context if exists. If the input is neither a ticket ID nor an existing file path, treat it as an inline free-form request: write the raw text verbatim to `raw_request.md` in the output folder and continue the pipeline using that file in place of a requirement file - do not ask the user to reformat it as a ticket or user story.
 - **Reasoning:** Establish working context before any agent runs
-- **Output:** Output folder, initial checkpoint
+- **Output:** Output folder, initial checkpoint (+ `raw_request.md` when the entry point is inline text)
 
 ### Step 2: Run Ticket Analyzer (Agent 0)
 - **Condition:** Input is a ticket ID
@@ -88,10 +89,22 @@ After pipeline completion, validate:
 - **Output:** `ticket_analysis.md`
 
 ### Step 3: Run Problem Decomposer (Agent 1)
-- **Condition:** After Agent 0 (or directly if raw requirement file)
-- **Action:** Invoke Agent 1 with: ticket_analysis (if available), requirement file, output folder
+- **Condition:** After Agent 0 (or directly if raw requirement file / inline free-form request)
+- **Action:** Invoke Agent 1 with: ticket_analysis (if available), requirement file or `raw_request.md`, output folder
 - **Reasoning:** Structured requirements needed for all downstream agents
 - **Output:** `problem_spec.md` or `clarification_questions.md`
+
+### Step 3a: Produce Resource Cost Estimate (Pre-IaC Gate)
+- **Condition:** Ticket classified as Infrastructure/DevOps change
+- **Action:** Produce `resource_cost_report.md` under `outputs/<FEATURE_ID>/` with first-pass monthly estimates for AWS, Azure, and cross-cloud egress, including assumptions and non-zero recurring line items.
+- **Reasoning:** Cost and blast radius must be visible before infrastructure generation.
+- **Output:** `resource_cost_report.md` with `status: ready_for_approval`
+
+### Step 3b: Human Approval of Resource Cost Report
+- **Condition:** `resource_cost_report.md` exists for infra/devops route
+- **Action:** Require explicit approval and record it in the same file (`status: approved` and `approval: approved` or `decision: approved`) before any IaC file generation or Terraform CLI usage.
+- **Reasoning:** Enforces cost-aware sequencing and prevents unapproved spend risk.
+- **Output:** Approved `resource_cost_report.md`
 
 ### Step 4: Clarification Loop
 - **Condition:** Agent 1 produced `clarification_questions.md` instead of/alongside `problem_spec.md`
@@ -116,47 +129,53 @@ After pipeline completion, validate:
 - **Output:** Updated `design_spec.md`
 
 ### Step 8: Run Scaffolder (Agent 3a)
-- **Condition:** `design_spec.md` approved
+- **Condition:** `design_spec.md` approved AND ticket is application code route
 - **Action:** Invoke Agent 3a with: design_spec, codebase location
 - **Output:** `scaffold_manifest.md`
 
 ### Step 9: Run Builder (Agent 3b)
-- **Condition:** `scaffold_manifest.md` exists
+- **Condition:** `scaffold_manifest.md` exists AND application code route
 - **Action:** Invoke Agent 3b with: scaffold_manifest, design_spec, problem_spec, codebase location
 - **Output:** Implementation code, `implementation_manifest.md`
 
-### Step 10: Run Tester (Agent 6)
-- **Condition:** `implementation_manifest.md` exists
+### Step 10: Run IaC/DevOps Specialist (Agent 8)
+- **Condition:** `design_spec.md` approved AND ticket classified as Infrastructure/DevOps change AND `resource_cost_report.md` approved
+- **Action:** Invoke Agent 8 (8a Author, 8b Validator) with: problem_spec, design_spec, ticket_analysis
+- **Reasoning:** Runs after design approval and before Verifier on the IaC route (substitutes for 3a/3b)
+- **Output:** `iac_manifest.md`, `blast_radius_assessment.md`, `rollback_plan.md`, `iac_plan_output.md`, `policy_report.md`, `cost_impact.md`, `iac_change_and_cost_report.md`
+
+### Step 11: Run Tester (Agent 6)
+- **Condition:** `implementation_manifest.md` exists AND application code route (skipped on IaC route)
 - **Action:** Invoke Agent 6 with: problem_spec, design_spec, implementation_manifest, codebase location
 - **Output:** Test files, `test_report.md`
 
-### Step 11: Run Verifier (Agent 4)
-- **Condition:** After Builder and Tester
-- **Action:** Invoke Agent 4 with: problem_spec, design_spec, implementation_manifest, test_report, codebase location
+### Step 12: Run Verifier (Agent 4)
+- **Condition:** After Builder/Tester (code route) OR after IaC Specialist (infra route)
+- **Action:** Invoke Agent 4 with: problem_spec, design_spec, `implementation_manifest.md` (or `iac_manifest.md` + `iac_plan_output.md`), test_report (if available), codebase location
 - **Output:** `verification_report.md`, optionally `fix_request.md`
 
-### Step 12: Fix Loop
+### Step 13: Fix Loop
 - **Condition:** Agent 4 produced `fix_request.md` (Critical/High issues)
-- **Action:** Invoke Agent 3c (Fixer) with fix_request. Re-invoke Agent 4. Max 3 iterations
+- **Action:** On code route: invoke Agent 3c (Fixer). On infra route: invoke Agent 8c (IaC Fixer). Re-invoke Agent 4. Max 3 iterations
 - **Reasoning:** Fix -> verify cycle until clean or max attempts
-- **Output:** Fixed code, `fix_manifest.md`
+- **Output:** Fixed code/IaC, `fix_manifest.md`
 
-### Step 13: Run Critic (Agent 5)
+### Step 14: Run Critic (Agent 5)
 - **Condition:** Verification passed (no Critical/High) AND ticket complexity ≥ Medium
-- **Action:** Invoke Agent 5 with: all specs, verification_report, codebase
+- **Action:** Invoke Agent 5 with: all specs, verification_report, implementation/iac manifest, blast_radius_assessment (if infra), rollback_plan (if infra), cost_impact (if infra), codebase
 - **Output:** `risk_assessment.md` with ship recommendation
 
-### Step 14: Run Documentation Generator (Agent 7)
+### Step 15: Human Gate & Environment Promotion
+- **Condition:** After Critic (or Verifier if Critic skipped)
+- **Action:** Evaluate environment approval policy (dev/staging/prod). Require explicit human approval for production environments, `Irreversible` rollbacks, or `Platform-Wide` blast radius. On the IaC route, present `iac_change_and_cost_report.md` as the primary approval document; no `apply` is run until this gate passes.
+- **Output:** Approval confirmation log
+
+### Step 16: Run Documentation Generator (Agent 7)
 - **Condition:** Verification passed AND ticket is not config-only
-- **Action:** Invoke Agent 7 with: problem_spec, design_spec, implementation_manifest, verification_report, test_report, risk_assessment
+- **Action:** Invoke Agent 7 with: problem_spec, design_spec, implementation_manifest (or iac_manifest), verification_report, test_report (if code route), risk_assessment
 - **Output:** `documentation_manifest.md`, `pr_description.md`, `commit_messages.md`, updated API docs, changelog, ADRs
 
-### Step 15: Run IaC/DevOps Specialist (Agent 8)
-- **Condition:** Ticket classified as infrastructure/devops change
-- **Action:** Invoke Agent 8 with: problem_spec, design_spec, ticket_analysis
-- **Output:** `iac_manifest.md`, `blast_radius_assessment.md`, `rollback_plan.md`, `iac_plan_output.md`
-
-### Step 16: Create Pull Request / Merge Request
+### Step 17: Create Pull Request / Merge Request
 - **Condition:** Verification passed and SCM connector is configured
 - **Action:**
   - Collect PR title/body from `problem_spec.md`, `pr_description.md`, and ticket reference
@@ -167,12 +186,12 @@ After pipeline completion, validate:
 - **Reasoning:** Ticket-driven flow must complete end-to-end by opening reviewable PR/MR, not only generating description artifacts
 - **Output:** `pr_creation_report.md` and `PR.md` (each includes created URL when successful)
 
-### Step 17: Pipeline Summary
+### Step 18: Pipeline Summary
 - **Condition:** Pipeline complete
 - **Action:** Report: agents run, time per agent, total tokens, ship recommendation, outstanding risks, PR/MR status (link or failure reason), documentation generated, IaC changes (if any)
 - **Output:** Terminal summary
 
-### Step 18: Finalization
+### Step 19: Finalization
 - **Condition:** Pipeline summary produced
 - **Action:** Execute finalization protocol:
   1. Validate all expected outputs exist and are non-empty
@@ -262,7 +281,7 @@ When user requests re-run of a specific step or agent:
 | Agent 2 (Design Architect) | Agent 3a+ | New design affects implementation |
 | Agent 3b (Builder) | Agent 4, 6 | New code needs re-verification |
 | Agent 4 (Verifier) | Agent 5, 7 | New verification may change risk/docs |
-| Agent 8 (IaC) | None | Independent path |
+| Agent 8 (IaC) | Agent 4, 5, 7 | New IaC changes require re-verification, risk assessment, and docs |
 
 ## Finalization Protocol
 
@@ -283,6 +302,7 @@ When the pipeline reaches completion:
 | Low complexity bug fix | Skip Agents 2a, 3a, 5 | Lightweight path |
 | Config change | Skip Agents 2a, 3a, 5, 6, 7 | Minimal pipeline |
 | Infrastructure/DevOps change | Route to Agent 8 (skip 3a/3b/3c/6) | IaC-specific pipeline |
+| Resource cost report is missing/unapproved | Halt IaC route and request approval update | Enforce cost-first gate before Terraform work |
 | Clarification needed | Loop Agent 1 ↔ User (max 2) | Resolve ambiguity |
 | Design rejected | Loop Agent 2 ↔ 2a (max 2) | Iterate design |
 | Verification fails | Loop Agent 3c ↔ 4 (max 3) | Fix -> verify cycle |

@@ -49,7 +49,10 @@ ALL_FILE_TOOLS = FILE_READ_TOOLS | FILE_EDIT_TOOLS | FILE_WRITE_TOOLS
 # .env filename detection
 # ---------------------------------------------------------------------------
 
-_ENV_FILE_RE = re.compile(r"(?:^|/)\.env(?:\.[a-zA-Z0-9_.-]+)?$")
+_ENV_FILE_RE = re.compile(
+    r"(?:^|/)(?:\.env(?:\.[a-zA-Z0-9_.-]+)?|.*\.tfvars|.*\.tfstate.*|\.aws/credentials|\.aws/config|kubeconfig|\.kube/config|values-.*\.yaml|application_default_credentials\.json)$",
+    re.IGNORECASE,
+)
 
 _ENV_IN_CMD_RE = re.compile(
     r"(?:^|\s|=|'|\"|<|>|\||\(|`)"

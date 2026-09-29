@@ -82,6 +82,17 @@ _STATIC_RULES: list[tuple[str, str]] = [
     (r"(?:^|[;&|])\s*>\s*/etc/(passwd|shadow|sudoers|hosts|fstab)\b", "truncation of critical system file via shell redirection"),
     (r"\bshred\b.+/dev/(disk|sd[a-z]+|nvme)", "shred targeting a block device"),
     (r"\bwipefs\b.+/dev/", "wipefs on a block device"),
+    (r"\bterraform\s+(apply|destroy)\b", "destructive terraform command (plan-only allowed)"),
+    (r"\btofu\s+(apply|destroy)\b", "destructive tofu command (plan-only allowed)"),
+    (r"\bpulumi\s+(up|destroy)\b", "destructive pulumi command (preview-only allowed)"),
+    (r"\bcdk\s+(deploy|destroy)\b", "destructive cdk command (diff-only allowed)"),
+    (r"\baws\s+cloudformation\s+delete-stack\b", "destructive cloudformation stack deletion"),
+    (r"\baws\s+s3\s+rb\b", "destructive S3 bucket deletion"),
+    (r"\baz\s+deployment\s+.*create\b", "destructive azure deployment create"),
+    (r"\baz\s+group\s+delete\b", "destructive azure resource group deletion"),
+    (r"\bgcloud\s+deployment-manager\s+.*delete\b", "destructive GCP deployment manager delete"),
+    (r"\bkubectl\s+delete\b", "destructive kubectl delete"),
+    (r"\bhelm\s+uninstall\b", "destructive helm uninstall"),
 ]
 
 

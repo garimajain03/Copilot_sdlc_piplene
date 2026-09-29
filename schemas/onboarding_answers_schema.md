@@ -105,6 +105,12 @@
 | `workspace_setup` | No | `default` | Repository layout mode: `default` (Agents Monorepo + submodules) or `custom` (Agents + app repos in parallel) |
 | `include_documentation_agent` | No | `true` | Whether to generate Agent 7 (Documentation Generator) |
 | `include_iac_agent` | No | `false` | Whether to generate Agent 8 (IaC/DevOps Specialist) |
+| `infrastructure.posture` | No | `brownfield` | Infrastructure posture: `brownfield`, `brownfield_no_iac`, `greenfield` |
+| `infrastructure.cloud_provider` | No | `AWS` | Primary cloud provider: `AWS`, `Azure`, `GCP`, `multi` (defaults to AWS) |
+| `infrastructure.iac_tool` | No | `Terraform` | Primary IaC tool: `Terraform`, `Bicep`, `CDK`, `Pulumi`, `CloudFormation` |
+| `infrastructure.cicd_platform` | No | `GitHub Actions` | CI/CD platform: `GitHub Actions`, `GitLab CI`, `Azure Pipelines`, `Jenkins` |
+| `infrastructure.secret_store` | No | `AWS Secrets Manager` | Secret store: `AWS Secrets Manager`, `AWS Systems Manager Parameter Store`, `Azure Key Vault`, `HashiCorp Vault` |
+| `infrastructure.environments` | No | `["dev", "staging", "prod"]` | List of target deployment environments |
 
 **Approval Mode Details:**
 

@@ -36,6 +36,8 @@ Examples:
 - "Use zod for runtime validation of API responses"
 - "Follow the Repository pattern for data access"
 - "Error handling must use Result<T, E> pattern, not try/catch"
+- "Infrastructure: Primary Cloud: AWS, IaC Tool: Terraform, Secret Store: AWS Secrets Manager"
+- "Module Catalog: Use modules under `modules/` or terraform registry"
 -->
 
 ## Examples

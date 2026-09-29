@@ -23,6 +23,12 @@
         "timeoutMs": 5000
       },
       {
+        "name": "guard-orchestration-sequence",
+        "script": ".github/hooks/hook_guard_orchestration_sequence.py",
+        "blocking": true,
+        "timeoutMs": 5000
+      },
+      {
         "name": "otel-telemetry",
         "script": ".github/hooks/hook_otel_telemetry.py",
         "blocking": false,

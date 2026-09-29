@@ -627,6 +627,75 @@
   </div>
 
   <hr class="divider" />
+  <!-- Infrastructure & IaC Factory -->
+  <p class="section-label">Infrastructure &amp; IaC</p>
+  <div class="field">
+    <label>Does this engagement include infrastructure work? (Generate Agent 8)</label>
+    <select id="include-iac-agent" onchange="onIacToggle(this.value)">
+      <option value="no">No — Application code only</option>
+      <option value="yes">Yes — Include IaC / DevOps Agent (Agent 8)</option>
+    </select>
+  </div>
+
+  <div class="ctx-block" id="ctx-iac-config">
+    <div class="sub-fields">
+      <div class="sub-fields-title">Infrastructure Configuration</div>
+      <div class="field">
+        <label>Infrastructure Posture</label>
+        <select id="iac-posture" onchange="saveProgress()">
+          <option value="brownfield">Brownfield (existing IaC in repository)</option>
+          <option value="brownfield_no_iac">Brownfield without IaC (introducing IaC)</option>
+          <option value="greenfield">Greenfield (new empty repository / landing zone)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Cloud Provider</label>
+        <select id="iac-cloud-provider" onchange="onCloudProviderChange(this.value)">
+          <option value="AWS" selected>AWS (Amazon Web Services)</option>
+          <option value="Azure">Azure</option>
+          <option value="GCP">GCP (Google Cloud Platform)</option>
+          <option value="Multi-cloud">Multi-cloud / provider-agnostic</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Primary IaC Tool</label>
+        <select id="iac-tool" onchange="saveProgress()">
+          <option value="Terraform" selected>Terraform / OpenTofu</option>
+          <option value="CDK">AWS CDK</option>
+          <option value="CloudFormation">CloudFormation</option>
+          <option value="Bicep">Bicep</option>
+          <option value="Pulumi">Pulumi</option>
+          <option value="ARM">Azure Resource Manager (ARM) templates</option>
+          <option value="Deployment Manager">GCP Deployment Manager</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>CI/CD Platform</label>
+        <select id="iac-cicd" onchange="saveProgress()">
+          <option value="GitHub Actions" selected>GitHub Actions</option>
+          <option value="GitLab CI">GitLab CI</option>
+          <option value="Azure Pipelines">Azure Pipelines</option>
+          <option value="Google Cloud Build">Google Cloud Build</option>
+          <option value="Jenkins">Jenkins</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Secret Store</label>
+        <select id="iac-secret-store" onchange="saveProgress()">
+          <option value="AWS Secrets Manager" selected>AWS Secrets Manager / SSM</option>
+          <option value="Azure Key Vault">Azure Key Vault</option>
+          <option value="GCP Secret Manager">GCP Secret Manager</option>
+          <option value="Vault">HashiCorp Vault</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Target Environments (comma-separated)</label>
+        <input type="text" id="iac-environments" value="dev, staging, prod" placeholder="dev, staging, prod" oninput="saveProgress()" />
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
   <p class="section-label">Agent Behavioral Guardrails</p>
   <div class="field">
     <label>Agent Behavioral Guardrails <span class="opt">review and edit as needed</span></label>
@@ -980,6 +1049,28 @@ function onHasDocs(val) {
   saveProgress();
 }
 
+// ── IaC toggle ────────────────────────────────────────────────────────────
+function onIacToggle(val) {
+  reveal('ctx-iac-config', val === 'yes');
+  saveProgress();
+}
+
+// ── Cloud provider defaults ────────────────────────────────────────────────
+function onCloudProviderChange(val) {
+  const defaults = {
+    AWS:   { tool: 'Terraform', cicd: 'GitHub Actions', secretStore: 'AWS Secrets Manager' },
+    Azure: { tool: 'Bicep',     cicd: 'Azure Pipelines', secretStore: 'Azure Key Vault' },
+    GCP:   { tool: 'Terraform', cicd: 'Google Cloud Build', secretStore: 'GCP Secret Manager' },
+  };
+  const d = defaults[val];
+  if (d) {
+    sv('iac-tool', d.tool);
+    sv('iac-cicd', d.cicd);
+    sv('iac-secret-store', d.secretStore);
+  }
+  saveProgress();
+}
+
 
 // ── PII ───────────────────────────────────────────────────────────────────
 function onPii() {
@@ -1117,6 +1208,18 @@ function collectData() {
     ai_stack: {
       existing_agents: v('existing-agents'),
     },
+    pipeline: {
+      include_iac_agent: v('include-iac-agent') === 'yes',
+    },
+    infrastructure: {
+      include_iac_agent: v('include-iac-agent') === 'yes',
+      posture: v('iac-posture') || 'brownfield',
+      cloud_provider: v('iac-cloud-provider') || 'AWS',
+      iac_tool: v('iac-tool') || 'Terraform',
+      cicd_platform: v('iac-cicd') || 'GitHub Actions',
+      secret_store: v('iac-secret-store') || 'AWS Secrets Manager',
+      environments: v('iac-environments') || 'dev, staging, prod',
+    },
   };
 }
 
@@ -1202,6 +1305,16 @@ function restoreData(d) {
   sv('forbidden', c.forbidden);
 
   sv('existing-agents', a.existing_agents);
+
+  const inf = d.infrastructure || {};
+  const incIac = (d.pipeline?.include_iac_agent || inf.include_iac_agent) ? 'yes' : 'no';
+  sv('include-iac-agent', incIac); onIacToggle(incIac);
+  sv('iac-posture', inf.posture || 'brownfield');
+  sv('iac-cloud-provider', inf.cloud_provider || 'AWS');
+  sv('iac-tool', inf.iac_tool || 'Terraform');
+  sv('iac-cicd', inf.cicd_platform || 'GitHub Actions');
+  sv('iac-secret-store', inf.secret_store || 'AWS Secrets Manager');
+  sv('iac-environments', inf.environments || 'dev, staging, prod');
 }
 
 function sv(id, val) { const el = document.getElementById(id); if (el && val) el.value = val; }
@@ -1365,7 +1478,11 @@ function buildMarkdown() {
     aiSection += `- **Existing agents repository details:** To be collected by SDLC Preflight (Existing Agents Repo URL or local cloned repo path).\n`;
   }
 
-  return `# Client Intake — SDLC Onboarding Context\n_Generated: ${ts}_\n\n---\n\n## Organisation\n| Field | Value |\n|---|---|\n| Company | ${none(o.company)} |\n| Industry | ${industryDisplay} |\n| Approved AI tools | ${(o.approved_ai_tools||[]).join(', ') || '_(none)_'}${(o.other_ai_tools||[]).length ? `, ${o.other_ai_tools.join(', ')}` : ''} |\n| Personas engaged | ${personas.join(', ') || '_(none)_'} |\n| Compliance | ${(o.compliance||[]).join(', ') || '_(none)_'} |\n| PII types | ${(c.pii_types||[]).join(', ') || '_(none)_'} |${modelRows.length ? `\n\n## Approved Models\n| Tool | Models |\n|---|---|\n${modelRows.join('\n')}` : ''}\n\n---\n\n## SDLC Tools${wfSection}\n---\n\n${sourcesSection}\n---\n\n## Agent Behavioral Guardrails\n${c.forbidden ? c.forbidden.split('\n').filter(Boolean).map(l=>`${l}`).join('\n') : '_(to be confirmed)_'}\n\n---\n\n${aiSection}\n---\n_Generated by SDLC Pipeline Client Intake Wizard · Save to \`docs/onboarding/intake-sources.md\`_\n`;
+  // Infrastructure section
+  const inf = d.infrastructure || {};
+  let infraSection = `## Infrastructure\n- **Include IaC Agent:** ${inf.include_iac_agent ? 'true' : 'false'}\n- **Posture:** ${none(inf.posture)}\n- **Cloud Provider:** ${none(inf.cloud_provider)}\n- **IaC Tool:** ${none(inf.iac_tool)}\n- **CI/CD Platform:** ${none(inf.cicd_platform)}\n- **Secret Store:** ${none(inf.secret_store)}\n- **Environments:** ${none(inf.environments)}\n`;
+
+  return `# Client Intake — SDLC Onboarding Context\n_Generated: ${ts}_\n\n---\n\n## Organisation\n| Field | Value |\n|---|---|\n| Company | ${none(o.company)} |\n| Industry | ${industryDisplay} |\n| Approved AI tools | ${(o.approved_ai_tools||[]).join(', ') || '_(none)_'}${(o.other_ai_tools||[]).length ? `, ${o.other_ai_tools.join(', ')}` : ''} |\n| Personas engaged | ${personas.join(', ') || '_(none)_'} |\n| Compliance | ${(o.compliance||[]).join(', ') || '_(none)_'} |\n| PII types | ${(c.pii_types||[]).join(', ') || '_(none)_'} |${modelRows.length ? `\n\n## Approved Models\n| Tool | Models |\n|---|---|\n${modelRows.join('\n')}` : ''}\n\n---\n\n## SDLC Tools${wfSection}\n---\n\n${sourcesSection}\n---\n\n${infraSection}\n---\n\n## Agent Behavioral Guardrails\n${c.forbidden ? c.forbidden.split('\n').filter(Boolean).map(l=>`${l}`).join('\n') : '_(to be confirmed)_'}\n\n---\n\n${aiSection}\n---\n_Generated by SDLC Pipeline Client Intake Wizard · Save to \`docs/onboarding/intake-sources.md\`_\n`;
 }
 
 // ── Download / share ──────────────────────────────────────────────────────

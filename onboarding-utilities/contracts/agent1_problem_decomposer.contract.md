@@ -24,6 +24,7 @@ Transforms vague feature requests, bug reports, or ticket descriptions into prec
 3. **[OUTCOME-TRACEABILITY]** - Every requirement is traceable to the original ticket/request
 4. **[OUTCOME-SCOPE]** - Clear separation between in-scope, out-of-scope, and non-goals
 5. **[OUTCOME-SELF-RESOLVE]** - Agent searches codebase for answers before asking the user (minimize interruptions)
+6. **[OUTCOME-RESOURCE-COST]** - For infra/devops requests, a first-pass `resource_cost_report.md` is drafted for approval before IaC generation
 
 ## Inputs
 
@@ -63,6 +64,7 @@ Transforms vague feature requests, bug reports, or ticket descriptions into prec
   - **Tier 1 (Universal):** Scope, platforms, backward compatibility, affected users/brands
   - **Tier 2 (Context-dependent):** UI states, offline behavior, auth requirements, API contracts, data migration, compliance - based on repo type
   - **Tier 3 (Advanced):** Performance requirements, monitoring, rollback strategy
+  - **Minimal Infra Request Mode:** If Agent 0 flagged `scope: minimal-spec` (or the input is a terse imperative infra ask with no ticket/user story), skip the generic Tier 1-3 set and ask only infra-specific targeted questions: resource type and runtime/trigger (e.g. Lambda runtime + event source), target environment(s), naming/tagging convention to follow, and any integration points (VPC, downstream services, secrets). Prefer resolving all of these from existing IaC modules/conventions before asking.
 - **Reasoning:** Structured questioning ensures nothing is missed
 - **Output:** Question list by tier
 
@@ -96,6 +98,16 @@ Transforms vague feature requests, bug reports, or ticket descriptions into prec
 - **Action:** Update `checkpoint.md` with Agent 1 completion status, source repos, timestamps
 - **Output:** Updated `checkpoint.md`
 
+### Step 8: Draft Resource Cost Report for Infra Route
+- **Condition:** Request classified as Infrastructure/DevOps
+- **Action:** Draft `resource_cost_report.md` in `outputs/<FEATURE_ID>/` with:
+  - cloud split assumptions,
+  - AWS/Azure/cross-cloud egress estimate placeholders or first-pass numbers,
+  - explicit non-zero recurring items,
+  - `status: ready_for_approval` and `approval: pending`.
+- **Reasoning:** Cost visibility must exist before IaC generation starts.
+- **Output:** `resource_cost_report.md`
+
 ## Conditions & Decision Points
 
 | Condition | Action | Reasoning |
@@ -105,6 +117,7 @@ Transforms vague feature requests, bug reports, or ticket descriptions into prec
 | Ticket has image attachments | Include image context in requirements | Visual specs inform AC |
 | Multiple repos affected | Generate per-repo requirement sections | Each repo has distinct conventions |
 | Ticket references existing feature | Search codebase for prior implementation patterns | Consistency with existing code |
+| Input is a terse infra request with no formal user story (`scope: minimal-spec`) | Derive REQ/AC entries from repo IaC conventions and the minimal set of infra-specific questions (Step 3); still produce a fully structured `problem_spec.md` | A one-line ask ("create a lambda for X") is a valid pipeline input, not a blocker - downstream agents still need REQ/AC/ASM structure |
 
 ## Tool Categories
 

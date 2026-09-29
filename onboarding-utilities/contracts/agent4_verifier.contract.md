@@ -33,9 +33,11 @@ Validates the implementation against problem specification, design specification
 |----------|--------|----------|-------------|
 | `problem_spec.md` | Agent 1 | Yes | Requirements to verify against |
 | `design_spec.md` | Agent 2 | Yes | Design to verify against |
-| `implementation_manifest.md` | Agent 3b | Yes | Files to verify |
+| `implementation_manifest.md` | Agent 3b | Conditional | Files to verify (required on code route; `iac_manifest.md` used on infra route) |
+| `iac_manifest.md` | Agent 8 | Conditional | IaC changes manifest (required on infra route; substitutes for `implementation_manifest.md`) |
+| `iac_plan_output.md` | Agent 8 | Conditional | IaC plan/preview output to verify (required on infra route) |
 | Source repository code | Repository | Yes | Implementation to verify |
-| `fix_manifest.md` | Agent 3c | No | On re-runs after fixes |
+| `fix_manifest.md` | Agent 3c / Agent 8c | No | On re-runs after fixes |
 | `test_report.md` | Agent 6 | No | Test execution results |
 | Custom client context | Client | No | `agent4_verifier_custom_client_context.md` - quality thresholds |
 
@@ -91,19 +93,31 @@ Validates the implementation against problem specification, design specification
 - **Reasoning:** UI must match design specifications
 - **Output:** Design verification findings
 
-### Step 8: Produce Verification Report
+### Step 8: IaC Plan & Governance Verification
+- **Condition:** On Infrastructure/DevOps route (`iac_manifest.md` and `iac_plan_output.md` present)
+- **Action:** Verify IaC artifacts and plan outputs:
+  - **Plan validation:** Confirm zero unexpected resource deletions or unexpected recreations in `iac_plan_output.md`
+  - **Privilege escalation:** Ensure no IAM policies/roles introduce wildcard statements (`*`) or unconstrained administrative rights
+  - **Network exposure:** Verify security groups and VPC rules do not open public ingress (`0.0.0.0/0`) on sensitive ports
+  - **Secrets check:** Confirm no plaintext secrets or credentials in `.tf`, `.tfvars`, or plan output
+  - **Manifest alignment:** Verify all resources in `iac_manifest.md` match the plan output and requirements
+  - Validation commands table (pluggable, defaults to AWS/Terraform): `terraform validate`, `bicep build`, `cdk synth`
+- **Reasoning:** Infrastructure plan output must be verified for safety, governance, and zero unapproved drift before any approval
+- **Output:** IaC verification findings
+
+### Step 9: Produce Verification Report
 - **Condition:** All checks complete
 - **Action:** Write `verification_report.md` with all findings categorized by severity:
-  - **Critical:** Security hole, crash risk, missing requirement -> Ship blocker
-  - **High:** Logic bug, edge case failure -> Ship blocker
+  - **Critical:** Security hole, crash risk, missing requirement, unexpected infra resource destruction, unconstrained IAM privilege -> Ship blocker
+  - **High:** Logic bug, edge case failure, coverage below threshold, unauthorized public ingress -> Ship blocker
   - **Medium:** Design deviation, maintainability -> Not a blocker
   - **Low:** Nitpick, naming -> Not a blocker
 - **Output:** `verification_report.md`
 
-### Step 9: Extract Fix Request (if needed)
+### Step 10: Extract Fix Request (if needed)
 - **Condition:** Critical or High severity findings exist
-- **Action:** Extract findings into `fix_request.md` with: iteration number, issue ID, severity, file, line, problem, expected fix
-- **Reasoning:** Structured fix request enables Agent 3c to act precisely
+- **Action:** Extract findings into `fix_request.md` with: iteration number, issue ID, severity, file, line, problem, expected fix (routed to Agent 8c on infra route, or Agent 3c on code route)
+- **Reasoning:** Structured fix request enables Fixer agent to act precisely
 - **Output:** `fix_request.md`
 
 ## Conditions & Decision Points
@@ -139,7 +153,9 @@ Validates the implementation against problem specification, design specification
 |----------|------------|--------|
 | `problem_spec.md` | Read | Requirements baseline |
 | `design_spec.md` | Read | Design baseline |
-| `implementation_manifest.md` | Read | What to verify |
+| `implementation_manifest.md` | Read | What to verify (code route) |
+| `iac_manifest.md` | Read | What to verify (infra route) |
+| `iac_plan_output.md` | Read | IaC plan validation (infra route) |
 | Source repository code | Read only | Verification target |
 | `verification_report.md` | Write | Primary output |
 | `fix_request.md` | Write | Fix instructions (conditional) |
