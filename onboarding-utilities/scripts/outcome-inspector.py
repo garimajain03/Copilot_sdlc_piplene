@@ -128,6 +128,24 @@ def inspect_preflight(output_dir: str, inspector: Inspector):
 
     root_pipeline, legacy_pipeline = _pipeline_dirs(output_dir)
     repo_root = _resolve_repo_root(output_dir)
+    telemetry_enabled = True
+    context_path = root_pipeline / "onboarding_context.json"
+    if context_path.exists():
+        try:
+            with context_path.open("r", encoding="utf-8") as context_file:
+                context = json.load(context_file)
+            telemetry_enabled = bool(
+                context.get("pipeline", {}).get(
+                    "telemetry_enabled",
+                    context.get("observability", {}).get("enabled", True),
+                )
+            )
+        except (json.JSONDecodeError, OSError):
+            inspector.warning(
+                "quality",
+                "Could not parse onboarding_context.json; observability checks remain enabled",
+                str(context_path),
+            )
 
     # Preflight owns generated repo bootstrap files plus root pipeline state.
     generated_repo_files = {
@@ -194,13 +212,13 @@ def inspect_preflight(output_dir: str, inspector: Inspector):
             inspector.error("quality", "setup.sh is empty", "setup.sh")
         elif not content.startswith("#!/"):
             inspector.error("quality", "setup.sh missing shebang line", "setup.sh")
-        if "read -rs" not in content and "read -s" not in content:
+        if not re.search(r"\bread\s+(?:-rs|-r\s+-s|-s)\b", content):
             inspector.warning("security", "setup.sh may not protect secret input (no read -rs found)", "setup.sh")
         if ".env" in content and ".gitignore" not in content:
             inspector.warning("security", "setup.sh creates .env but may not add to .gitignore", "setup.sh")
-        if "install-observability.sh" not in content:
+        if telemetry_enabled and "install-observability.sh" not in content:
             inspector.error("quality", "setup.sh missing observability installer integration", "setup.sh")
-        if ".github/scripts/install-observability.sh" not in content and "scripts/install-observability.sh" not in content:
+        if telemetry_enabled and ".github/scripts/install-observability.sh" not in content and "scripts/install-observability.sh" not in content:
             inspector.warning("quality", "setup.sh should resolve generated .github/scripts/install-observability.sh path", "setup.sh")
 
     # Check setup.ps1 basic quality
@@ -214,9 +232,9 @@ def inspect_preflight(output_dir: str, inspector: Inspector):
             inspector.warning("quality", "setup.ps1 missing CmdletBinding declaration", "setup.ps1")
         if "Copy-Item \".env.template\" \".env\"" in content and "Test-Path \".env.template\"" not in content:
             inspector.warning("quality", "setup.ps1 copies .env.template without existence check", "setup.ps1")
-        if "install-observability.ps1" not in content:
+        if telemetry_enabled and "install-observability.ps1" not in content:
             inspector.error("quality", "setup.ps1 missing observability installer integration", "setup.ps1")
-        if ".github\\scripts\\install-observability.ps1" not in content and "scripts\\install-observability.ps1" not in content:
+        if telemetry_enabled and ".github\\scripts\\install-observability.ps1" not in content and "scripts\\install-observability.ps1" not in content:
             inspector.warning("quality", "setup.ps1 should resolve generated .github/scripts/install-observability.ps1 path", "setup.ps1")
 
     # Check instructions files
@@ -255,6 +273,24 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
     """Inspect Pipeline Generator outputs against contracts."""
 
     root_pipeline, legacy_pipeline = _pipeline_dirs(output_dir)
+    telemetry_enabled = True
+    context_path = root_pipeline / "onboarding_context.json"
+    if context_path.exists():
+        try:
+            with context_path.open("r", encoding="utf-8") as context_file:
+                context = json.load(context_file)
+            telemetry_enabled = bool(
+                context.get("pipeline", {}).get(
+                    "telemetry_enabled",
+                    context.get("observability", {}).get("enabled", True),
+                )
+            )
+        except (json.JSONDecodeError, OSError):
+            inspector.warning(
+                "quality",
+                "Could not parse onboarding_context.json; observability checks remain enabled",
+                str(context_path),
+            )
     if legacy_pipeline.exists():
         inspector.error(
             "consistency",
@@ -323,7 +359,7 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
         except OSError:
             pass
 
-    # Ensure generated observability installers are full reference implementations (not stubs).
+    # Observability installers are required only when the customer enabled telemetry.
     installers = {
         ".github/scripts/install-observability.sh": [
             "opentelemetry-collector-releases/releases/download",
@@ -344,7 +380,7 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
         "external installer flows",
         "use onboarding-utilities/scripts/install-observability",
     ]
-    for rel_path, required_tokens in installers.items():
+    for rel_path, required_tokens in (installers.items() if telemetry_enabled else []):
         full_path = os.path.join(output_dir, *rel_path.split("/"))
         if not os.path.exists(full_path):
             inspector.error("completeness", f"Missing required installer script: {rel_path}", rel_path)
@@ -478,9 +514,9 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
                 inspector.error("consistency", "Orchestrator must include PR.md output artifact", agent_file)
             if "pr_creation_report.md" not in content:
                 inspector.error("consistency", "Orchestrator must include pr_creation_report.md output artifact", agent_file)
-            if "telemetry_report.md" not in content:
+            if telemetry_enabled and "telemetry_report.md" not in content:
                 inspector.error("consistency", "Orchestrator must include telemetry_report.md output artifact", agent_file)
-            if "cost_report.md" not in content:
+            if telemetry_enabled and "cost_report.md" not in content:
                 inspector.error("consistency", "Orchestrator must include cost_report.md output artifact", agent_file)
             if "outputs/<FEATURE_ID>/" not in content and "outputs/<feature_id>/" not in content and "outputs/{feature_id}/" not in content:
                 inspector.warning("consistency", "Orchestrator should explicitly document outputs/<FEATURE_ID>/ runtime artifact path", agent_file)
@@ -492,8 +528,8 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
             if "argument-hint:" not in fm:
                 inspector.warning("frontmatter", "Worker agent missing 'argument-hint' key", agent_file)
 
-    # Check custom client context templates
-    context_dir = root_pipeline / "client-context"
+    # Check custom client context templates in the generated agents repository.
+    context_dir = Path(output_dir).resolve() / ".github" / "client-context"
     if context_dir.is_dir():
         context_files = [f for f in os.listdir(context_dir) if f.endswith("_custom_client_context.md")]
         if len(context_files) < 8:
@@ -607,7 +643,7 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
                 ".github/hooks/otel-hook.py",
                 ".github/hooks/hook_otel_telemetry.py",
             ]
-            for rel in telemetry_scripts:
+            for rel in (telemetry_scripts if telemetry_enabled else []):
                 tpath = os.path.join(output_dir, rel)
                 if not os.path.exists(tpath):
                     continue
@@ -741,70 +777,71 @@ def inspect_generator(output_dir: str, contracts_dir: str, inspector: Inspector)
                             ".vscode/settings.json",
                         )
 
-            collector_cfg_path = os.path.join(output_dir, ".github", "observability", "otel-collector-config.yml")
-            if not os.path.exists(collector_cfg_path):
-                inspector.error(
-                    "completeness",
-                    "Missing collector config: .github/observability/otel-collector-config.yml",
-                    ".github/observability/otel-collector-config.yml",
-                )
-            else:
-                try:
-                    with open(collector_cfg_path, "r", encoding="utf-8") as cf:
-                        collector_content = cf.read()
-                    required_collector_tokens = [
-                        "resource_to_telemetry_conversion:",
-                        "enabled: true",
-                        "endpoint: 0.0.0.0:8889",
-                        "port: 8888",
-                        "traces:",
-                        "metrics:",
-                        "logs:",
-                    ]
-                    for token in required_collector_tokens:
-                        if token not in collector_content:
-                            inspector.error(
-                                "consistency",
-                                f"Collector config missing telemetry parity token: {token}",
-                                ".github/observability/otel-collector-config.yml",
-                            )
-                except OSError:
+            if telemetry_enabled:
+                collector_cfg_path = os.path.join(output_dir, ".github", "observability", "otel-collector-config.yml")
+                if not os.path.exists(collector_cfg_path):
                     inspector.error(
-                        "quality",
-                        "Unable to read collector config",
+                        "completeness",
+                        "Missing collector config: .github/observability/otel-collector-config.yml",
                         ".github/observability/otel-collector-config.yml",
                     )
+                else:
+                    try:
+                        with open(collector_cfg_path, "r", encoding="utf-8") as cf:
+                            collector_content = cf.read()
+                        required_collector_tokens = [
+                            "resource_to_telemetry_conversion:",
+                            "enabled: true",
+                            "endpoint: 0.0.0.0:8889",
+                            "port: 8888",
+                            "traces:",
+                            "metrics:",
+                            "logs:",
+                        ]
+                        for token in required_collector_tokens:
+                            if token not in collector_content:
+                                inspector.error(
+                                    "consistency",
+                                    f"Collector config missing telemetry parity token: {token}",
+                                    ".github/observability/otel-collector-config.yml",
+                                )
+                    except OSError:
+                        inspector.error(
+                            "quality",
+                            "Unable to read collector config",
+                            ".github/observability/otel-collector-config.yml",
+                        )
 
-            prom_cfg_path = os.path.join(output_dir, ".github", "observability", "prometheus", "prometheus.yml")
-            if not os.path.exists(prom_cfg_path):
-                inspector.error(
-                    "completeness",
-                    "Missing Prometheus config: .github/observability/prometheus/prometheus.yml",
-                    ".github/observability/prometheus/prometheus.yml",
-                )
-            else:
-                try:
-                    with open(prom_cfg_path, "r", encoding="utf-8") as pf:
-                        prom_content = pf.read()
-                    required_prom_tokens = [
-                        "otel-collector-copilot",
-                        "localhost:8889",
-                        "otel-collector-internal",
-                        "localhost:8888",
-                    ]
-                    for token in required_prom_tokens:
-                        if token not in prom_content:
-                            inspector.error(
-                                "consistency",
-                                f"Prometheus config missing telemetry parity token: {token}",
-                                ".github/observability/prometheus/prometheus.yml",
-                            )
-                except OSError:
+                prom_cfg_path = os.path.join(output_dir, ".github", "observability", "prometheus", "prometheus.yml")
+                if not os.path.exists(prom_cfg_path):
                     inspector.error(
-                        "quality",
-                        "Unable to read Prometheus config",
+                        "completeness",
+                        "Missing Prometheus config: .github/observability/prometheus/prometheus.yml",
                         ".github/observability/prometheus/prometheus.yml",
                     )
+                else:
+                    try:
+                        with open(prom_cfg_path, "r", encoding="utf-8") as pf:
+                            prom_content = pf.read()
+                        required_prom_tokens = [
+                            "otel-collector-copilot",
+                            "localhost:8889",
+                            "otel-collector-internal",
+                            "localhost:8888",
+                        ]
+                        for token in required_prom_tokens:
+                            if token not in prom_content:
+                                inspector.error(
+                                    "consistency",
+                                    f"Prometheus config missing telemetry parity token: {token}",
+                                    ".github/observability/prometheus/prometheus.yml",
+                                )
+                    except OSError:
+                        inspector.error(
+                            "quality",
+                            "Unable to read Prometheus config",
+                            ".github/observability/prometheus/prometheus.yml",
+                        )
 
             # Detect duplicate hook files present on disk with both naming families.
             hooks_dir = os.path.join(output_dir, ".github", "hooks")

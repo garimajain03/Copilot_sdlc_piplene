@@ -26,6 +26,9 @@ Intercepts terminal/execute tool invocations and blocks commands that could caus
 | Force push to protected branches | `git push --force main`, `git push -f origin main` | Critical - always block |
 | Hard reset | `git reset --hard` on shared branches | High - block with override |
 | Database destruction | `DROP DATABASE`, `DROP TABLE` | Critical - always block |
+| IaC destructive execution | `terraform apply`, `terraform destroy`, `tofu apply`, `tofu destroy`, `pulumi up`, `pulumi destroy`, `cdk deploy`, `cdk destroy` | Critical - always block (plan-only allowed) |
+| Cloud infrastructure deletion | `aws cloudformation delete-stack`, `aws s3 rb --force`, `az deployment create`, `az group delete`, `gcloud deployment-manager delete` | Critical - always block |
+| Cluster modification/deletion | `kubectl delete`, `helm uninstall` | Critical - always block |
 | Package registry publish | `npm publish`, `pip upload` | High - require confirmation |
 | System modification | `chmod -R 777 /`, `chown -R` on system paths | Critical - always block |
 

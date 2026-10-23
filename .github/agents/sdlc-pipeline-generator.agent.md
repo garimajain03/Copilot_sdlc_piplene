@@ -658,6 +658,9 @@ When a non-critical generation step fails, continue with reduced output:
         1. Copy `.env.template` to `.env` in generated agents-repo root
         2. Fill required token values listed in `.env.template`
         3. Re-run `start <ISSUE_ID>`
+      - Preflight script MUST also initialize runtime sequence artifacts:
+        1. `outputs/<FEATURE_ID>/resource_cost_report.md` with `status: pending`, `approval: pending`, and AWS/Azure/egress estimate placeholders
+        2. `outputs/<FEATURE_ID>/orchestration_tracker.md` with a required stage checklist that includes a pre-IaC `resource-cost-estimate` stage
       - Generated orchestrator instructions MUST invoke `.github/scripts/pipeline-preflight.py` before any pipeline run starts, on resume, and before continuing after a rerun request.
       - If preflight script fails, orchestrator must halt and surface remediation steps.
 
@@ -706,6 +709,7 @@ When a non-critical generation step fails, continue with reduced output:
       - `onboarding-utilities/scripts/hook-failure-report.py`
       - `onboarding-utilities/scripts/publish-artifacts.py`
       - `onboarding-utilities/scripts/guard-env-files.py`
+      - `onboarding-utilities/scripts/guard-orchestration-sequence.py`
       - `onboarding-utilities/scripts/guard-destructive-commands (1).py` (rename output to `guard-destructive-commands.py`)
       - `onboarding-utilities/scripts/start.sh`
       - `onboarding-utilities/scripts/start.ps1`
@@ -754,6 +758,7 @@ When a non-critical generation step fails, continue with reduced output:
     - Non-orchestrator agents MUST NOT include `otel-hook.py` in frontmatter.
     - Use exactly one hook script naming family in a run. Do NOT generate duplicate alias scripts for the same responsibility.
     - Canonical hook names are REQUIRED: `observability-hook.py` and `otel-hook.py`. Do NOT emit legacy aliases such as `hook_observability.py` or `hook_otel_telemetry.py`.
+    - Generated `hooks.json` MUST include `guard-orchestration-sequence.py` in `PreToolUse` to block Terraform generation/commands until `outputs/<FEATURE_ID>/resource_cost_report.md` is approved (`status: approved` and `approval: approved` or `decision: approved`).
     - Reuse the existing `otel-hook.py` behavior and filtering (`tool_name == "runSubagent"`) instead of generating project-specific telemetry logic.
     - `otel-hook.py` MUST accept both `toolName=runSubagent` and `toolName=agent` for PreToolUse/PostToolUse processing.
     - `otel-hook.py` MUST accept event name from any of: `event`, `hookEventName`, `eventName`.

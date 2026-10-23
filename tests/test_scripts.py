@@ -438,6 +438,22 @@ class TestRepoScanner(unittest.TestCase):
         result = mod.parse_rust_cargo(self.tmpdir)
         self.assertEqual(result.get("name"), "test-app")
 
+    def test_detect_iac_terraform(self):
+        mod = self._load_scanner()
+        self._create_repo({"main.tf": 'provider "aws" { region = "us-east-1" }'})
+        result = mod.detect_iac(self.tmpdir)
+        self.assertTrue(result.get("has_iac"))
+        self.assertEqual(result.get("tool"), "Terraform")
+        self.assertEqual(result.get("posture"), "brownfield")
+
+    def test_detect_iac_greenfield(self):
+        mod = self._load_scanner()
+        self._create_repo({"README.md": "# Greenfield App"})
+        result = mod.detect_iac(self.tmpdir)
+        self.assertFalse(result.get("has_iac"))
+        self.assertEqual(result.get("tool"), "none")
+        self.assertEqual(result.get("posture"), "greenfield")
+
 
 # =============================================================================
 # connector-bootstrap.py tests

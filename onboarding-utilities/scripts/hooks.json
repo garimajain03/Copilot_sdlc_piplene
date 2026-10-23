@@ -32,6 +32,11 @@
       },
       {
         "type": "command",
+        "command": "python3 .github/hooks/guard-orchestration-sequence.py",
+        "timeout": 10
+      },
+      {
+        "type": "command",
         "command": "python3 .github/hooks/otel-hook.py",
         "timeout": 20
       }

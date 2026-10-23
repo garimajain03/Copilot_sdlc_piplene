@@ -24,8 +24,11 @@ Prevents agents from reading, writing, or executing files that contain or may co
 |---------|--------|
 | `.env`, `.env.*` | Environment variables with secrets |
 | `*.pem`, `*.key`, `*.cert` | Certificates and private keys |
+| `*.tfvars`, `*.auto.tfvars`, `*.tfstate`, `*.tfstate.backup` | Terraform variables and state files containing sensitive data |
 | `credentials.*`, `secrets.*` | Credential files |
-| `.aws/credentials`, `.ssh/*` | Cloud/SSH credentials |
+| `.aws/credentials`, `.aws/config`, `.ssh/*` | Cloud/SSH credentials |
+| `kubeconfig`, `.kube/config`, `values-*.yaml` | Kubernetes credentials and Helm sensitive values |
+| `application_default_credentials.json` | GCP/Cloud application credentials |
 | `**/vault/**` | Secret vault directories |
 
 ### Protected Content Patterns
